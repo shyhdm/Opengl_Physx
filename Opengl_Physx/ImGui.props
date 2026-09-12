@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(MSBuildThisFileDirectory)ThirdParty\imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="$(MSBuildThisFileDirectory)ThirdParty\imgui\imgui.cpp;$(MSBuildThisFileDirectory)ThirdParty\imgui\imgui_draw.cpp;$(MSBuildThisFileDirectory)ThirdParty\imgui\imgui_tables.cpp;$(MSBuildThisFileDirectory)ThirdParty\imgui\imgui_widgets.cpp;$(MSBuildThisFileDirectory)ThirdParty\imgui\backends\imgui_impl_glfw.cpp;$(MSBuildThisFileDirectory)ThirdParty\imgui\backends\imgui_impl_opengl3.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <PreprocessorDefinitions>GLFW_DLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemGroup>
+</Project>

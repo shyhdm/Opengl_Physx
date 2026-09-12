@@ -1,0 +1,172 @@
+#pragma once
+#include "OpenGL.h"
+#include <vector>
+#include <limits>
+#include <stdexcept>
+#include <type_traits>
+#include <map>
+#include <array>
+
+// 位置、颜色、法线、UV。默认值兼容之前只填写六个数字的顶点。
+struct Vertex
+{
+    float x, y, z;
+    float r, g, b;
+    float nx = 0.0f, ny = 1.0f, nz = 0.0f;
+    float u = 0.0f, v = 0.0f;
+};
+
+static_assert(std::is_standard_layout<Vertex>::value, "Vertex must have a standard layout.");
+
+// 一个 Mesh 拥有一组 GPU 顶点、索引和顶点格式。
+// 创建和释放 Mesh 时，OpenGL 上下文都必须仍然有效。
+class Mesh
+{
+public:
+    Mesh(const std::vector<Vertex>& vertices, const std::vector<unsigned int>& indices)
+    {
+        if (vertices.empty() || indices.empty() || indices.size() % 3 != 0)
+        {
+            throw std::invalid_argument("Mesh requires vertices and complete triangle indices.");
+        }
+
+        if (indices.size() > static_cast<size_t>(std::numeric_limits<GLsizei>::max()))
+        {
+            throw std::length_error("Too many mesh indices.");
+        }
+
+        constexpr size_t maxBytes = static_cast<size_t>(std::numeric_limits<std::ptrdiff_t>::max());
+        if (vertices.size() > maxBytes / sizeof(Vertex) || indices.size() > maxBytes / sizeof(unsigned int))
+        {
+            throw std::length_error("Mesh buffers are too large.");
+        }
+
+        for (unsigned int index : indices)
+        {
+            if (index >= vertices.size())
+            {
+                throw std::out_of_range("Mesh index is outside the vertex array.");
+            }
+        }
+
+        indexCount = static_cast<GLsizei>(indices.size());
+
+        GL::GenVertexArrays(1, &vao);
+        GL::GenBuffers(1, &vbo);
+        GL::GenBuffers(1, &ebo);
+
+        if (!vao || !vbo || !ebo)
+        {
+            Release();
+            throw std::runtime_error("Cannot create mesh GPU objects.");
+        }
+
+        GL::BindVertexArray(vao);
+
+        // VBO：把顶点数据复制到 GPU。
+        GL::BindBuffer(GL::ArrayBuffer, vbo);
+        GL::BufferData(GL::ArrayBuffer, static_cast<std::ptrdiff_t>(vertices.size() * sizeof(Vertex)), vertices.data(), GL::StaticDraw);
+
+        // EBO：把组成三角形的顶点编号复制到 GPU。
+        // EBO 的绑定会记录在当前 VAO 中。
+        GL::BindBuffer(GL::ElementArrayBuffer, ebo);
+        GL::BufferData(GL::ElementArrayBuffer, static_cast<std::ptrdiff_t>(indices.size() * sizeof(unsigned int)), indices.data(), GL::StaticDraw);
+
+        // location = 0：每个顶点的前三个 float 是位置。
+        GL::VertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), reinterpret_cast<const void*>(offsetof(Vertex, x)));
+        GL::EnableVertexAttribArray(0);
+
+        // location = 1：接下来的三个 float 是颜色。
+        GL::VertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), reinterpret_cast<const void*>(offsetof(Vertex, r)));
+        GL::EnableVertexAttribArray(1);
+
+        GL::VertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), reinterpret_cast<const void*>(offsetof(Vertex, nx)));
+        GL::EnableVertexAttribArray(2);
+        GL::VertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), reinterpret_cast<const void*>(offsetof(Vertex, u)));
+        GL::EnableVertexAttribArray(3);
+
+        GL::BindVertexArray(0);
+        GL::BindBuffer(GL::ArrayBuffer, 0);
+    }
+
+    ~Mesh()
+    {
+        Release();
+    }
+
+    // 禁止复制，避免同一份 GPU 资源被释放两次。
+    Mesh(const Mesh&) = delete;
+    Mesh& operator=(const Mesh&) = delete;
+
+    void UpdateVertices(const std::vector<Vertex>& vertices)
+    {
+        GL::BindBuffer(GL::ArrayBuffer, vbo);
+        GL::BufferData(GL::ArrayBuffer, static_cast<std::ptrdiff_t>(vertices.size() * sizeof(Vertex)), vertices.data(), 0x88E8);
+        GL::BindBuffer(GL::ArrayBuffer, 0);
+    }
+
+    void SetGpuPositions(GLuint buffer, const GLuint* textures)
+    {
+        GL::BindVertexArray(vao);
+        GL::BindBuffer(GL::ArrayBuffer, buffer);
+        GL::VertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 4 * sizeof(float), nullptr);
+        GL::BindVertexArray(0);
+        GL::BindBuffer(GL::ArrayBuffer, 0);
+        for (int i = 0; i < 3; ++i) gpuTextures[i] = textures[i];
+    }
+
+    void Draw(GLuint program = 0) const
+    {
+        GLint active = 0;
+        if (!program)
+        {
+            GLint current = 0; glGetIntegerv(0x8B8D, &current); program = static_cast<GLuint>(current);
+        }
+        auto found = uniforms.find(program);
+        if (found == uniforms.end())
+        {
+            std::array<GLint, 4> locations;
+            const char* names[] = { "softGpu","softPositions","softRanges","softFaces" };
+            for (int i = 0; i < 4; ++i) locations[i] = GL::GetUniformLocation(program, names[i]);
+            found = uniforms.emplace(program, locations).first;
+        }
+        const auto& locations = found->second;
+        GLint enabled = locations[0];
+        if (enabled >= 0)
+        {
+            GL::Uniform1i(enabled, gpuTextures[0] != 0);
+            for (int i = 0; i < 3; ++i) GL::Uniform1i(locations[i + 1], 8 + i);
+        }
+        if (enabled >= 0 && gpuTextures[0])
+        {
+            glGetIntegerv(0x84E0, &active);
+            for (int i = 0; i < 3; ++i)
+            {
+                GL::ActiveTexture(0x84C0 + 8 + i);
+                glBindTexture(0x8C2A, gpuTextures[i]);
+
+            }
+            GL::ActiveTexture(static_cast<GLenum>(active));
+        }
+        GL::BindVertexArray(vao);
+        glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, nullptr);
+        if (enabled >= 0) GL::Uniform1i(enabled, 0);
+        GL::BindVertexArray(0);
+    }
+
+private:
+    GLuint vao = 0, vbo = 0, ebo = 0;
+    GLsizei indexCount = 0;
+    GLuint gpuTextures[3] = {};
+    mutable std::map<GLuint, std::array<GLint, 4>> uniforms;
+
+    void Release()
+    {
+        if (vao) GL::DeleteVertexArrays(1, &vao);
+        if (vbo) GL::DeleteBuffers(1, &vbo);
+        if (ebo) GL::DeleteBuffers(1, &ebo);
+        vao = 0;
+        vbo = 0;
+        ebo = 0;
+    }
+};
