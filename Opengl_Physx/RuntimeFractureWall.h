@@ -17,16 +17,26 @@
 #include <chrono>
 #include <cmath>
 #include <cstdint>
-#include <future>
 #include <limits>
 #include <memory>
+#include <mutex>
 #include <optional>
+#include <queue>
 #include <stdexcept>
+#include <thread>
 #include <vector>
 
 class RuntimeFractureWall
 {
 public:
+    struct Settings
+    {
+        float breakingImpulse = 0.12f;
+        float damageRadius = 0.65f;
+        float chainRadius = 1.35f;
+        unsigned int localFragments = 20;
+    };
+
     explicit RuntimeFractureWall(PhysicsWorld& physicsWorld) : world(physicsWorld)
     {
         Material material;
@@ -34,15 +44,23 @@ public:
         material.specularStrength = 0.12f;
         material.shininess = 18.0f;
         wallMaterial = material;
-        ModelData model = ModelBuilder::Create(ModelType::Box);
-        for (Vertex& vertex : model.vertices) { vertex.x *= size.x; vertex.y *= size.y; vertex.z *= size.z; }
-        auto piece = std::make_unique<Piece>();
-        piece->source = std::move(model);
-        piece->mesh = std::make_unique<Mesh>(piece->source.vertices, piece->source.indices);
-        piece->actor = CreateInitialActor();
-        piece->fixed = true;
-        piece->id = ++nextId;
-        pieces.push_back(std::move(piece));
+        ModelData wall = ModelBuilder::Create(ModelType::Box);
+        for (Vertex& vertex : wall.vertices) { vertex.x *= size.x; vertex.y *= size.y; vertex.z *= size.z; }
+        std::uint64_t clockSeed = static_cast<std::uint64_t>(std::chrono::high_resolution_clock::now().time_since_epoch().count());
+        std::uint64_t sequenceSeed = ++wallGeneration * 0x9E3779B97F4A7C15ull;
+        int32_t seed = static_cast<int32_t>((clockSeed ^ sequenceSeed) & 0x7fffffffu);
+        std::vector<GeneratedChunk> initial = GenerateUniform(wall, initialPieceCount, seed);
+        physx::PxCookingParams cookingParams(world.GetPhysics().getTolerancesScale());
+        cookingParams.buildGPUData = world.GetCuda() != nullptr;
+        pieces.reserve(initial.size());
+        for (GeneratedChunk& chunk : initial)
+        {
+            chunk.cookedCollision = CookConvex(chunk.model, cookingParams);
+            auto piece = CreatePiece(std::move(chunk.model), wallPose, 0, true, physx::PxVec3(0), physx::PxVec3(0), chunk.cookedCollision, false);
+            piece->centroid = chunk.centroid;
+            world.GetScene().addActor(*piece->actor);
+            pieces.push_back(std::move(piece));
+        }
     }
 
     ~RuntimeFractureWall() = default;
@@ -52,35 +70,41 @@ public:
     bool Update(const std::function<void(const physx::PxRigidActor*)>& beforeRelease = {})
     {
         if (commitPlan) return CommitFracture(beforeRelease);
-        if (jobRunning)
+        if (fractureJob)
         {
-            if (fractureJob.wait_for(std::chrono::seconds(0)) != std::future_status::ready) return false;
-            FracturePlan plan;
-            try { plan = fractureJob.get(); }
-            catch (...) { jobRunning = false; return false; }
-            jobRunning = false;
+            std::optional<FracturePlan> completed;
+            {
+                std::lock_guard<std::mutex> lock(fractureJob->mutex);
+                if (!fractureJob->ready) return false;
+                completed = std::move(fractureJob->plan);
+            }
+            fractureJob.reset();
+            if (!completed) return false;
+            FracturePlan plan = std::move(*completed);
             auto found = std::find_if(pieces.begin(), pieces.end(), [&](const auto& piece) { return piece->id == pending.targetId; });
             if (found == pieces.end() || plan.detached.empty()) return false;
             commitPlan.emplace(std::move(plan));
             commitIndex = 0;
+            retainedCommitIndex = 0;
             retainedStaged = false;
             stagedPieces.clear();
             return CommitFracture(beforeRelease);
         }
-        if (pieces.size() >= maximumPieces || world.GetSimulationRevision() < lastFractureRevision + cooldownSteps) return false;
+        if (world.GetSimulationRevision() < lastFractureRevision + cooldownSteps) return false;
         Piece* target = nullptr;
         PhysicsWorld::Impact strongest;
         for (const auto& piece : pieces)
         {
-            if (piece->depth >= maximumDepth) continue;
+            if (!CanFracture(*piece)) continue;
             PhysicsWorld::Impact impact;
-            if (world.GetStrongestImpact(piece->actor, impact) && impact.velocityChange > strongest.velocityChange)
+            if (world.GetStrongestImpact(piece->actor, impact) && impact.impulseMagnitude > strongest.impulseMagnitude)
             {
                 strongest = impact;
                 target = piece.get();
             }
         }
-        if (!target || strongest.velocityChange < minimumImpactSpeed) return false;
+        float normalImpactSpeed = std::abs(strongest.relativeVelocity.dot(strongest.normal));
+        if (!target || strongest.impulseMagnitude < settings.breakingImpulse || normalImpactSpeed < minimumImpactSpeed) return false;
         StartFracture(*target, strongest);
         lastFractureRevision = world.GetSimulationRevision();
         return false;
@@ -88,12 +112,10 @@ public:
 
     void Draw(ModelRenderer& renderer, bool shadowPass) const
     {
-        for (const auto& piece : pieces)
-        {
-            glm::mat4 matrix = ToMatrix(piece->actor->getGlobalPose());
-            if (shadowPass) renderer.DrawShadow(*piece->mesh, matrix);
-            else renderer.DrawMesh(*piece->mesh, matrix, wallMaterial);
-        }
+        UpdateRenderBatch();
+        if (!renderBatch) return;
+        if (shadowPass) renderer.DrawShadow(*renderBatch, glm::mat4(1.0f));
+        else renderer.DrawMesh(*renderBatch, glm::mat4(1.0f), wallMaterial);
     }
 
     void DrawOutline(OutlineEffect& outline, const Camera& camera, int width, int height, const physx::PxRigidActor* selected) const
@@ -120,6 +142,14 @@ public:
     }
 
     std::size_t GetActorCount() const { return pieces.size(); }
+    Settings GetSettings() const { return settings; }
+    void SetSettings(Settings value)
+    {
+        if (std::isfinite(value.breakingImpulse)) settings.breakingImpulse = std::clamp(value.breakingImpulse, 0.01f, 20.0f);
+        if (std::isfinite(value.damageRadius)) settings.damageRadius = std::clamp(value.damageRadius, 0.1f, 2.0f);
+        if (std::isfinite(value.chainRadius)) settings.chainRadius = std::clamp(value.chainRadius, 1.0f, 3.0f);
+        settings.localFragments = std::clamp(value.localFragments, 8u, 48u);
+    }
 
 private:
     struct Piece
@@ -127,6 +157,7 @@ private:
         ~Piece() { if (actor) actor->release(); }
         ModelData source;
         std::unique_ptr<Mesh> mesh;
+        std::vector<physx::PxU8> cookedCollision;
         physx::PxRigidActor* actor = nullptr;
         unsigned int depth = 0;
         bool fixed = false;
@@ -146,7 +177,6 @@ private:
     {
         std::vector<GeneratedChunk> detached;
         std::vector<GeneratedChunk> retained;
-        std::vector<physx::PxU8> retainedCollision;
     };
 
     struct PendingFracture
@@ -158,35 +188,54 @@ private:
         physx::PxVec3 localRelativeVelocity{ 0.0f };
         float velocityChange = 0.0f;
         float radius = 0.0f;
+        float chainRadius = 0.0f;
+    };
+
+    struct AsyncFractureJob
+    {
+        std::mutex mutex;
+        std::optional<FracturePlan> plan;
+        bool ready = false;
     };
 
     PhysicsWorld& world;
+    Settings settings;
     Material wallMaterial;
     std::vector<std::unique_ptr<Piece>> pieces;
     bool showCollisions = false;
     unsigned long long lastFractureRevision = 0;
-    std::future<FracturePlan> fractureJob;
+    std::shared_ptr<AsyncFractureJob> fractureJob;
     std::optional<FracturePlan> commitPlan;
     std::vector<std::unique_ptr<Piece>> stagedPieces;
+    mutable std::unique_ptr<Mesh> renderBatch;
+    mutable std::vector<Vertex> renderVertices;
+    mutable bool renderTopologyDirty = true;
+    mutable unsigned long long renderRevision = std::numeric_limits<unsigned long long>::max();
     std::size_t commitIndex = 0;
+    std::size_t retainedCommitIndex = 0;
     bool retainedStaged = false;
     PendingFracture pending;
-    bool jobRunning = false;
     inline static std::uint64_t nextId = 0x4000000000000000ull;
+    inline static std::uint64_t wallGeneration = 0;
     inline static const glm::vec3 size{ 16.0f,10.0f,1.0f };
     inline static const physx::PxTransform wallPose{ physx::PxVec3(0.0f,5.0f,-2.0f) };
-    static constexpr std::size_t maximumPieces = 500;
-    static constexpr unsigned int maximumDepth = 3;
+    static constexpr unsigned int initialPieceCount = 40;
+    static constexpr unsigned int maximumDepth = 2;
+    static constexpr float minimumFractureExtent = 1.4f;
+    static constexpr float minimumFractureVolume = 0.35f;
     static constexpr unsigned long long cooldownSteps = 4;
     static constexpr float minimumImpactSpeed = 1.0f;
+    static constexpr float supportHeight = 0.08f;
+    static constexpr float supportTolerance = 0.035f;
+    static constexpr float unsupportedKickSpeed = 0.18f;
     static constexpr std::size_t piecesCommittedPerFrame = 8;
 
-    physx::PxRigidStatic* CreateInitialActor()
+    physx::PxRigidStatic* CreateInitialActor(const physx::PxTransform& pose, const glm::vec3& halfExtents)
     {
         using namespace physx;
-        PxRigidStatic* actor = world.GetPhysics().createRigidStatic(wallPose);
+        PxRigidStatic* actor = world.GetPhysics().createRigidStatic(pose);
         if (!actor) throw std::runtime_error("Cannot create runtime fracture wall.");
-        PxShape* shape = world.GetPhysics().createShape(PxBoxGeometry(size.x * 0.5f, size.y * 0.5f, size.z * 0.5f), world.GetMaterial(), true);
+        PxShape* shape = world.GetPhysics().createShape(PxBoxGeometry(halfExtents.x, halfExtents.y, halfExtents.z), world.GetMaterial(), true);
         if (!shape) { actor->release(); throw std::runtime_error("Cannot create runtime fracture wall shape."); }
         PxFilterData filter; filter.word0 = PhysicsWorld::fractureFilterTag; shape->setSimulationFilterData(filter);
         bool attached = actor->attachShape(*shape); shape->release();
@@ -205,12 +254,17 @@ private:
         glm::vec3 towardCenter = boundsCenter - localHit;
         float towardLength = glm::length(towardCenter);
         if (towardLength > 0.0001f) localHit += towardCenter / towardLength * std::min(0.18f, towardLength * 0.25f);
-        float radius = std::clamp(0.55f + impact.velocityChange * 0.055f, 0.7f, 1.65f);
-        unsigned int localSites = target.depth == 0 ? 48 : target.depth == 1 ? 24 : 12;
+        float impactEnergy = std::max(0.5f * impact.impulseMagnitude * impact.velocityChange, 0.0f);
+        float energyScale = std::sqrt(impactEnergy);
+        float radius = std::clamp(settings.damageRadius + energyScale * 0.02f, settings.damageRadius, 2.0f);
+        float minimumCoreRadius = std::min(0.18f, radius * 0.2f);
+        float maximumCoreRadius = std::min(0.55f, std::max(minimumCoreRadius, radius * 0.45f));
+        float coreRadius = std::clamp(0.18f + energyScale * 0.002f, minimumCoreRadius, maximumCoreRadius);
+        unsigned int coreSites = std::clamp(settings.localFragments + static_cast<unsigned int>(std::sqrt(std::max(impact.velocityChange, 0.0f)) * 1.5f), 8u, 48u);
+        unsigned int outerSites = std::clamp(5u + static_cast<unsigned int>(energyScale * 0.12f), 5u, 16u);
         unsigned int guardSites = target.depth == 0 ? 12 : target.depth == 1 ? 6 : 3;
         ModelData source = target.source;
         bool fixed = target.fixed;
-        std::size_t available = maximumPieces - (pieces.size() - 1);
         int32_t seed = static_cast<int32_t>(world.GetSimulationRevision() + target.id);
         PxCookingParams cookingParams(world.GetPhysics().getTolerancesScale());
         cookingParams.buildGPUData = world.GetCuda() != nullptr;
@@ -221,11 +275,18 @@ private:
         pending.localRelativeVelocity = pose.q.rotateInv(impact.relativeVelocity);
         pending.velocityChange = impact.velocityChange;
         pending.radius = radius;
-        fractureJob = std::async(std::launch::async, [source = std::move(source), localHit, radius, localSites, guardSites, seed, fixed, available, cookingParams]() mutable
+        pending.chainRadius = radius * settings.chainRadius;
+        auto job = std::make_shared<AsyncFractureJob>();
+        fractureJob = job;
+        std::thread([job, source = std::move(source), localHit, radius, coreRadius, coreSites, outerSites, guardSites, seed, fixed, cookingParams]() mutable
             {
-                return GeneratePartial(source, localHit, radius, localSites, guardSites, seed, fixed, available, cookingParams);
-            });
-        jobRunning = true;
+                std::optional<FracturePlan> result;
+                try { result = GeneratePartial(source, localHit, radius, coreRadius, coreSites, outerSites, guardSites, seed, fixed, cookingParams); }
+                catch (...) {}
+                std::lock_guard<std::mutex> lock(job->mutex);
+                job->plan = std::move(result);
+                job->ready = true;
+            }).detach();
     }
 
     bool CommitFracture(const std::function<void(const physx::PxRigidActor*)>& beforeRelease)
@@ -241,13 +302,16 @@ private:
         std::size_t budget = piecesCommittedPerFrame;
         if (!retainedStaged)
         {
-            retainedStaged = true;
-            if (!plan.retained.empty())
+            while (budget > 0 && retainedCommitIndex < plan.retained.size())
             {
-                ModelData retainedModel = MergeChunks(plan.retained);
-                stagedPieces.push_back(CreatePiece(std::move(retainedModel), pose, target.depth, true, inheritedLinear, inheritedAngular, plan.retainedCollision, true));
+                GeneratedChunk& chunk = plan.retained[retainedCommitIndex++];
+                auto piece = CreatePiece(std::move(chunk.model), pose, target.depth, true, inheritedLinear, inheritedAngular, chunk.cookedCollision, false);
+                piece->centroid = chunk.centroid;
+                stagedPieces.push_back(std::move(piece));
                 --budget;
             }
+            if (retainedCommitIndex < plan.retained.size()) return false;
+            retainedStaged = true;
         }
         while (budget > 0 && commitIndex < plan.detached.size())
         {
@@ -303,9 +367,53 @@ private:
         if (beforeRelease) beforeRelease(target.actor);
         pieces.erase(found);
         for (auto& piece : stagedPieces) pieces.push_back(std::move(piece));
+        renderTopologyDirty = true;
+        ReleaseChain(impactPosition, beforeRelease);
+        ReleaseUnsupported(impactPosition, beforeRelease);
         stagedPieces.clear(); commitPlan.reset();
         lastFractureRevision = world.GetSimulationRevision();
         return true;
+    }
+
+    void UpdateRenderBatch() const
+    {
+        unsigned long long revision = world.GetSimulationRevision();
+        if (!renderTopologyDirty && renderRevision == revision) return;
+        if (renderTopologyDirty)
+        {
+            std::size_t vertexCount = 0, indexCount = 0;
+            for (const auto& piece : pieces) { vertexCount += piece->source.vertices.size(); indexCount += piece->source.indices.size(); }
+            if (vertexCount == 0 || indexCount == 0) { renderBatch.reset(); renderVertices.clear(); renderTopologyDirty = false; renderRevision = revision; return; }
+            if (vertexCount > static_cast<std::size_t>(std::numeric_limits<unsigned int>::max())) throw std::length_error("Runtime fracture render batch has too many vertices.");
+            renderVertices.clear(); renderVertices.reserve(vertexCount);
+            std::vector<unsigned int> indices; indices.reserve(indexCount);
+            unsigned int baseVertex = 0;
+            for (const auto& piece : pieces)
+            {
+                renderVertices.insert(renderVertices.end(), piece->source.vertices.begin(), piece->source.vertices.end());
+                for (unsigned int index : piece->source.indices) indices.push_back(baseVertex + index);
+                baseVertex += static_cast<unsigned int>(piece->source.vertices.size());
+            }
+            renderBatch = std::make_unique<Mesh>(renderVertices, indices);
+            renderTopologyDirty = false;
+        }
+        std::size_t output = 0;
+        for (const auto& piece : pieces)
+        {
+            physx::PxTransform pose = piece->actor->getGlobalPose();
+            for (const Vertex& source : piece->source.vertices)
+            {
+                Vertex& vertex = renderVertices[output++];
+                physx::PxVec3 position = pose.transform(physx::PxVec3(source.x, source.y, source.z));
+                physx::PxVec3 normal = pose.q.rotate(physx::PxVec3(source.nx, source.ny, source.nz));
+                if (normal.normalize() <= 0.000001f) normal = physx::PxVec3(0.0f, 1.0f, 0.0f);
+                vertex = source;
+                vertex.x = position.x; vertex.y = position.y; vertex.z = position.z;
+                vertex.nx = normal.x; vertex.ny = normal.y; vertex.nz = normal.z;
+            }
+        }
+        renderBatch->UpdateVertices(renderVertices);
+        renderRevision = revision;
     }
 
     std::unique_ptr<Piece> CreatePiece(ModelData&& model, const physx::PxTransform& pose, unsigned int depth, bool fixed, const physx::PxVec3& linearVelocity, const physx::PxVec3& angularVelocity, const std::vector<physx::PxU8>& cookedCollision, bool triangleCollision)
@@ -315,6 +423,7 @@ private:
         auto piece = std::make_unique<Piece>();
         piece->source = std::move(model);
         piece->mesh = std::make_unique<Mesh>(piece->source.vertices, piece->source.indices);
+        piece->cookedCollision = cookedCollision;
         piece->depth = depth; piece->fixed = fixed; piece->showMesh = showCollisions; piece->id = ++nextId;
         if (fixed) piece->actor = world.GetPhysics().createRigidStatic(pose);
         else piece->actor = world.GetPhysics().createRigidDynamic(pose);
@@ -352,7 +461,110 @@ private:
         return piece;
     }
 
-    static std::vector<GeneratedChunk> Generate(const ModelData& source, glm::vec3 hit, float radius, unsigned int localSites, unsigned int guardSites, int32_t seed)
+    void ReleaseChain(const physx::PxVec3& impactPosition, const std::function<void(const physx::PxRigidActor*)>& beforeRelease)
+    {
+        using namespace physx;
+        for (const auto& holder : pieces)
+        {
+            Piece& piece = *holder;
+            if (!piece.fixed || piece.cookedCollision.empty()) continue;
+            PxTransform pose = piece.actor->getGlobalPose();
+            PxVec3 center = pose.transform(PxVec3(piece.centroid.x, piece.centroid.y, piece.centroid.z));
+            PxVec3 radial = center - impactPosition;
+            float distance = radial.magnitude();
+            if (distance > pending.chainRadius) continue;
+            if (radial.normalize() <= 0.0001f) radial = -pose.q.rotate(pending.localNormal);
+            float proximity = std::clamp(1.0f - distance / std::max(pending.chainRadius, 0.01f), 0.0f, 1.0f);
+            float kickSpeed = std::clamp(pending.velocityChange * 0.02f, 0.25f, 2.0f);
+            MakeDynamic(piece, radial * kickSpeed * proximity, impactPosition, beforeRelease);
+        }
+    }
+
+    bool MakeDynamic(Piece& piece, const physx::PxVec3& kickVelocity, const physx::PxVec3& forcePoint, const std::function<void(const physx::PxRigidActor*)>& beforeRelease)
+    {
+        using namespace physx;
+        if (!piece.fixed || !piece.actor) return false;
+        PxShape* sourceShape = nullptr;
+        if (piece.actor->getShapes(&sourceShape, 1) != 1 || !sourceShape) return false;
+        PxRigidDynamic* dynamic = world.GetPhysics().createRigidDynamic(piece.actor->getGlobalPose());
+        if (!dynamic) return false;
+        PxShape* shape = world.GetPhysics().createShape(sourceShape->getGeometry(), world.GetMaterial(), true);
+        if (!shape) { dynamic->release(); return false; }
+        shape->setLocalPose(sourceShape->getLocalPose());
+        PxFilterData filter; filter.word0 = PhysicsWorld::fractureFilterTag; shape->setSimulationFilterData(filter);
+        bool attached = dynamic->attachShape(*shape); shape->release();
+        if (!attached || !PxRigidBodyExt::updateMassAndInertia(*dynamic, 30.0f)) { dynamic->release(); return false; }
+        dynamic->setLinearDamping(0.08f); dynamic->setAngularDamping(0.15f);
+        dynamic->setRigidBodyFlag(PxRigidBodyFlag::eENABLE_SPECULATIVE_CCD, true);
+        world.GetScene().addActor(*dynamic);
+        if (kickVelocity.magnitudeSquared() > 0.000001f) PxRigidBodyExt::addForceAtPos(*dynamic, kickVelocity * dynamic->getMass(), forcePoint, PxForceMode::eIMPULSE);
+        if (beforeRelease) beforeRelease(piece.actor);
+        piece.actor->release();
+        piece.actor = dynamic;
+        piece.fixed = false;
+        return true;
+    }
+
+    static bool CanFracture(const Piece& piece)
+    {
+        if (piece.depth >= maximumDepth || piece.source.vertices.size() < 12 || piece.source.indices.size() < 12) return false;
+        glm::vec3 minimum(std::numeric_limits<float>::max()), maximum(-std::numeric_limits<float>::max());
+        for (const Vertex& vertex : piece.source.vertices)
+        {
+            glm::vec3 point(vertex.x, vertex.y, vertex.z);
+            minimum = glm::min(minimum, point);
+            maximum = glm::max(maximum, point);
+        }
+        glm::vec3 extent = maximum - minimum;
+        float volume = extent.x * extent.y * extent.z;
+        return std::isfinite(extent.x) && std::isfinite(extent.y) && std::isfinite(extent.z) && std::isfinite(volume) &&
+            glm::length(extent) >= minimumFractureExtent && volume >= minimumFractureVolume;
+    }
+
+    void ReleaseUnsupported(const physx::PxVec3& impactPosition, const std::function<void(const physx::PxRigidActor*)>& beforeRelease)
+    {
+        using namespace physx;
+        std::vector<Piece*> fixed;
+        std::vector<PxBounds3> bounds;
+        for (const auto& holder : pieces) if (holder->fixed)
+        {
+            fixed.push_back(holder.get());
+            bounds.push_back(holder->actor->getWorldBounds(1.0f));
+        }
+        std::vector<bool> supported(fixed.size(), false);
+        std::queue<std::size_t> pendingSupport;
+        for (std::size_t index = 0; index < fixed.size(); ++index) if (bounds[index].minimum.y <= supportHeight)
+        {
+            supported[index] = true;
+            pendingSupport.push(index);
+        }
+        while (!pendingSupport.empty())
+        {
+            std::size_t current = pendingSupport.front(); pendingSupport.pop();
+            for (std::size_t candidate = 0; candidate < fixed.size(); ++candidate)
+            {
+                if (supported[candidate] || !BoundsTouch(bounds[current], bounds[candidate])) continue;
+                supported[candidate] = true;
+                pendingSupport.push(candidate);
+            }
+        }
+        for (std::size_t index = 0; index < fixed.size(); ++index) if (!supported[index])
+        {
+            PxVec3 center = bounds[index].getCenter();
+            PxVec3 radial = center - impactPosition;
+            if (radial.normalize() <= 0.0001f) radial = PxVec3(0.0f, 0.0f, 1.0f);
+            MakeDynamic(*fixed[index], radial * unsupportedKickSpeed, impactPosition, beforeRelease);
+        }
+    }
+
+    static bool BoundsTouch(const physx::PxBounds3& a, const physx::PxBounds3& b)
+    {
+        return a.minimum.x <= b.maximum.x + supportTolerance && a.maximum.x + supportTolerance >= b.minimum.x &&
+            a.minimum.y <= b.maximum.y + supportTolerance && a.maximum.y + supportTolerance >= b.minimum.y &&
+            a.minimum.z <= b.maximum.z + supportTolerance && a.maximum.z + supportTolerance >= b.minimum.z;
+    }
+
+    static std::vector<GeneratedChunk> Generate(const ModelData& source, glm::vec3 hit, float radius, float coreRadius, unsigned int coreSites, unsigned int outerSites, unsigned int guardSites, int32_t seed)
     {
         BlastMesh mesh(source);
         Nv::Blast::FractureTool* tool = NvBlastExtAuthoringCreateFractureTool();
@@ -369,8 +581,11 @@ private:
             BlastRandom random(seed);
             generator = NvBlastExtAuthoringCreateVoronoiSitesGenerator(&mesh.Get(), &random);
             if (!generator) throw std::runtime_error("Cannot create runtime fracture site generator.");
-            generator->generateInSphere(localSites, radius, { hit.x,hit.y,hit.z });
             generator->uniformlyGenerateSitesInMesh(guardSites);
+            generator->deleteInSphere(radius, { hit.x,hit.y,hit.z });
+            generator->generateInSphere(outerSites, radius, { hit.x,hit.y,hit.z });
+            generator->deleteInSphere(coreRadius, { hit.x,hit.y,hit.z });
+            generator->generateInSphere(coreSites, coreRadius, { hit.x,hit.y,hit.z });
             const NvcVec3* sites = nullptr;
             uint32_t siteCount = generator->getVoronoiSites(sites);
             if (!sites || siteCount < 2) throw std::runtime_error("Runtime fracture did not generate enough sites.");
@@ -408,44 +623,82 @@ private:
         }
     }
 
-    static FracturePlan GeneratePartial(const ModelData& source, glm::vec3 hit, float radius, unsigned int localSites, unsigned int guardSites, int32_t seed, bool retainExterior, std::size_t available, const physx::PxCookingParams& cookingParams)
+    static std::vector<GeneratedChunk> GenerateUniform(const ModelData& source, unsigned int siteCount, int32_t seed)
     {
-        std::vector<GeneratedChunk> generated = Generate(source, hit, radius, localSites, guardSites, seed);
+        BlastMesh mesh(source);
+        Nv::Blast::FractureTool* tool = NvBlastExtAuthoringCreateFractureTool();
+        if (!tool) throw std::runtime_error("Cannot create initial wall fracture tool.");
+        Nv::Blast::VoronoiSitesGenerator* generator = nullptr;
+        Nv::Blast::BlastBondGenerator* bonds = nullptr;
+        Nv::Blast::AuthoringResult* result = nullptr;
+        BlastNullCollisionBuilder collisionBuilder;
+        try
+        {
+            const Nv::Blast::Mesh* input = &mesh.Get();
+            int32_t root = 0;
+            if (!tool->setSourceMeshes(&input, 1, &root)) throw std::runtime_error("Cannot set initial wall source mesh.");
+            BlastRandom random(seed);
+            generator = NvBlastExtAuthoringCreateVoronoiSitesGenerator(&mesh.Get(), &random);
+            if (!generator) throw std::runtime_error("Cannot create initial wall Voronoi generator.");
+            generator->uniformlyGenerateSitesInMesh(siteCount);
+            const NvcVec3* sites = nullptr;
+            uint32_t generatedCount = generator->getVoronoiSites(sites);
+            if (!sites || generatedCount < 2) throw std::runtime_error("Cannot generate initial wall Voronoi sites.");
+            if (tool->voronoiFracturing(0, generatedCount, sites, false) != 0) throw std::runtime_error("Initial wall Voronoi fracture failed.");
+            tool->finalizeFracturing();
+            bonds = NvBlastExtAuthoringCreateBondGenerator(&collisionBuilder);
+            if (!bonds) throw std::runtime_error("Cannot create initial wall bond generator.");
+            Nv::Blast::ConvexDecompositionParams collisionParams{}; collisionParams.maximumNumberOfHulls = 1;
+            result = NvBlastExtAuthoringProcessFracture(*tool, *bonds, collisionBuilder, collisionParams, -1);
+            if (!result || result->chunkCount < 2) throw std::runtime_error("Initial wall fracture produced no chunks.");
+            std::vector<bool> hasChildren(result->chunkCount, false);
+            for (uint32_t chunk = 0; chunk < result->chunkCount; ++chunk)
+            {
+                uint32_t parent = result->chunkDescs[chunk].parentChunkDescIndex;
+                if (parent < result->chunkCount) hasChildren[parent] = true;
+            }
+            std::vector<GeneratedChunk> chunks;
+            chunks.reserve(result->chunkCount);
+            for (uint32_t chunk = 0; chunk < result->chunkCount; ++chunk)
+                if (!hasChildren[chunk] && result->geometryOffset[chunk] != result->geometryOffset[chunk + 1]) chunks.push_back(ConvertChunk(*result, chunk));
+            NvBlastExtAuthoringReleaseAuthoringResult(collisionBuilder, result); result = nullptr;
+            bonds->release(); bonds = nullptr; generator->release(); generator = nullptr; tool->release();
+            return chunks;
+        }
+        catch (...)
+        {
+            if (result) NvBlastExtAuthoringReleaseAuthoringResult(collisionBuilder, result);
+            if (bonds) bonds->release();
+            if (generator) generator->release();
+            tool->release();
+            throw;
+        }
+    }
+
+    static FracturePlan GeneratePartial(const ModelData& source, glm::vec3 hit, float radius, float coreRadius, unsigned int coreSites, unsigned int outerSites, unsigned int guardSites, int32_t seed, bool retainExterior, const physx::PxCookingParams& cookingParams)
+    {
+        std::vector<GeneratedChunk> generated = Generate(source, hit, radius, coreRadius, coreSites, outerSites, guardSites, seed);
         FracturePlan plan;
         plan.detached.reserve(generated.size());
         plan.retained.reserve(generated.size());
         for (GeneratedChunk& chunk : generated)
         {
-            bool local = !retainExterior || DistanceToBounds(chunk.model, hit) <= radius * 1.2f;
+            bool local = !retainExterior || glm::distance(chunk.centroid, hit) <= radius;
             if (local) plan.detached.push_back(std::move(chunk));
             else plan.retained.push_back(std::move(chunk));
         }
-        std::size_t retainedCount = plan.retained.empty() ? 0 : 1;
-        std::size_t keep = available > retainedCount ? available - retainedCount : 0;
-        if (plan.detached.size() > keep)
+        if (plan.detached.empty() && !plan.retained.empty())
         {
-            if (retainExterior) for (std::size_t index = keep; index < plan.detached.size(); ++index) plan.retained.push_back(std::move(plan.detached[index]));
-            plan.detached.resize(keep);
+            auto nearest = std::min_element(plan.retained.begin(), plan.retained.end(), [&](const GeneratedChunk& a, const GeneratedChunk& b)
+                {
+                    return glm::distance(a.centroid, hit) < glm::distance(b.centroid, hit);
+                });
+            plan.detached.push_back(std::move(*nearest));
+            plan.retained.erase(nearest);
         }
         for (GeneratedChunk& chunk : plan.detached) chunk.cookedCollision = CookConvex(chunk.model, cookingParams);
-        if (!plan.retained.empty()) plan.retainedCollision = CookTriangle(MergeChunks(plan.retained), cookingParams);
+        for (GeneratedChunk& chunk : plan.retained) chunk.cookedCollision = CookConvex(chunk.model, cookingParams);
         return plan;
-    }
-
-    static ModelData MergeChunks(const std::vector<GeneratedChunk>& chunks)
-    {
-        ModelData merged;
-        std::size_t vertexCount = 0, indexCount = 0;
-        for (const GeneratedChunk& chunk : chunks) { vertexCount += chunk.model.vertices.size(); indexCount += chunk.model.indices.size(); }
-        merged.vertices.reserve(vertexCount);
-        merged.indices.reserve(indexCount);
-        for (const GeneratedChunk& chunk : chunks)
-        {
-            unsigned int base = static_cast<unsigned int>(merged.vertices.size());
-            merged.vertices.insert(merged.vertices.end(), chunk.model.vertices.begin(), chunk.model.vertices.end());
-            for (unsigned int index : chunk.model.indices) merged.indices.push_back(base + index);
-        }
-        return merged;
     }
 
     static std::vector<physx::PxU8> CookConvex(const ModelData& model, const physx::PxCookingParams& cookingParams)

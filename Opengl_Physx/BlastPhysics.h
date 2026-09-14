@@ -20,9 +20,10 @@ public:
         uint32_t chunk = 0;
         glm::mat4 matrix{ 1.0f };
         const physx::PxRigidActor* actor = nullptr;
+        bool whole = false;
     };
 
-    BlastPhysics(PhysicsWorld& physicsWorld, BlastAsset& source, BlastRuntime& blastRuntime, const std::vector<physx::PxConvexMesh*>& sharedCollisionMeshes, glm::vec3 position = glm::vec3(0.0f, 4.0f, 2.0f), glm::vec3 velocity = glm::vec3(0.0f), glm::vec3 scale = glm::vec3(3.0f)) : world(physicsWorld), authored(source.GetAuthoringResult()), runtime(blastRuntime), collisionMeshes(sharedCollisionMeshes), initialPose(physx::PxVec3(position.x, position.y, position.z)), initialVelocity(velocity.x, velocity.y, velocity.z), objectScale(scale) {}
+    BlastPhysics(PhysicsWorld& physicsWorld, BlastAsset& source, BlastRuntime& blastRuntime, const std::vector<physx::PxConvexMesh*>& sharedCollisionMeshes, glm::vec3 position = glm::vec3(0.0f, 4.0f, 2.0f), glm::vec3 velocity = glm::vec3(0.0f), glm::vec3 scale = glm::vec3(3.0f), float mass = 1.0f) : world(physicsWorld), authored(source.GetAuthoringResult()), runtime(blastRuntime), collisionMeshes(sharedCollisionMeshes), initialPose(physx::PxVec3(position.x, position.y, position.z)), initialVelocity(velocity.x, velocity.y, velocity.z), objectScale(scale), targetMass(std::isfinite(mass) ? std::max(mass, 0.01f) : 1.0f) {}
 
     ~BlastPhysics()
     {
@@ -68,6 +69,7 @@ public:
             }
             bodies.push_back(CreateBody(blastActor, std::move(chunks), state, fractured));
         }
+        NormalizeMass();
     }
 
     void Reset()
@@ -83,9 +85,11 @@ public:
 
     bool ApplyImpactDamage(const std::function<void(const physx::PxRigidActor*)>& beforeRelease = {})
     {
+        if (bodies.size() >= authored.chunkCount) return false;
         float strongestVelocityChange = 0.0f;
         for (const Body& body : bodies)
         {
+            if (body.actor->isSleeping()) continue;
             physx::PxVec3 change = body.actor->getLinearVelocity() - body.velocityBefore;
             strongestVelocityChange = std::max(strongestVelocityChange, change.magnitude());
         }
@@ -104,7 +108,8 @@ public:
         {
             glm::mat4 matrix = ToMatrix(body.actor->getGlobalPose());
             matrix = glm::scale(matrix, objectScale);
-            for (uint32_t chunk : body.chunks) poses.push_back({ chunk,matrix,body.actor });
+            if (body.chunks.size() == authored.chunkCount) poses.push_back({ 0,matrix,body.actor,true });
+            else for (uint32_t chunk : body.chunks) poses.push_back({ chunk,matrix,body.actor,false });
         }
         return poses;
     }
@@ -158,9 +163,27 @@ private:
     physx::PxTransform initialPose;
     physx::PxVec3 initialVelocity;
     glm::vec3 objectScale{ 3.0f };
+    float targetMass = 1.0f;
     bool showCollisions = false;
     static constexpr float minimumFractureVelocityChange = 2.0f;
     static constexpr float fullDamageVelocityChange = 8.0f;
+
+    void NormalizeMass()
+    {
+        float total = 0.0f;
+        for (const Body& body : bodies) total += body.actor->getMass();
+        if (!std::isfinite(total) || total <= 0.0001f) return;
+        float ratio = targetMass / total;
+        for (Body& body : bodies)
+        {
+            physx::PxVec3 inertia = body.actor->getMassSpaceInertiaTensor() * ratio;
+            inertia.x = std::max(inertia.x, 0.000001f);
+            inertia.y = std::max(inertia.y, 0.000001f);
+            inertia.z = std::max(inertia.z, 0.000001f);
+            body.actor->setMassSpaceInertiaTensor(inertia);
+            body.actor->setMass(std::max(body.actor->getMass() * ratio, 0.000001f));
+        }
+    }
 
     Body CreateBody(Nv::Blast::TkActor* blastActor, std::vector<uint32_t>&& chunks, const BodyState& state, bool fractured)
     {
@@ -182,7 +205,7 @@ private:
             if (!PxRigidBodyExt::updateMassAndInertia(*actor, 30.0f)) throw std::runtime_error("Cannot compute Blast chunk mass.");
             actor->setLinearDamping(0.08f);
             actor->setAngularDamping(0.15f);
-            actor->setRigidBodyFlag(PxRigidBodyFlag::eENABLE_CCD, true);
+            actor->setRigidBodyFlag(PxRigidBodyFlag::eENABLE_SPECULATIVE_CCD, true);
             actor->setLinearVelocity(state.linearVelocity);
             actor->setAngularVelocity(state.angularVelocity);
             world.GetScene().addActor(*actor);

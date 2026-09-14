@@ -1,5 +1,6 @@
 #pragma once
 #include "Scene.h"
+#include "BlastScene.h"
 #include "ThirdParty/imgui/imgui.h"
 #include "ThirdParty/imgui/imgui_internal.h"
 #include <string>
@@ -9,7 +10,7 @@ class ImGuiPanel
 public:
     explicit ImGuiPanel(bool chinese = true) : chinese(chinese) {}
 
-    void Draw(Scene& scene, float fps, const std::function<void()>& clearDestructibles = {}, const std::function<void(ModelType, glm::vec3, float)>& spawnDestructible = {}, const std::function<void()>& buildWall = {})
+    void Draw(Scene& scene, float fps, const std::function<void()>& clearDestructibles = {}, const std::function<void(ModelType, glm::vec3, float, float)>& spawnDestructible = {}, const std::function<void()>& buildWall = {}, BlastScene* blastScene = nullptr, const char* debugText = nullptr)
     {
         const auto display = ImGui::GetIO().DisplaySize;
         float scale = ImGui::GetStyle().FontScaleDpi;
@@ -26,6 +27,8 @@ public:
         }
         if (sceneVersion != scene.GetVersion()) ResetProperties(scene.GetVersion());
         ImGui::Text("FPS: %.0f", fps);
+        ImGui::SameLine();
+        if (ImGui::Button(T("复制调试信息", "Copy debug info")) && debugText) ImGui::SetClipboardText(debugText);
         const char* scenesCN[] = { "场景 1","场景 2" };
         const char* scenesEN[] = { "Scene 1","Scene 2" };
         int activeScene = scene.GetSceneIndex();
@@ -35,7 +38,7 @@ public:
             if (clearDestructibles) clearDestructibles();
             scene.SetSceneIndex(activeScene);
         }
-        if (ImGui::CollapsingHeader(T("全局", "Global")))
+        if (ImGui::CollapsingHeader(T("全局", "Global"), ImGuiTreeNodeFlags_DefaultOpen))
         {
             const char* modelsCN[] = { "方块","平面","球体","圆柱","圆锥","胶囊","圆环" };
             const char* modelsEN[] = { "Box","Plane","Sphere","Cylinder","Cone","Capsule","Torus" };
@@ -45,6 +48,9 @@ public:
             ImGui::PushItemWidth(160.0f * scale);
             if (ImGui::Combo(T("类型", "Type"), &type, chinese ? typesCN : typesEN, 3)) scene.SetSpawnType(type);
             if (ImGui::Combo(T("模型", "Model"), &model, chinese ? modelsCN : modelsEN, static_cast<int>(ModelType::Count))) scene.SetSpawnModel(static_cast<ModelType>(model));
+            float testSize = scene.GetTestScale();
+            bool testSizeChanged = Number(T("测试大小", "Test size"), testSize, 0.05f, 0.1f, 10.0f);
+            if (testSizeChanged) scene.SetTestScale(testSize);
             ImGui::PopItemWidth();
             const char* iterations[] = { "4","8","16" };
             const char* densities[] = { "4","6","10" };
@@ -84,18 +90,19 @@ public:
             }
             if (ImGui::TreeNode(T("发射", "Launch")))
             {
-                float speed = scene.GetLaunchSpeed(), size = scene.GetLaunchScale();
+                float speed = scene.GetLaunchSpeed(), size = scene.GetLaunchScale(), mass = scene.GetLaunchMass();
                 ImGui::PushItemWidth(160.0f * scale);
                 bool launchChanged = Number(T("速度", "Speed"), speed, 0.25f, 0.0f, 100.0f);
-                launchChanged |= Number(T("大小", "Size"), size, 0.05f, 0.1f, 10.0f);
-                if (launchChanged) scene.SetLaunchSettings(speed, size);
+                launchChanged |= Number(T("发射大小", "Launch size"), size, 0.05f, 0.1f, 10.0f);
+                launchChanged |= Number(T("质量 (kg)", "Mass (kg)"), mass, 0.05f, 0.01f, 10000.0f);
+                if (launchChanged) scene.SetLaunchSettings(speed, size, mass);
                 ImGui::PopItemWidth();
                 ImGui::TreePop();
             }
         }
 
         int sceneAction = -1;
-        if (scene.GetSceneIndex() == 0 && ImGui::CollapsingHeader(T("测试", "Test")))
+        if (scene.GetSceneIndex() == 0 && ImGui::CollapsingHeader(T("测试", "Test"), ImGuiTreeNodeFlags_DefaultOpen))
         {
             ImGui::BeginDisabled(scene.GetSpawnSoft() && !scene.SoftBodiesAvailable());
             ImGui::SetNextItemWidth(150 * scale);
@@ -119,6 +126,21 @@ public:
             if (ImGui::Button(T("墙体", "Wall"))) scene2Action = 0;
             ImGui::SameLine();
             if (ImGui::Button(T("金字塔", "Pyramid"))) scene2Action = 1;
+            if (blastScene)
+            {
+                auto fracture = blastScene->GetWallSettings();
+                int fragments = static_cast<int>(fracture.localFragments);
+                ImGui::SetNextItemWidth(150 * scale);
+                bool changed = Number(T("破坏冲量", "Breaking impulse"), fracture.breakingImpulse, 0.01f, 0.01f, 20.0f);
+                ImGui::SetNextItemWidth(150 * scale);
+                changed |= Number(T("破坏范围", "Damage radius"), fracture.damageRadius, 0.05f, 0.1f, 2.0f);
+                ImGui::SetNextItemWidth(150 * scale);
+                changed |= Number(T("连锁范围", "Chain radius"), fracture.chainRadius, 0.05f, 1.0f, 3.0f);
+                ImGui::SetNextItemWidth(150 * scale);
+                if (ImGui::DragInt(T("核心碎块", "Core fragments"), &fragments, 1.0f, 8, 48, "%d", ImGuiSliderFlags_AlwaysClamp)) changed = true;
+                fracture.localFragments = static_cast<unsigned int>(std::clamp(fragments, 8, 48));
+                if (changed) blastScene->SetWallSettings(fracture);
+            }
         }
 
         if (scene2Action >= 0)

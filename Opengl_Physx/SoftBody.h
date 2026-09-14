@@ -68,6 +68,9 @@ public:
     SoftBody& operator=(const SoftBody&) = delete;
     ModelType GetModelType() const { return type; }
     const Mesh& GetMesh() const { return *mesh; }
+    const std::vector<Vertex>& GetRenderVertices() const { return vertices; }
+    const std::vector<unsigned int>& GetRenderIndices() const { return indices; }
+    physx::PxVec4* GetGpuRenderPositions() const { return actor->getPositionInvMassBufferD(); }
     glm::vec3 GetPosition() const
     {
         if (world.GetSimulationRevision() == birthRevision) return center;
@@ -203,8 +206,7 @@ public:
     {
         if (!IsDragging() || !std::isfinite(deltaTime) || deltaTime <= 0) return;
         dragTarget = dragDesired;
-        float mass = dragMass + dragAnchor->getMass();
-        physx::PxD6JointDrive drive(120.0f * mass, 22.0f * mass, 200.0f * mass);
+        physx::PxD6JointDrive drive(120.0f, 22.0f, PX_MAX_F32, true);
         dragJoint->setDrive(physx::PxD6Drive::eX, drive);
         dragJoint->setDrive(physx::PxD6Drive::eY, drive);
         dragJoint->setDrive(physx::PxD6Drive::eZ, drive);

@@ -8,10 +8,13 @@
 #include "CollisionDebugRenderer.h"
 #include "SoftBody.h"
 #include <memory>
+#include <array>
 #include <vector>
 #include <algorithm>
+#include <bit>
 #include <cstdint>
 #include <functional>
+#include <glm/gtc/matrix_inverse.hpp>
 
 // Scene 需要在 GL::Load() 之后创建，并在 Window 之前销毁。
 class Scene
@@ -23,7 +26,12 @@ public:
         ground.position = glm::vec3(0.0f);
         groundMaterial.baseColor = glm::vec3(1.0f);
         groundMaterial.baseTexture = std::make_shared<Texture>("Assets/Textures/checker.png");
-        for (int i = 0; i < static_cast<int>(ModelType::Count); ++i) models.Get(static_cast<ModelType>(i));
+        for (int i = 0; i < static_cast<int>(ModelType::Count); ++i)
+        {
+            ModelType type = static_cast<ModelType>(i);
+            models.Get(type);
+            rigidRenderSources[static_cast<std::size_t>(type)] = ModelBuilder::Create(type);
+        }
         Reset();
     }
 
@@ -60,15 +68,19 @@ public:
         AddBody(ModelType::Box, position, velocity);
     }
 
-    void AddBody(ModelType type, glm::vec3 position, glm::vec3 velocity = glm::vec3(0), glm::vec3 scale = glm::vec3(1))
+    void AddBody(ModelType type, glm::vec3 position, glm::vec3 velocity = glm::vec3(0), glm::vec3 scale = glm::vec3(1), float mass = 0.0f)
     {
-        AddBody(type, position, velocity, scale, DefaultMaterial(type));
+        AddBody(type, position, velocity, scale, DefaultMaterial(type), mass);
     }
 
-    void AddBody(ModelType type, glm::vec3 position, glm::vec3 velocity, glm::vec3 scale, const Material& material)
+    void AddBody(ModelType type, glm::vec3 position, glm::vec3 velocity, glm::vec3 scale, const Material& material, float mass = 0.0f)
     {
         auto body = std::make_unique<RigidBody>(world, type, position, scale);
-        if (body->IsDynamic()) body->SetVelocity(velocity);
+        if (body->IsDynamic())
+        {
+            if (std::isfinite(mass) && mass > 0.0f) { auto properties = body->GetProperties(); properties.mass = std::max(mass, minimumLaunchMass); body->SetProperties(properties); }
+            body->SetVelocity(velocity);
+        }
         bodies.push_back({ std::move(body),material,showCollisions,++nextObject });
     }
     void Shoot(const Camera& camera)
@@ -80,7 +92,7 @@ public:
             if (!world.GetCuda()) return;
             AddSoftBody(selectedType, position, forward * launchSpeed, launchScale);
         }
-        else AddBody(selectedType, position, forward * launchSpeed, glm::vec3(launchScale));
+        else AddBody(selectedType, position, forward * launchSpeed, glm::vec3(launchScale), launchMass);
     }
 
     void AddSoftBody(ModelType type, glm::vec3 position, glm::vec3 velocity = glm::vec3(0), float scale = 1)
@@ -90,7 +102,7 @@ public:
         softBodies.push_back({ std::move(body),DefaultMaterial(type),showCollisions,++nextObject });
     }
 
-    void HandleInput(Window& window, const Camera& camera, bool mouseBlocked = false, const std::function<void(ModelType, glm::vec3, glm::vec3, float)>& destructibleShot = {})
+    void HandleInput(Window& window, const Camera& camera, bool mouseBlocked = false, const std::function<void(ModelType, glm::vec3, glm::vec3, float, float)>& destructibleShot = {})
     {
         unsigned int revision = window.GetFocusRevision();
         bool leftDown = window.IsMouseButtonDown(GLFW_MOUSE_BUTTON_LEFT);
@@ -118,7 +130,7 @@ public:
                 glm::vec3 forward = camera.GetForward();
                 float radius = GetLaunchRadius();
                 glm::vec3 position = FindLaunchPosition(camera.position, forward, radius);
-                if (spawnType == 2 && destructibleShot) destructibleShot(selectedType, position, forward * launchSpeed, launchScale);
+                if (spawnType == 2 && destructibleShot) destructibleShot(selectedType, position, forward * launchSpeed, launchScale, launchMass);
                 else Shoot(camera);
                 firing = true;
                 nextShot = now + std::clamp((radius * 2.0f + 0.25f) / std::max(launchSpeed, 1.0f), 0.15f, 0.2f);
@@ -166,25 +178,28 @@ public:
     void Draw(const Camera& camera, int width, int height, const std::function<void(ModelRenderer&, bool)>& externalDraw = {})
     {
         if (width <= 0 || height <= 0) return;
+        auto uploadStarted = std::chrono::steady_clock::now();
         SyncSoftBodies();
+        UpdateRigidRenderBatches();
+        frameUploadMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - uploadStarted).count();
         auto drawStarted = std::chrono::steady_clock::now();
+        auto shadowStarted = drawStarted;
         renderer.BeginShadowPass();
         renderer.DrawShadow(models.Get(ModelType::Plane), ground.GetMatrix());
-        for (const auto& body : bodies)
-            renderer.DrawShadow(models.Get(body.body->GetModelType()), body.body->GetMatrix());
-        for (const auto& object : softBodies) renderer.DrawShadow(object.body->GetMesh(), glm::mat4(1));
+        for (const auto& batch : rigidRenderBatches) renderer.DrawShadow(*batch.mesh, glm::mat4(1.0f));
+        for (const auto& batch : softRenderBatches) renderer.DrawShadow(*batch.mesh, glm::mat4(1));
         if (externalDraw) externalDraw(renderer, true);
         renderer.EndShadowPass();
+        frameShadowMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - shadowStarted).count();
+        auto mainStarted = std::chrono::steady_clock::now();
         glDepthMask(GL_TRUE);
         glClearColor(0.10f, 0.16f, 0.24f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         renderer.BeginDraw(camera, width, height);
         renderer.DrawMesh(models.Get(ModelType::Plane), ground.GetMatrix(), groundMaterial);
-        for (const auto& body : bodies)
-            renderer.DrawMesh(models.Get(body.body->GetModelType()), body.body->GetMatrix(), body.material);
-        for (const auto& object : softBodies)
-            renderer.DrawMesh(object.body->GetMesh(), glm::mat4(1), object.material);
+        for (const auto& batch : rigidRenderBatches) renderer.DrawMesh(*batch.mesh, glm::mat4(1.0f), batch.material);
+        for (const auto& batch : softRenderBatches) renderer.DrawMesh(*batch.mesh, glm::mat4(1), batch.material);
         if (externalDraw) externalDraw(renderer, false);
         std::vector<const physx::PxRigidActor*> visibleCollisions;
         for (const auto& object : bodies) if (object.showMesh) visibleCollisions.push_back(object.body->GetActor());
@@ -197,6 +212,7 @@ public:
             if (picker.GetSelected() == body.body->GetActor())
                 outline.Draw(models.Get(body.body->GetModelType()), camera, width, height, body.body->GetMatrix());
         if (externalOutline && picker.GetSelected()) externalOutline(outline, camera, width, height, picker.GetSelected());
+        frameMainDrawMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - mainStarted).count();
         frameDrawMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - drawStarted).count();
     }
     bool Select(glm::vec3 origin, glm::vec3 direction)
@@ -270,10 +286,17 @@ public:
     }
     float GetLaunchSpeed() const { return launchSpeed; }
     float GetLaunchScale() const { return launchScale; }
-    void SetLaunchSettings(float speed, float scale)
+    float GetTestScale() const { return testScale; }
+    float GetLaunchMass() const { return launchMass; }
+    void SetLaunchSettings(float speed, float scale, float mass)
     {
         if (std::isfinite(speed)) launchSpeed = std::clamp(speed, 0.0f, 100.0f);
         if (std::isfinite(scale)) launchScale = std::clamp(scale, 0.1f, 10.0f);
+        if (std::isfinite(mass)) launchMass = std::clamp(mass, minimumLaunchMass, 10000.0f);
+    }
+    void SetTestScale(float scale)
+    {
+        if (std::isfinite(scale)) testScale = std::clamp(scale, 0.1f, 10.0f);
     }
     bool UsesGpu() const { return world.GetCuda() != nullptr; }
     PhysicsWorld& GetPhysicsWorld() { return world; }
@@ -361,6 +384,9 @@ public:
     }
     double GetSimulationMs() const { return frameSimulationMs; }
     double GetSoftSyncMs() const { return frameSyncMs; }
+    double GetRenderUploadMs() const { return frameUploadMs; }
+    double GetShadowDrawMs() const { return frameShadowMs; }
+    double GetMainDrawMs() const { return frameMainDrawMs; }
     double GetDrawSubmitMs() const { return frameDrawMs; }
     unsigned int GetPhysicsSteps() const { return frameSteps; }
 
@@ -369,7 +395,7 @@ public:
         BuildTest(stacked, count, singleColumn);
     }
 
-    void BuildPyramidTest(int count, const std::function<void()>& clearDestructibles = {}, const std::function<void(ModelType, glm::vec3, float)>& spawnDestructible = {})
+    void BuildPyramidTest(int count, const std::function<void()>& clearDestructibles = {}, const std::function<void(ModelType, glm::vec3, float, float)>& spawnDestructible = {})
     {
         auto bounds = physx::PxBounds3::empty();
         if (spawnType == 1)
@@ -383,8 +409,8 @@ public:
             auto model = ModelBuilder::Create(selectedType);
             for (const auto& vertex : model.vertices) bounds.include(physx::PxVec3(vertex.x, vertex.y, vertex.z));
         }
-        bounds.minimum *= launchScale;
-        bounds.maximum *= launchScale;
+        bounds.minimum *= testScale;
+        bounds.maximum *= testScale;
         auto size = bounds.maximum - bounds.minimum;
         ClearSelection();
         softBodies.clear(); bodies.clear(); world.ClearAccumulator();
@@ -402,16 +428,16 @@ public:
             for (int column = 0; column < rowCount; ++column)
             {
                 glm::vec3 position(startX + static_cast<float>(column) * stepX, y, 0.0f);
-                if (spawnType == 1) AddSoftBody(selectedType, position, glm::vec3(0), launchScale);
-                else if (spawnType == 2 && spawnDestructible) spawnDestructible(selectedType, position, launchScale);
-                else AddBody(selectedType, position, glm::vec3(0), glm::vec3(launchScale));
+                if (spawnType == 1) AddSoftBody(selectedType, position, glm::vec3(0), testScale);
+                else if (spawnType == 2 && spawnDestructible) spawnDestructible(selectedType, position, testScale, launchMass);
+                else AddBody(selectedType, position, glm::vec3(0), glm::vec3(testScale), launchMass);
             }
             remaining -= rowCount;
         }
         ++version;
     }
 
-    void BuildTest(bool stacked, int count, bool singleColumn = false, const std::function<void()>& clearDestructibles = {}, const std::function<void(ModelType, glm::vec3, float)>& spawnDestructible = {})
+    void BuildTest(bool stacked, int count, bool singleColumn = false, const std::function<void()>& clearDestructibles = {}, const std::function<void(ModelType, glm::vec3, float, float)>& spawnDestructible = {})
     {
         auto bounds = physx::PxBounds3::empty();
         if (spawnType == 1)
@@ -426,8 +452,8 @@ public:
             for (const auto& vertex : model.vertices) bounds.include(physx::PxVec3(vertex.x, vertex.y, vertex.z));
             if (selectedType == ModelType::Plane) bounds.minimum.y = -0.04f;
         }
-        bounds.minimum *= launchScale;
-        bounds.maximum *= launchScale;
+        bounds.minimum *= testScale;
+        bounds.maximum *= testScale;
         auto size = bounds.maximum - bounds.minimum;
         ClearSelection();
         softBodies.clear(); bodies.clear(); world.ClearAccumulator();
@@ -438,9 +464,9 @@ public:
         {
             int layer = singleColumn ? i : stacked ? i % 4 : 0;
             glm::vec3 position(x * (size.x + 0.7f), 0.3f - bounds.minimum.y + layer * (size.y + 0.08f), z * (size.z + 0.7f));
-            if (spawnType == 1) AddSoftBody(selectedType, position, glm::vec3(0), launchScale);
-            else if (spawnType == 2 && spawnDestructible) spawnDestructible(selectedType, position, launchScale);
-            else AddBody(selectedType, position, glm::vec3(0), glm::vec3(launchScale));
+            if (spawnType == 1) AddSoftBody(selectedType, position, glm::vec3(0), testScale);
+            else if (spawnType == 2 && spawnDestructible) spawnDestructible(selectedType, position, testScale, launchMass);
+            else AddBody(selectedType, position, glm::vec3(0), glm::vec3(testScale), launchMass);
             if (!singleColumn && (!stacked || i % 4 == 3))
             {
                 x += dx; z += dz;
@@ -506,7 +532,7 @@ private:
         auto started = std::chrono::steady_clock::now();
         std::vector<SoftBody*> updates;
         updates.reserve(softBodies.size());
-        for (auto& object : softBodies) updates.push_back(object.body.get());
+        for (auto& object : softBodies) if (object.showMesh || object.body.get() == selectedSoft) updates.push_back(object.body.get());
         SoftBody::SyncBatch(updates);
         softBodies.erase(std::remove_if(softBodies.begin(), softBodies.end(), [this](const auto& object) {
             auto p = object.body->GetPosition();
@@ -514,6 +540,7 @@ private:
             if (remove && selectedSoft == object.body.get()) selectedSoft = nullptr;
             return remove;
             }), softBodies.end());
+        UpdateSoftRenderBatches();
         frameSyncMs += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - started).count();
     }
     struct SoftObject
@@ -530,6 +557,197 @@ private:
         bool showMesh = false;
         std::uint64_t id = 0;
     };
+
+    struct RigidRenderBatch
+    {
+        Material material;
+        std::vector<std::size_t> objects;
+        std::vector<Vertex> vertices;
+        std::unique_ptr<Mesh> mesh;
+    };
+    struct SoftRenderBatch
+    {
+        Material material;
+        std::vector<std::size_t> objects;
+        std::vector<std::size_t> byteOffsets;
+        std::vector<Vertex> vertices;
+        std::unique_ptr<Mesh> mesh;
+        std::unique_ptr<SoftGpuBuffer> gpu;
+    };
+
+    static bool SameMaterial(const Material& a, const Material& b)
+    {
+        return a.baseColor == b.baseColor && a.specularStrength == b.specularStrength && a.shininess == b.shininess &&
+            a.baseTexture.get() == b.baseTexture.get() && a.textureTiling == b.textureTiling;
+    }
+
+    static void MixHash(std::uint64_t& hash, std::uint64_t value)
+    {
+        hash ^= value + 0x9E3779B97F4A7C15ull + (hash << 6) + (hash >> 2);
+    }
+
+    std::uint64_t GetRigidBatchSignature() const
+    {
+        std::uint64_t hash = 0xCBF29CE484222325ull;
+        MixHash(hash, bodies.size());
+        for (const SceneObject& object : bodies)
+        {
+            MixHash(hash, object.id);
+            MixHash(hash, static_cast<std::uint64_t>(object.body->GetModelType()));
+            MixHash(hash, std::bit_cast<std::uint32_t>(object.material.baseColor.x));
+            MixHash(hash, std::bit_cast<std::uint32_t>(object.material.baseColor.y));
+            MixHash(hash, std::bit_cast<std::uint32_t>(object.material.baseColor.z));
+            MixHash(hash, std::bit_cast<std::uint32_t>(object.material.specularStrength));
+            MixHash(hash, std::bit_cast<std::uint32_t>(object.material.shininess));
+            MixHash(hash, reinterpret_cast<std::uintptr_t>(object.material.baseTexture.get()));
+            MixHash(hash, std::bit_cast<std::uint32_t>(object.material.textureTiling.x));
+            MixHash(hash, std::bit_cast<std::uint32_t>(object.material.textureTiling.y));
+        }
+        return hash;
+    }
+
+    void RebuildRigidRenderBatches(std::uint64_t signature)
+    {
+        rigidRenderBatches.clear();
+        for (std::size_t objectIndex = 0; objectIndex < bodies.size(); ++objectIndex)
+        {
+            const Material& material = bodies[objectIndex].material;
+            auto found = std::find_if(rigidRenderBatches.begin(), rigidRenderBatches.end(), [&](const RigidRenderBatch& batch) { return SameMaterial(batch.material, material); });
+            if (found == rigidRenderBatches.end())
+            {
+                rigidRenderBatches.push_back({ material });
+                found = std::prev(rigidRenderBatches.end());
+            }
+            found->objects.push_back(objectIndex);
+        }
+        for (RigidRenderBatch& batch : rigidRenderBatches)
+        {
+            std::size_t vertexCount = 0, indexCount = 0;
+            for (std::size_t objectIndex : batch.objects)
+            {
+                const ModelData& source = rigidRenderSources[static_cast<std::size_t>(bodies[objectIndex].body->GetModelType())];
+                vertexCount += source.vertices.size(); indexCount += source.indices.size();
+            }
+            batch.vertices.reserve(vertexCount);
+            std::vector<unsigned int> indices; indices.reserve(indexCount);
+            unsigned int baseVertex = 0;
+            for (std::size_t objectIndex : batch.objects)
+            {
+                const ModelData& source = rigidRenderSources[static_cast<std::size_t>(bodies[objectIndex].body->GetModelType())];
+                batch.vertices.insert(batch.vertices.end(), source.vertices.begin(), source.vertices.end());
+                for (unsigned int index : source.indices) indices.push_back(baseVertex + index);
+                baseVertex += static_cast<unsigned int>(source.vertices.size());
+            }
+            batch.mesh = std::make_unique<Mesh>(batch.vertices, indices);
+        }
+        rigidBatchSignature = signature;
+        rigidBatchRevision = std::numeric_limits<unsigned long long>::max();
+    }
+
+    void UpdateRigidRenderBatches()
+    {
+        std::uint64_t signature = GetRigidBatchSignature();
+        if (signature != rigidBatchSignature) RebuildRigidRenderBatches(signature);
+        unsigned long long revision = world.GetSimulationRevision();
+        if (revision == rigidBatchRevision) return;
+        for (RigidRenderBatch& batch : rigidRenderBatches)
+        {
+            std::size_t output = 0;
+            for (std::size_t objectIndex : batch.objects)
+            {
+                const SceneObject& object = bodies[objectIndex];
+                const ModelData& source = rigidRenderSources[static_cast<std::size_t>(object.body->GetModelType())];
+                glm::mat4 matrix = object.body->GetMatrix();
+                glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(matrix)));
+                for (const Vertex& input : source.vertices)
+                {
+                    Vertex& vertex = batch.vertices[output++];
+                    glm::vec4 position = matrix * glm::vec4(input.x, input.y, input.z, 1.0f);
+                    glm::vec3 normal = normalMatrix * glm::vec3(input.nx, input.ny, input.nz);
+                    float length = glm::length(normal);
+                    if (length > 0.000001f) normal /= length; else normal = glm::vec3(0.0f, 1.0f, 0.0f);
+                    vertex = input;
+                    vertex.x = position.x; vertex.y = position.y; vertex.z = position.z;
+                    vertex.nx = normal.x; vertex.ny = normal.y; vertex.nz = normal.z;
+                }
+            }
+            batch.mesh->UpdateVertices(batch.vertices);
+        }
+        rigidBatchRevision = revision;
+    }
+
+    std::uint64_t GetSoftBatchSignature() const
+    {
+        std::uint64_t hash = 0x84222325CBF29CE4ull;
+        MixHash(hash, softBodies.size());
+        for (const SoftObject& object : softBodies)
+        {
+            MixHash(hash, object.id);
+            MixHash(hash, static_cast<std::uint64_t>(object.body->GetModelType()));
+            MixHash(hash, std::bit_cast<std::uint32_t>(object.material.baseColor.x));
+            MixHash(hash, std::bit_cast<std::uint32_t>(object.material.baseColor.y));
+            MixHash(hash, std::bit_cast<std::uint32_t>(object.material.baseColor.z));
+            MixHash(hash, std::bit_cast<std::uint32_t>(object.material.specularStrength));
+            MixHash(hash, std::bit_cast<std::uint32_t>(object.material.shininess));
+            MixHash(hash, reinterpret_cast<std::uintptr_t>(object.material.baseTexture.get()));
+            MixHash(hash, std::bit_cast<std::uint32_t>(object.material.textureTiling.x));
+            MixHash(hash, std::bit_cast<std::uint32_t>(object.material.textureTiling.y));
+        }
+        return hash;
+    }
+
+    void RebuildSoftRenderBatches(std::uint64_t signature)
+    {
+        softRenderBatches.clear();
+        for (std::size_t objectIndex = 0; objectIndex < softBodies.size(); ++objectIndex)
+        {
+            const Material& material = softBodies[objectIndex].material;
+            auto found = std::find_if(softRenderBatches.begin(), softRenderBatches.end(), [&](const SoftRenderBatch& batch) { return SameMaterial(batch.material, material); });
+            if (found == softRenderBatches.end()) { softRenderBatches.push_back({ material }); found = std::prev(softRenderBatches.end()); }
+            found->objects.push_back(objectIndex);
+        }
+        for (SoftRenderBatch& batch : softRenderBatches)
+        {
+            std::vector<unsigned int> indices;
+            unsigned int baseVertex = 0;
+            for (std::size_t objectIndex : batch.objects)
+            {
+                const auto& sourceVertices = softBodies[objectIndex].body->GetRenderVertices();
+                const auto& sourceIndices = softBodies[objectIndex].body->GetRenderIndices();
+                batch.byteOffsets.push_back(static_cast<std::size_t>(baseVertex) * sizeof(physx::PxVec4));
+                batch.vertices.insert(batch.vertices.end(), sourceVertices.begin(), sourceVertices.end());
+                for (unsigned int index : sourceIndices) indices.push_back(baseVertex + index);
+                baseVertex += static_cast<unsigned int>(sourceVertices.size());
+            }
+            if (!batch.vertices.empty())
+            {
+                batch.mesh = std::make_unique<Mesh>(batch.vertices, indices);
+                batch.gpu = std::make_unique<SoftGpuBuffer>(*world.GetCuda(), *batch.mesh, batch.vertices, indices);
+            }
+        }
+        softBatchSignature = signature;
+        softBatchRevision = std::numeric_limits<unsigned long long>::max();
+    }
+
+    void UpdateSoftRenderBatches()
+    {
+        std::uint64_t signature = GetSoftBatchSignature();
+        if (signature != softBatchSignature) RebuildSoftRenderBatches(signature);
+        unsigned long long revision = world.GetSimulationRevision();
+        if (revision == softBatchRevision) return;
+        for (SoftRenderBatch& batch : softRenderBatches)
+        {
+            std::vector<SoftGpuBuffer::Region> regions;
+            regions.reserve(batch.objects.size());
+            for (std::size_t i = 0; i < batch.objects.size(); ++i)
+            {
+                SoftBody& body = *softBodies[batch.objects[i]].body;
+                regions.push_back({ body.GetGpuRenderPositions(),batch.byteOffsets[i],body.GetRenderVertices().size() * sizeof(physx::PxVec4) });
+            }
+            if (batch.gpu) batch.gpu->UpdateRegions(regions);
+        }
+        softBatchRevision = revision;
+    }
 
     static Material DefaultMaterial(ModelType type)
     {
@@ -562,21 +780,29 @@ private:
     PhysicsWorld world;
     SoftMeshLibrary softModels{ world.GetPhysics() };
     ModelLibrary models;
+    std::array<ModelData, static_cast<std::size_t>(ModelType::Count)> rigidRenderSources;
     ModelRenderer renderer;
     OutlineEffect outline;
     CollisionDebugRenderer collisionDebug;
     Transform ground;
     Material groundMaterial = { glm::vec3(0.38f),0.03f,8.0f };
     std::vector<SceneObject> bodies;
+    std::vector<RigidRenderBatch> rigidRenderBatches;
+    std::uint64_t rigidBatchSignature = 0;
+    unsigned long long rigidBatchRevision = std::numeric_limits<unsigned long long>::max();
     std::vector<SoftObject> softBodies;
+    std::vector<SoftRenderBatch> softRenderBatches;
+    std::uint64_t softBatchSignature = 0;
+    unsigned long long softBatchRevision = std::numeric_limits<unsigned long long>::max();
     SoftBody* selectedSoft = nullptr;
     unsigned int softIterations = 8, softResolution = 4, frameSteps = 0;
     bool softSelfCollision = false;
-    double frameSimulationMs = 0, frameSyncMs = 0, frameDrawMs = 0;
+    double frameSimulationMs = 0, frameSyncMs = 0, frameUploadMs = 0, frameShadowMs = 0, frameMainDrawMs = 0, frameDrawMs = 0;
     int requestedMode = -1;
     int sceneIndex = 0;
     int spawnType = 0;
-    float launchSpeed = 20.0f, launchScale = 1.0f;
+    static constexpr float minimumLaunchMass = 0.01f;
+    float launchSpeed = 20.0f, launchScale = 1.0f, testScale = 1.0f, launchMass = 1.0f;
     MousePicker picker; // 后声明，先释放关节，再销毁bodies。
     bool paused = false;
     bool showCollisions = false;

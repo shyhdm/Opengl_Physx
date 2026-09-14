@@ -54,6 +54,7 @@ public:
         SoftGpuBuffer* buffer;
         physx::PxVec4* source;
     };
+    struct Region { physx::PxVec4* source; std::size_t destinationOffset; std::size_t bytes; };
 
     void Update(physx::PxVec4* source) { UpdateBatch({ {this,source} }); }
 
@@ -84,6 +85,26 @@ public:
         }
         catch (...) { first.unmap(count, resources.data(), nullptr); throw; }
         Check(first.unmap(count, resources.data(), nullptr), "Cannot release soft-body graphics buffers.");
+    }
+
+    void UpdateRegions(const std::vector<Region>& regions)
+    {
+        if (regions.empty()) return;
+        physx::PxScopedCudaLock lock(cuda);
+        Check(map(1, &resource, nullptr), "Cannot map combined soft-body graphics buffer.");
+        try
+        {
+            CUdeviceptr destination = 0; std::size_t size = 0;
+            Check(pointer(&destination, &size, resource), "Cannot access combined soft-body graphics buffer.");
+            for (const Region& region : regions)
+            {
+                if (!region.source || region.destinationOffset > size || region.bytes > size - region.destinationOffset) throw std::runtime_error("Combined soft-body graphics buffer is too small.");
+                Check(cuda.getCudaContext()->memcpyDtoDAsync(destination + region.destinationOffset, reinterpret_cast<CUdeviceptr>(region.source), region.bytes, nullptr),
+                    "Cannot copy soft-body region on GPU.");
+            }
+        }
+        catch (...) { unmap(1, &resource, nullptr); throw; }
+        Check(unmap(1, &resource, nullptr), "Cannot release combined soft-body graphics buffer.");
     }
 
 private:

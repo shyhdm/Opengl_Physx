@@ -10,6 +10,7 @@
 #include "DebugOverlay.h"
 #include <exception>
 #include <memory>
+#include <chrono>
 
 int main()
 {
@@ -43,6 +44,7 @@ int main()
         bool previousF1Key = false;
         bool showGui = true;
         float displayedFps = 0.0f;
+        double cpuFrameMs = 0.0;
         double nextStatsRefresh = 0.0;
 
         while (!window.ShouldClose())
@@ -52,11 +54,13 @@ int main()
             float deltaTime = static_cast<float>(currentTime - lastTime);
             lastTime = currentTime;
             if (!ready) continue;
+            auto cpuFrameStarted = std::chrono::steady_clock::now();
             gui.BeginFrame();
             bool refreshStats = currentTime >= nextStatsRefresh;
             if (refreshStats)
             {
                 displayedFps = ImGui::GetIO().Framerate;
+                debugOverlay.Update(*scene, blastScene.get(), displayedFps, cpuFrameMs);
                 nextStatsRefresh = currentTime + 0.5;
             }
             bool f1Key = window.IsKeyDown(GLFW_KEY_F1);
@@ -64,11 +68,11 @@ int main()
             previousF1Key = f1Key;
             bool mouseBlocked = showGui && gui.CapturesMouse();
             camera.Update(window, deltaTime, mouseBlocked);
-            scene->HandleInput(window, camera, mouseBlocked, [&](ModelType type, glm::vec3 position, glm::vec3 velocity, float scale)
+            scene->HandleInput(window, camera, mouseBlocked, [&](ModelType type, glm::vec3 position, glm::vec3 velocity, float scale, float mass)
                 {
-                    blastScene->Spawn(type, position, velocity, scale);
+                    blastScene->Spawn(type, position, velocity, scale, mass);
                 });
-            if (showGui) panel.Draw(*scene, displayedFps, [&]() {scene->ClearRigidSelection(); blastScene->Clear(); }, [&](ModelType type, glm::vec3 position, float scale) {blastScene->Spawn(type, position, glm::vec3(0), scale); }, [&]() {blastScene->BuildWall(); });
+            if (showGui) panel.Draw(*scene, displayedFps, [&]() {scene->ClearRigidSelection(); blastScene->Clear(); }, [&](ModelType type, glm::vec3 position, float scale, float mass) {blastScene->Spawn(type, position, glm::vec3(0), scale, mass); }, [&]() {blastScene->BuildWall(); }, blastScene.get(), debugOverlay.GetText());
             blastScene->SetSceneIndex(scene->GetSceneIndex());
             if (window.IsKeyDown(GLFW_KEY_ESCAPE)) window.RequestClose();
             blastScene->BeforePhysics();
@@ -81,8 +85,9 @@ int main()
                     blastRenderer->Draw(renderer, *blastScene, shadowPass);
                     blastScene->DrawRuntimeWall(renderer, shadowPass);
                 });
-            debugOverlay.Draw(*scene, blastScene.get(), displayedFps, refreshStats);
+            debugOverlay.Draw();
             gui.Render();
+            cpuFrameMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - cpuFrameStarted).count();
             window.Present();
             if (scene->GetRequestedMode() >= 0)
             {

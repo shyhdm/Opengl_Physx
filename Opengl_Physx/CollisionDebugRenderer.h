@@ -2,8 +2,11 @@
 #include "PhysicsWorld.h"
 #include "Camera.h"
 #include "Shader.h"
+#include <cstdint>
+#include <limits>
 #include <vector>
-#include <set>
+#include <unordered_map>
+#include <unordered_set>
 
 class CollisionDebugRenderer
 {
@@ -36,7 +39,7 @@ public:
     CollisionDebugRenderer(const CollisionDebugRenderer&) = delete;
     CollisionDebugRenderer& operator=(const CollisionDebugRenderer&) = delete;
 
-    static void AppendShape(std::vector<Point>& points, const physx::PxShape& shape, const physx::PxRigidActor& actor, glm::vec3 color)
+    void AppendShape(std::vector<Point>& points, const physx::PxShape& shape, const physx::PxRigidActor& actor, glm::vec3 color)
     {
         using namespace physx;
         PxTransform pose = actor.getGlobalPose() * shape.getLocalPose();
@@ -99,21 +102,29 @@ public:
         case PxGeometryType::eCONVEXMESH:
         {
             auto& convex = static_cast<const PxConvexMeshGeometry&>(geometry);
-            const auto* vertices = convex.convexMesh->getVertices();
-            const auto* indices = convex.convexMesh->getIndexBuffer();
             auto scale = convex.scale.toMat33();
-            std::set<PxU32> edges;
-            for (PxU32 i = 0; i < convex.convexMesh->getNbPolygons(); ++i)
+            auto found = convexEdges.find(convex.convexMesh);
+            if (found == convexEdges.end())
             {
-                PxHullPolygon polygon;
-                if (!convex.convexMesh->getPolygonData(i, polygon)) continue;
-                for (PxU32 j = 0; j < polygon.mNbVerts; ++j)
+                CachedConvex cache;
+                const auto* vertices = convex.convexMesh->getVertices();
+                const auto* indices = convex.convexMesh->getIndexBuffer();
+                std::unordered_set<std::uint64_t> unique;
+                unique.reserve(static_cast<std::size_t>(convex.convexMesh->getNbPolygons()) * 4);
+                for (PxU32 i = 0; i < convex.convexMesh->getNbPolygons(); ++i)
                 {
-                    PxU32 a = indices[polygon.mIndexBase + j], b = indices[polygon.mIndexBase + (j + 1) % polygon.mNbVerts];
-                    PxU32 key = (std::min(a, b) << 16) | std::max(a, b);
-                    if (edges.insert(key).second) line(scale * vertices[a], scale * vertices[b]);
+                    PxHullPolygon polygon;
+                    if (!convex.convexMesh->getPolygonData(i, polygon)) continue;
+                    for (PxU32 j = 0; j < polygon.mNbVerts; ++j)
+                    {
+                        PxU32 a = indices[polygon.mIndexBase + j], b = indices[polygon.mIndexBase + (j + 1) % polygon.mNbVerts];
+                        std::uint64_t key = (static_cast<std::uint64_t>(std::min(a, b)) << 32) | std::max(a, b);
+                        if (unique.insert(key).second) cache.edges.push_back({ vertices[a],vertices[b] });
+                    }
                 }
+                found = convexEdges.emplace(convex.convexMesh, std::move(cache)).first;
             }
+            for (const Edge& edge : found->second.edges) line(scale * edge.a, scale * edge.b);
             break;
         }
         default: break;
@@ -144,20 +155,44 @@ public:
     {
         if (width <= 0 || height <= 0) return;
         using namespace physx;
-        points.clear();
         PxActorTypeFlags types = PxActorTypeFlag::eRIGID_STATIC | PxActorTypeFlag::eRIGID_DYNAMIC;
-        actors.resize(world.GetScene().getNbActors(types));
-        PxU32 count = world.GetScene().getActors(types, actors.data(), static_cast<PxU32>(actors.size()));
-        for (PxU32 i = 0; i < count; ++i)
+        std::uint64_t visibility = includeStatic ? 0x9E3779B97F4A7C15ull : 0xCBF29CE484222325ull;
+        visibility ^= static_cast<std::uint64_t>(world.GetScene().getNbActors(types)) + (visibility << 6) + (visibility >> 2);
+        if (visible) for (const PxRigidActor* actor : *visible) visibility ^= reinterpret_cast<std::uintptr_t>(actor) + 0x9E3779B97F4A7C15ull + (visibility << 6) + (visibility >> 2);
+        unsigned long long revision = world.GetSimulationRevision();
+        bool rebuild = revision != cachedRevision || visibility != cachedVisibility;
+        if (rebuild)
         {
-            auto* actor = actors[i]->is<PxRigidActor>();
-            if (actor->is<PxRigidStatic>() && !includeStatic) continue;
-            if (actor->is<PxRigidDynamic>() && visible && std::find(visible->begin(), visible->end(), actor) == visible->end()) continue;
-            shapes.resize(actor->getNbShapes());
-            PxU32 shapeCount = actor->getShapes(shapes.data(), static_cast<PxU32>(shapes.size()));
-            glm::vec3 color = actor->is<PxRigidDynamic>() ? glm::vec3(0.2f, 1.0f, 0.35f) : glm::vec3(0.4f, 0.65f, 1.0f);
-            for (PxU32 j = 0; j < shapeCount; ++j)
-                if (shapes[j]->getFlags().isSet(PxShapeFlag::eSIMULATION_SHAPE)) AppendShape(points, *shapes[j], *actor, color);
+            if (visibility != cachedVisibility) convexEdges.clear();
+            points.clear();
+            auto appendActor = [&](PxRigidActor* actor)
+                {
+                    if (!actor || (actor->is<PxRigidStatic>() && !includeStatic)) return;
+                    shapes.resize(actor->getNbShapes());
+                    PxU32 shapeCount = actor->getShapes(shapes.data(), static_cast<PxU32>(shapes.size()));
+                    glm::vec3 color = actor->is<PxRigidDynamic>() ? glm::vec3(0.2f, 1.0f, 0.35f) : glm::vec3(0.4f, 0.65f, 1.0f);
+                    for (PxU32 j = 0; j < shapeCount; ++j)
+                        if (shapes[j]->getFlags().isSet(PxShapeFlag::eSIMULATION_SHAPE)) AppendShape(points, *shapes[j], *actor, color);
+                };
+            if (visible && !includeStatic)
+            {
+                for (const PxRigidActor* actor : *visible) appendActor(const_cast<PxRigidActor*>(actor));
+            }
+            else
+            {
+                std::unordered_set<const PxRigidActor*> allowed;
+                if (visible) { allowed.reserve(visible->size()); allowed.insert(visible->begin(), visible->end()); }
+                actors.resize(world.GetScene().getNbActors(types));
+                PxU32 count = world.GetScene().getActors(types, actors.data(), static_cast<PxU32>(actors.size()));
+                for (PxU32 i = 0; i < count; ++i)
+                {
+                    auto* actor = actors[i]->is<PxRigidActor>();
+                    if (actor->is<PxRigidDynamic>() && visible && !allowed.contains(actor)) continue;
+                    appendActor(actor);
+                }
+            }
+            cachedRevision = revision;
+            cachedVisibility = visibility;
         }
         if (points.empty()) return;
         GLint oldVao = 0, oldBuffer = 0, oldProgram = 0;
@@ -166,15 +201,15 @@ public:
         GLfloat lineWidth = 1;
         glGetIntegerv(0x85B5, &oldVao); glGetIntegerv(0x8894, &oldBuffer); glGetIntegerv(0x8B8D, &oldProgram);
         glGetBooleanv(GL_DEPTH_WRITEMASK, &depthWrite); glGetFloatv(GL_LINE_WIDTH, &lineWidth);
-        glDisable(GL_DEPTH_TEST); glDepthMask(GL_FALSE); glLineWidth(1);
+        glEnable(GL_DEPTH_TEST); glDepthMask(GL_FALSE); glLineWidth(1);
         shader.UsePass("collision");
         shader.SetMatrix4("mvp", camera.GetProjectionMatrix(float(width) / height) * camera.GetViewMatrix());
         GL::BindVertexArray(vao); GL::BindBuffer(GL::ArrayBuffer, vbo);
-        GL::BufferData(GL::ArrayBuffer, static_cast<std::ptrdiff_t>(points.size() * sizeof(Point)), points.data(), 0x88E0);
+        if (rebuild) GL::BufferData(GL::ArrayBuffer, static_cast<std::ptrdiff_t>(points.size() * sizeof(Point)), points.data(), 0x88E0);
         glDrawArrays(GL_LINES, 0, static_cast<GLsizei>(points.size()));
         GL::BindVertexArray(static_cast<GLuint>(oldVao)); GL::BindBuffer(GL::ArrayBuffer, static_cast<GLuint>(oldBuffer));
         GL::UseProgram(static_cast<GLuint>(oldProgram));
-        glLineWidth(lineWidth); glDepthMask(depthWrite); if (depthTest) glEnable(GL_DEPTH_TEST);
+        glLineWidth(lineWidth); glDepthMask(depthWrite); if (depthTest) glEnable(GL_DEPTH_TEST); else glDisable(GL_DEPTH_TEST);
     }
 private:
     Shader shader;
@@ -182,4 +217,9 @@ private:
     std::vector<Point> points;
     std::vector<physx::PxActor*> actors;
     std::vector<physx::PxShape*> shapes;
+    struct Edge { physx::PxVec3 a, b; };
+    struct CachedConvex { std::vector<Edge> edges; };
+    std::unordered_map<const physx::PxConvexMesh*, CachedConvex> convexEdges;
+    unsigned long long cachedRevision = std::numeric_limits<unsigned long long>::max();
+    std::uint64_t cachedVisibility = 0;
 };

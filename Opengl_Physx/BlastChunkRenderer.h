@@ -11,6 +11,9 @@
 #include <tuple>
 #include <vector>
 #include <cmath>
+#include <bit>
+#include <limits>
+#include <glm/gtc/matrix_inverse.hpp>
 
 class BlastChunkRenderer
 {
@@ -23,27 +26,35 @@ public:
             Nv::Blast::AuthoringResult& authored = library.Get(type).GetAuthoringResult();
             TypeData& data = types[index];
             data.meshes.resize(authored.chunkCount);
+            data.models.resize(authored.chunkCount);
             data.materials.resize(authored.chunkCount);
+            ModelData combined;
             for (uint32_t chunk = 0; chunk < authored.chunkCount; ++chunk)
             {
                 ModelData model = CreateChunkModel(authored, chunk);
-                if (!model.vertices.empty()) data.meshes[chunk] = std::make_unique<Mesh>(model.vertices, model.indices);
+                if (!model.vertices.empty())
+                {
+                    AppendModel(combined, model);
+                    data.models[chunk] = model;
+                    data.meshes[chunk] = std::make_unique<Mesh>(model.vertices, model.indices);
+                }
                 data.materials[chunk].baseColor = Color(type);
                 data.materials[chunk].specularStrength = 0.25f;
                 data.materials[chunk].shininess = 32.0f;
             }
+            if (!combined.vertices.empty()) { data.combinedModel = combined; data.combined = std::make_unique<Mesh>(combined.vertices, combined.indices); }
         }
     }
 
     void Draw(ModelRenderer& renderer, const BlastScene& scene, bool shadowPass)
     {
-        for (const BlastScene::RenderChunk& renderChunk : scene.GetRenderChunks())
+        if (shadowPass) UpdateBatches(scene);
+        for (std::size_t type = 0; type < batches.size(); ++type)
         {
-            const BlastPhysics::ChunkPose& pose = renderChunk.pose;
-            TypeData& data = types[static_cast<size_t>(renderChunk.type)];
-            if (pose.chunk >= data.meshes.size() || !data.meshes[pose.chunk]) continue;
-            if (shadowPass) renderer.DrawShadow(*data.meshes[pose.chunk], pose.matrix);
-            else renderer.DrawMesh(*data.meshes[pose.chunk], pose.matrix, data.materials[pose.chunk]);
+            Batch& batch = batches[type];
+            if (!batch.mesh) continue;
+            if (shadowPass) renderer.DrawShadow(*batch.mesh, glm::mat4(1.0f));
+            else renderer.DrawMesh(*batch.mesh, glm::mat4(1.0f), types[type].materials[0]);
         }
     }
 
@@ -55,6 +66,7 @@ public:
             const BlastPhysics::ChunkPose& pose = renderChunk.pose;
             if (pose.actor != selected) continue;
             TypeData& data = types[static_cast<size_t>(renderChunk.type)];
+            if (pose.whole && data.combined) { outline.Draw(*data.combined, camera, width, height, pose.matrix); continue; }
             if (pose.chunk < data.meshes.size() && data.meshes[pose.chunk]) outline.Draw(*data.meshes[pose.chunk], camera, width, height, pose.matrix);
         }
     }
@@ -63,10 +75,81 @@ private:
     struct TypeData
     {
         std::vector<std::unique_ptr<Mesh>> meshes;
+        std::vector<ModelData> models;
         std::vector<Material> materials;
+        std::unique_ptr<Mesh> combined;
+        ModelData combinedModel;
     };
+    struct Batch { std::vector<std::size_t> renders; std::vector<Vertex> vertices; std::unique_ptr<Mesh> mesh; };
 
     std::array<TypeData, static_cast<size_t>(ModelType::Count)> types;
+    std::array<Batch, static_cast<size_t>(ModelType::Count)> batches;
+    std::uint64_t batchSignature = 0;
+
+    const ModelData* Source(const BlastScene::RenderChunk& render) const
+    {
+        const TypeData& data = types[static_cast<std::size_t>(render.type)];
+        if (render.pose.whole) return data.combinedModel.vertices.empty() ? nullptr : &data.combinedModel;
+        return render.pose.chunk < data.models.size() && !data.models[render.pose.chunk].vertices.empty() ? &data.models[render.pose.chunk] : nullptr;
+    }
+
+    void UpdateBatches(const BlastScene& scene)
+    {
+        const auto& renders = scene.GetRenderChunks();
+        std::uint64_t signature = 0xCBF29CE484222325ull;
+        for (const auto& render : renders)
+        {
+            signature ^= reinterpret_cast<std::uintptr_t>(render.pose.actor) + 0x9E3779B97F4A7C15ull + (signature << 6) + (signature >> 2);
+            signature ^= (static_cast<std::uint64_t>(render.type) << 33) ^ (static_cast<std::uint64_t>(render.pose.chunk) << 1) ^ static_cast<std::uint64_t>(render.pose.whole);
+        }
+        if (signature != batchSignature)
+        {
+            for (Batch& batch : batches) { batch.renders.clear(); batch.vertices.clear(); batch.mesh.reset(); }
+            for (std::size_t i = 0; i < renders.size(); ++i) if (Source(renders[i])) batches[static_cast<std::size_t>(renders[i].type)].renders.push_back(i);
+            for (Batch& batch : batches)
+            {
+                std::vector<unsigned int> indices;
+                unsigned int base = 0;
+                for (std::size_t renderIndex : batch.renders)
+                {
+                    const ModelData& source = *Source(renders[renderIndex]);
+                    batch.vertices.insert(batch.vertices.end(), source.vertices.begin(), source.vertices.end());
+                    for (unsigned int index : source.indices) indices.push_back(base + index);
+                    base += static_cast<unsigned int>(source.vertices.size());
+                }
+                if (!batch.vertices.empty()) batch.mesh = std::make_unique<Mesh>(batch.vertices, indices);
+            }
+            batchSignature = signature;
+        }
+        for (Batch& batch : batches)
+        {
+            std::size_t output = 0;
+            for (std::size_t renderIndex : batch.renders)
+            {
+                const auto& render = renders[renderIndex];
+                const ModelData& source = *Source(render);
+                glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(render.pose.matrix)));
+                for (const Vertex& input : source.vertices)
+                {
+                    Vertex& vertex = batch.vertices[output++];
+                    glm::vec4 position = render.pose.matrix * glm::vec4(input.x, input.y, input.z, 1.0f);
+                    glm::vec3 normal = normalMatrix * glm::vec3(input.nx, input.ny, input.nz);
+                    float length = glm::length(normal); normal = length > 0.000001f ? normal / length : glm::vec3(0, 1, 0);
+                    vertex = input; vertex.x = position.x; vertex.y = position.y; vertex.z = position.z;
+                    vertex.nx = normal.x; vertex.ny = normal.y; vertex.nz = normal.z;
+                }
+            }
+            if (batch.mesh) batch.mesh->UpdateVertices(batch.vertices);
+        }
+    }
+
+    static void AppendModel(ModelData& target, const ModelData& source)
+    {
+        unsigned int base = static_cast<unsigned int>(target.vertices.size());
+        target.vertices.insert(target.vertices.end(), source.vertices.begin(), source.vertices.end());
+        target.indices.reserve(target.indices.size() + source.indices.size());
+        for (unsigned int index : source.indices) target.indices.push_back(base + index);
+    }
 
     static ModelData CreateChunkModel(Nv::Blast::AuthoringResult& authored, uint32_t chunk)
     {

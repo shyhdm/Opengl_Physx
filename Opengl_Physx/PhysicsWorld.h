@@ -22,6 +22,7 @@ public:
         physx::PxVec3 normal{ 0,1,0 };
         physx::PxVec3 impulse{ 0 };
         physx::PxVec3 relativeVelocity{ 0 };
+        float impulseMagnitude = 0.0f;
         float velocityChange = 0.0f;
     };
 
@@ -100,7 +101,7 @@ public:
         std::lock_guard<std::mutex> lock(contacts.mutex);
         bool found = false;
         for (const auto& event : contacts.events)
-            if (event.actor == actor && (!found || event.impact.velocityChange > result.velocityChange))
+            if (event.actor == actor && (!found || event.impact.impulseMagnitude > result.impulseMagnitude))
             {
                 result = event.impact;
                 found = true;
@@ -163,7 +164,6 @@ private:
             float effectiveMass = std::min(Mass(header.actors[0]), Mass(header.actors[1]));
             if (!std::isfinite(effectiveMass)) return;
             PxVec3 relativeVelocity = Velocity(header.actors[0]) - Velocity(header.actors[1]);
-            float relativeSpeed = relativeVelocity.magnitude();
             std::lock_guard<std::mutex> lock(mutex);
             for (PxU32 pairIndex = 0; pairIndex < pairCount; ++pairIndex)
             {
@@ -171,13 +171,24 @@ private:
                 if (pair.flags & (PxContactPairFlag::eREMOVED_SHAPE_0 | PxContactPairFlag::eREMOVED_SHAPE_1)) continue;
                 PxContactPairPoint points[32];
                 PxU32 count = pair.extractContacts(points, 32);
+                PxVec3 totalImpulse(0.0f), weightedPosition(0.0f), weightedNormal(0.0f);
+                float impulseMagnitude = 0.0f;
                 for (PxU32 i = 0; i < count; ++i)
                 {
-                    float velocityChange = std::max(points[i].impulse.magnitude() / std::max(effectiveMass, 0.01f), relativeSpeed);
-                    if (!std::isfinite(velocityChange) || velocityChange <= 0.0f) continue;
-                    events.push_back({ header.actors[0]->is<PxRigidActor>(),{points[i].position,points[i].normal,points[i].impulse,relativeVelocity,velocityChange} });
-                    events.push_back({ header.actors[1]->is<PxRigidActor>(),{points[i].position,-points[i].normal,-points[i].impulse,-relativeVelocity,velocityChange} });
+                    float magnitude = points[i].impulse.magnitude();
+                    if (!std::isfinite(magnitude) || magnitude <= 0.0001f) continue;
+                    totalImpulse += points[i].impulse;
+                    weightedPosition += points[i].position * magnitude;
+                    weightedNormal += points[i].normal * magnitude;
+                    impulseMagnitude += magnitude;
                 }
+                if (!std::isfinite(impulseMagnitude) || impulseMagnitude <= 0.0001f) continue;
+                PxVec3 position = weightedPosition / impulseMagnitude;
+                PxVec3 normal = weightedNormal;
+                if (normal.normalize() <= 0.0001f) normal = PxVec3(0.0f, 1.0f, 0.0f);
+                float velocityChange = impulseMagnitude / std::max(effectiveMass, 0.01f);
+                events.push_back({ header.actors[0]->is<PxRigidActor>(),{position,normal,totalImpulse,relativeVelocity,impulseMagnitude,velocityChange} });
+                events.push_back({ header.actors[1]->is<PxRigidActor>(),{position,-normal,-totalImpulse,-relativeVelocity,impulseMagnitude,velocityChange} });
             }
         }
     private:
@@ -220,7 +231,7 @@ private:
             return physx::PxFilterFlag::eDEFAULT;
         }
         pair = physx::PxPairFlag::eCONTACT_DEFAULT | physx::PxPairFlag::eDETECT_CCD_CONTACT;
-        if (ad.word0 == fractureFilterTag || bd.word0 == fractureFilterTag) pair |= physx::PxPairFlag::eNOTIFY_TOUCH_FOUND | physx::PxPairFlag::eNOTIFY_TOUCH_PERSISTS | physx::PxPairFlag::eNOTIFY_CONTACT_POINTS;
+        if (ad.word0 == fractureFilterTag || bd.word0 == fractureFilterTag) pair |= physx::PxPairFlag::eNOTIFY_TOUCH_FOUND | physx::PxPairFlag::eNOTIFY_CONTACT_POINTS;
         return physx::PxFilterFlag::eDEFAULT;
     }
 
