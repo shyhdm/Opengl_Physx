@@ -136,21 +136,22 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>D:\Dev\.cpp\_库\PhysX-main\physx\include;$(ProjectDir)ThirdParty\imgui</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)ThirdParty\imgui;D:\Dev\.cpp\_Library\PhysX-main\physx\include;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\globals;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\lowlevel;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\toolkit;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\assetutils;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\authoring;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\authoringCommon;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\shaders;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\shared\NvFoundation;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>D:\Dev\.cpp\_库\PhysX-main\physx\bin\win.x86_64.vc143.md\release</AdditionalLibraryDirectories>
-      <AdditionalDependencies>PhysX_64.lib;PhysXCommon_64.lib;PhysXFoundation_64.lib;PhysXExtensions_static_64.lib;PhysXPvdSDK_static_64.lib;PhysXCooking_64.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>D:\Dev\.cpp\_Library\PhysX-main\physx\bin\win.x86_64.vc143.md\release;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\bin;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>PhysX_64.lib;PhysXCommon_64.lib;PhysXFoundation_64.lib;PhysXExtensions_static_64.lib;PhysXPvdSDK_static_64.lib;PhysXCooking_64.lib;NvBlast.lib;NvBlastGlobals.lib;NvBlastTk.lib;NvBlastExtAssetUtils.lib;NvBlastExtAuthoring.lib;NvBlastExtShaders.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
     </Link>
     <Manifest>
       <EnableSegmentHeap>true</EnableSegmentHeap>
     </Manifest>
     <PostBuildEvent>
-      <Command>xcopy /E /D /Y /I "$(ProjectDir)Assets\*" "$(OutDir)Assets\"</Command>
+      <Command>xcopy /E /D /Y /I "$(ProjectDir)Assets\*" "$(OutDir)Assets\"
+copy /D /Y "D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\bin\NvBlast*.dll" "$(OutDir)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -158,9 +159,20 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="BlastAsset.h" />
+    <ClInclude Include="BlastChunkRenderer.h" />
+    <ClInclude Include="BlastCollisionLibrary.h" />
+    <ClInclude Include="BlastContext.h" />
+    <ClInclude Include="BlastLibrary.h" />
+    <ClInclude Include="BlastMesh.h" />
+    <ClInclude Include="BlastPhysics.h" />
+    <ClInclude Include="BlastRuntime.h" />
+    <ClInclude Include="BlastScene.h" />
+    <ClInclude Include="BlastVoronoi.h" />
     <ClInclude Include="Camera.h" />
     <ClInclude Include="CollisionDebugRenderer.h" />
     <ClInclude Include="CollisionLibrary.h" />
+    <ClInclude Include="DebugOverlay.h" />
     <ClInclude Include="ImGuiLayer.h" />
     <ClInclude Include="ImGuiPanel.h" />
     <ClInclude Include="Material.h" />
@@ -177,7 +189,6 @@
     <ClInclude Include="Shader.h" />
     <ClInclude Include="ShadowMap.h" />
     <ClInclude Include="SoftBody.h" />
-    <ClInclude Include="SoftDragGpu.h" />
     <ClInclude Include="SoftGpuBuffer.h" />
     <ClInclude Include="SoftMeshLibrary.h" />
     <ClInclude Include="Texture.h" />
@@ -189,6 +200,9 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="Assets\Textures\checker.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="CMakeLists.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

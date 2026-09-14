@@ -10,6 +10,8 @@
 #include <memory>
 #include <vector>
 #include <algorithm>
+#include <cstdint>
+#include <functional>
 
 // Scene 需要在 GL::Load() 之后创建，并在 Window 之前销毁。
 class Scene
@@ -19,10 +21,8 @@ public:
     {
         // 可见平面位于 y=0，与现有静态地面碰撞体顶面重合。
         ground.position = glm::vec3(0.0f);
-        ground.scale = glm::vec3(20.0f, 1.0f, 20.0f);
         groundMaterial.baseColor = glm::vec3(1.0f);
         groundMaterial.baseTexture = std::make_shared<Texture>("Assets/Textures/checker.png");
-        groundMaterial.textureTiling = glm::vec2(10.0f);
         for (int i = 0; i < static_cast<int>(ModelType::Count); ++i) models.Get(static_cast<ModelType>(i));
         Reset();
     }
@@ -32,10 +32,20 @@ public:
 
     void Reset()
     {
-        picker.Clear();
-        selectedSoft = nullptr;
+        ClearSelection();
         softBodies.clear();
         bodies.clear();
+        paused = false;
+        if (sceneIndex == 1)
+        {
+            ground.scale = glm::vec3(60.0f, 1.0f, 60.0f);
+            groundMaterial.textureTiling = glm::vec2(30.0f);
+            SetGroundHalfExtent(30.0f);
+            return;
+        }
+        ground.scale = glm::vec3(20.0f, 1.0f, 20.0f);
+        groundMaterial.textureTiling = glm::vec2(10.0f);
+        SetGroundHalfExtent(10.0f);
         // 六个方块组成三层小金字塔，再放一个高处下落的方块。
         for (int row = 0; row < 3; ++row)
             for (int column = 0; column < 3 - row; ++column)
@@ -59,28 +69,28 @@ public:
     {
         auto body = std::make_unique<RigidBody>(world, type, position, scale);
         if (body->IsDynamic()) body->SetVelocity(velocity);
-        bodies.push_back({ std::move(body),material,showCollisions });
+        bodies.push_back({ std::move(body),material,showCollisions,++nextObject });
     }
     void Shoot(const Camera& camera)
     {
         glm::vec3 forward = camera.GetForward();
-        if (spawnSoft)
+        glm::vec3 position = FindLaunchPosition(camera.position, forward, GetLaunchRadius());
+        if (spawnType == 1)
         {
             if (!world.GetCuda()) return;
-            glm::vec3 position;
-            if (FindSoftSpawn(camera.position, forward, position)) AddSoftBody(selectedType, position, forward * 12.0f);
+            AddSoftBody(selectedType, position, forward * launchSpeed, launchScale);
         }
-        else AddBody(selectedType, camera.position + forward * 2.0f, forward * 20.0f);
+        else AddBody(selectedType, position, forward * launchSpeed, glm::vec3(launchScale));
     }
 
     void AddSoftBody(ModelType type, glm::vec3 position, glm::vec3 velocity = glm::vec3(0), float scale = 1)
     {
         auto body = std::make_unique<SoftBody>(world, softModels, type, position, velocity, scale, softResolution);
         body->SetSimulationSettings(softIterations, softSelfCollision);
-        softBodies.push_back({ std::move(body),DefaultMaterial(type),showCollisions });
+        softBodies.push_back({ std::move(body),DefaultMaterial(type),showCollisions,++nextObject });
     }
 
-    void HandleInput(Window& window, const Camera& camera, bool mouseBlocked = false)
+    void HandleInput(Window& window, const Camera& camera, bool mouseBlocked = false, const std::function<void(ModelType, glm::vec3, glm::vec3, float)>& destructibleShot = {})
     {
         unsigned int revision = window.GetFocusRevision();
         bool leftDown = window.IsMouseButtonDown(GLFW_MOUSE_BUTTON_LEFT);
@@ -103,11 +113,15 @@ public:
         double now = glfwGetTime();
         if (middleDown)
         {
-            if (!middleWasDown || (firing && now >= nextShot))
+            if (now >= nextShot && (!middleWasDown || firing))
             {
-                Shoot(camera);
+                glm::vec3 forward = camera.GetForward();
+                float radius = GetLaunchRadius();
+                glm::vec3 position = FindLaunchPosition(camera.position, forward, radius);
+                if (spawnType == 2 && destructibleShot) destructibleShot(selectedType, position, forward * launchSpeed, launchScale);
+                else Shoot(camera);
                 firing = true;
-                nextShot = glfwGetTime() + 0.15;
+                nextShot = now + std::clamp((radius * 2.0f + 0.25f) / std::max(launchSpeed, 1.0f), 0.15f, 0.2f);
             }
         }
         else firing = false;
@@ -149,7 +163,7 @@ public:
             }), bodies.end());
     }
 
-    void Draw(const Camera& camera, int width, int height)
+    void Draw(const Camera& camera, int width, int height, const std::function<void(ModelRenderer&, bool)>& externalDraw = {})
     {
         if (width <= 0 || height <= 0) return;
         SyncSoftBodies();
@@ -159,6 +173,7 @@ public:
         for (const auto& body : bodies)
             renderer.DrawShadow(models.Get(body.body->GetModelType()), body.body->GetMatrix());
         for (const auto& object : softBodies) renderer.DrawShadow(object.body->GetMesh(), glm::mat4(1));
+        if (externalDraw) externalDraw(renderer, true);
         renderer.EndShadowPass();
         glDepthMask(GL_TRUE);
         glClearColor(0.10f, 0.16f, 0.24f, 1.0f);
@@ -170,8 +185,10 @@ public:
             renderer.DrawMesh(models.Get(body.body->GetModelType()), body.body->GetMatrix(), body.material);
         for (const auto& object : softBodies)
             renderer.DrawMesh(object.body->GetMesh(), glm::mat4(1), object.material);
+        if (externalDraw) externalDraw(renderer, false);
         std::vector<const physx::PxRigidActor*> visibleCollisions;
         for (const auto& object : bodies) if (object.showMesh) visibleCollisions.push_back(object.body->GetActor());
+        if (externalCollisions) externalCollisions(visibleCollisions, showCollisions);
         if (showCollisions || !visibleCollisions.empty()) collisionDebug.Draw(world, camera, width, height, &visibleCollisions, showCollisions);
         for (const auto& object : softBodies)
             if (object.showMesh) collisionDebug.DrawSoft(object.body->GetMesh(), camera, width, height);
@@ -179,6 +196,7 @@ public:
         for (const auto& body : bodies)
             if (picker.GetSelected() == body.body->GetActor())
                 outline.Draw(models.Get(body.body->GetModelType()), camera, width, height, body.body->GetMatrix());
+        if (externalOutline && picker.GetSelected()) externalOutline(outline, camera, width, height, picker.GetSelected());
         frameDrawMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - drawStarted).count();
     }
     bool Select(glm::vec3 origin, glm::vec3 direction)
@@ -187,25 +205,91 @@ public:
         ReleaseDrag();
         return hit;
     }
-    RigidBody* GetSelectedBody()
+    struct Selection
     {
-        for (auto& object : bodies) if (object.body->GetActor() == picker.GetSelected()) return object.body.get();
-        return nullptr;
+        RigidBody* body = nullptr;
+        SoftBody* soft = nullptr;
+        Material* material = nullptr;
+        bool* mesh = nullptr;
+        std::uint64_t id = 0;
+        physx::PxRigidDynamic* actor = nullptr;
+        ModelType type = ModelType::Box;
+        bool external = false;
+    };
+
+    Selection GetSelection()
+    {
+        if (selectedSoft)
+        {
+            for (auto& object : softBodies)
+                if (object.body.get() == selectedSoft)
+                    return { nullptr,object.body.get(),&object.material,&object.showMesh,object.id,nullptr,object.body->GetModelType(),false };
+            return {};
+        }
+        auto* actor = picker.GetSelected();
+        if (actor)
+            for (auto& object : bodies)
+                if (object.body->GetActor() == actor)
+                    return { object.body.get(),nullptr,&object.material,&object.showMesh,object.id,const_cast<physx::PxRigidDynamic*>(actor->is<physx::PxRigidDynamic>()),object.body->GetModelType(),false };
+        if (actor && externalSelection)
+        {
+            ModelType type = ModelType::Box;
+            bool* mesh = nullptr;
+            std::uint64_t id = 0;
+            if (externalSelection(actor, type, mesh, id)) return { nullptr,nullptr,nullptr,mesh,id,const_cast<physx::PxRigidDynamic*>(actor->is<physx::PxRigidDynamic>()),type,true };
+        }
+        return {};
     }
-    SoftBody* GetSelectedSoftBody() { return selectedSoft; }
-    bool GetSpawnSoft() const { return spawnSoft; }
-    void SetSpawnSoft(bool value) { spawnSoft = value && SoftBodiesAvailable(); }
+
+    void SetExternalRigidHandlers(
+        std::function<bool(const physx::PxRigidActor*, ModelType&, bool*&, std::uint64_t&)> selection,
+        std::function<void(std::vector<const physx::PxRigidActor*>&, bool)> collisions,
+        std::function<void(OutlineEffect&, const Camera&, int, int, const physx::PxRigidActor*)> drawOutline,
+        std::function<void(bool)> setMeshes)
+    {
+        externalSelection = std::move(selection);
+        externalCollisions = std::move(collisions);
+        externalOutline = std::move(drawOutline);
+        externalSetMeshes = std::move(setMeshes);
+    }
+
+    void ForgetActor(const physx::PxRigidActor* actor) { picker.Forget(actor); }
+    void ClearRigidSelection() { picker.Clear(); }
+
+    std::uint64_t GetVersion() const { return version; }
+
+    RigidBody* GetSelectedBody() { return GetSelection().body; }
+    SoftBody* GetSelectedSoftBody() { return GetSelection().soft; }
+    bool GetSpawnSoft() const { return spawnType == 1; }
+    void SetSpawnSoft(bool value) { spawnType = value && SoftBodiesAvailable() ? 1 : 0; }
+    int GetSpawnType() const { return spawnType; }
+    void SetSpawnType(int value)
+    {
+        if (value < 0 || value > 2) throw std::invalid_argument("Invalid spawn type.");
+        spawnType = value == 1 && !SoftBodiesAvailable() ? 0 : value;
+    }
+    float GetLaunchSpeed() const { return launchSpeed; }
+    float GetLaunchScale() const { return launchScale; }
+    void SetLaunchSettings(float speed, float scale)
+    {
+        if (std::isfinite(speed)) launchSpeed = std::clamp(speed, 0.0f, 100.0f);
+        if (std::isfinite(scale)) launchScale = std::clamp(scale, 0.1f, 10.0f);
+    }
     bool UsesGpu() const { return world.GetCuda() != nullptr; }
+    PhysicsWorld& GetPhysicsWorld() { return world; }
     void RequestGpu(bool value) { requestedMode = value ? 1 : 0; }
     int GetRequestedMode() const { return requestedMode; }
+    int GetSceneIndex() const { return sceneIndex; }
+    void SetSceneIndex(int value)
+    {
+        if (value < 0 || value > 1) throw std::invalid_argument("Invalid scene index.");
+        if (sceneIndex == value) return;
+        sceneIndex = value;
+        Reset();
+    }
     bool SoftBodiesAvailable() const { return world.GetCuda() != nullptr; }
     std::size_t GetSoftBodyCount() const { return softBodies.size(); }
-    Material* GetSelectedMaterial()
-    {
-        if (selectedSoft) for (auto& object : softBodies) if (object.body.get() == selectedSoft) return &object.material;
-        for (auto& object : bodies) if (object.body->GetActor() == picker.GetSelected()) return &object.material;
-        return nullptr;
-    }
+    Material* GetSelectedMaterial() { return GetSelection().material; }
     void DeleteSelected()
     {
         if (selectedSoft)
@@ -225,27 +309,17 @@ public:
         if (static_cast<int>(type) < 0 || type >= ModelType::Count) throw std::invalid_argument("Invalid model type.");
         selectedType = type;
     }
-    bool GetShowCollisions() const
-    {
-        if (!showCollisions) return false;
-        for (const auto& object : bodies) if (!object.showMesh) return false;
-        for (const auto& object : softBodies) if (!object.showMesh) return false;
-        return true;
-    }
+    bool GetShowCollisions() const { return showCollisions; }
 
     void SetShowCollisions(bool value)
     {
         showCollisions = value;
         for (auto& object : bodies) object.showMesh = value;
         for (auto& object : softBodies) object.showMesh = value;
+        if (externalSetMeshes) externalSetMeshes(value);
     }
 
-    bool* GetSelectedMeshVisibility()
-    {
-        if (selectedSoft) for (auto& object : softBodies) if (object.body.get() == selectedSoft) return &object.showMesh;
-        for (auto& object : bodies) if (object.body->GetActor() == picker.GetSelected()) return &object.showMesh;
-        return nullptr;
-    }
+    bool* GetSelectedMeshVisibility() { return GetSelection().mesh; }
 
     bool BeginDrag(glm::vec3 origin, glm::vec3 direction)
     {
@@ -267,7 +341,7 @@ public:
     }
     bool IsPaused() const { return paused; }
     void SingleStep() { SetPaused(true); world.SingleStep(); }
-    std::size_t GetBodyCount() const { return bodies.size(); }
+    std::size_t GetBodyCount() const { return bodies.size() + 1; }
 
     unsigned int GetSoftIterations() const { return softIterations; }
     bool GetSoftSelfCollision() const { return softSelfCollision; }
@@ -295,10 +369,10 @@ public:
         BuildTest(stacked, count, singleColumn);
     }
 
-    void BuildTest(bool stacked, int count, bool singleColumn = false)
+    void BuildTest(bool stacked, int count, bool singleColumn = false, const std::function<void()>& clearDestructibles = {}, const std::function<void(ModelType, glm::vec3, float)>& spawnDestructible = {})
     {
         auto bounds = physx::PxBounds3::empty();
-        if (spawnSoft)
+        if (spawnType == 1)
         {
             if (!SoftBodiesAvailable()) return;
             auto* cooked = softModels.Get(selectedType, softResolution)->getCollisionMesh();
@@ -310,17 +384,21 @@ public:
             for (const auto& vertex : model.vertices) bounds.include(physx::PxVec3(vertex.x, vertex.y, vertex.z));
             if (selectedType == ModelType::Plane) bounds.minimum.y = -0.04f;
         }
+        bounds.minimum *= launchScale;
+        bounds.maximum *= launchScale;
         auto size = bounds.maximum - bounds.minimum;
-        ReleaseDrag(); picker.Clear(); selectedSoft = nullptr;
+        ClearSelection();
         softBodies.clear(); bodies.clear(); world.ClearAccumulator();
+        if (clearDestructibles) clearDestructibles();
         count = std::max(count, 1);
         int x = 0, z = 0, dx = 1, dz = 0, length = 1, steps = 0, turns = 0;
         for (int i = 0; i < count; ++i)
         {
             int layer = singleColumn ? i : stacked ? i % 4 : 0;
             glm::vec3 position(x * (size.x + 0.7f), 0.3f - bounds.minimum.y + layer * (size.y + 0.08f), z * (size.z + 0.7f));
-            if (spawnSoft) AddSoftBody(selectedType, position);
-            else AddBody(selectedType, position);
+            if (spawnType == 1) AddSoftBody(selectedType, position, glm::vec3(0), launchScale);
+            else if (spawnType == 2 && spawnDestructible) spawnDestructible(selectedType, position, launchScale);
+            else AddBody(selectedType, position, glm::vec3(0), glm::vec3(launchScale));
             if (!singleColumn && (!stacked || i % 4 == 3))
             {
                 x += dx; z += dz;
@@ -336,36 +414,35 @@ public:
     }
 
 private:
-    bool FindSoftSpawn(glm::vec3 origin, glm::vec3 direction, glm::vec3& position)
+    float GetLaunchRadius() const
     {
-        using namespace physx;
-        auto* mesh = softModels.Get(selectedType, softResolution)->getCollisionMesh();
-        auto local = PxBounds3::empty();
-        for (PxU32 i = 0; i < mesh->getNbVertices(); ++i) local.include(mesh->getVertices()[i]);
-        const PxVec3 margin(0.08f);
-        PxQueryFilterData filter(PxQueryFlag::eSTATIC | PxQueryFlag::eDYNAMIC | PxQueryFlag::eANY_HIT);
-        for (int attempt = 0; attempt < 200; ++attempt)
-        {
-            position = origin + direction * (2.0f + 0.25f * attempt);
-            PxVec3 offset(position.x, position.y, position.z);
-            PxBounds3 bounds(local.minimum + offset - margin, local.maximum + offset + margin);
-            bool occupied = false;
-            for (const auto& object : softBodies)
-            {
-                if (bounds.intersects(object.body->GetBounds())) { occupied = true; break; }
-            }
-            if (occupied) continue;
-            PxOverlapBuffer hit;
-            if (world.GetScene().overlap(PxBoxGeometry(bounds.getExtents()), PxTransform(bounds.getCenter()), hit, filter)) continue;
-            return true;
-        }
-        return false;
+        ModelData model = ModelBuilder::Create(selectedType);
+        float radiusSquared = 0.0f;
+        for (const Vertex& vertex : model.vertices) radiusSquared = std::max(radiusSquared, vertex.x * vertex.x + vertex.y * vertex.y + vertex.z * vertex.z);
+        return std::sqrt(radiusSquared) * launchScale;
+    }
+
+    glm::vec3 FindLaunchPosition(glm::vec3 origin, glm::vec3 direction, float radius) const
+    {
+        return origin + direction * (radius + 0.25f);
+    }
+
+    void ClearSelection()
+    {
+        ReleaseDrag();
+        picker.Clear();
+        selectedSoft = nullptr;
+        leftWasDown = middleWasDown = true;
+        firing = false;
+        world.ClearAccumulator();
+        version = ++nextVersion;
     }
 
     bool BeginSelection(glm::vec3 origin, glm::vec3 direction)
     {
         ReleaseDrag();
         selectedSoft = nullptr;
+        picker.Clear();
         float rayLength = glm::length(direction);
         if (!std::isfinite(rayLength) || rayLength < 0.000001f) return false;
         direction /= rayLength;
@@ -402,12 +479,14 @@ private:
         std::unique_ptr<SoftBody> body;
         Material material;
         bool showMesh = false;
+        std::uint64_t id = 0;
     };
     struct SceneObject
     {
         std::unique_ptr<RigidBody> body;
         Material material;
         bool showMesh = false;
+        std::uint64_t id = 0;
     };
 
     static Material DefaultMaterial(ModelType type)
@@ -425,7 +504,19 @@ private:
         }
     }
 
+    void SetGroundHalfExtent(float halfExtent)
+    {
+        physx::PxActor* actors[1]{};
+        if (world.GetScene().getActors(physx::PxActorTypeFlag::eRIGID_STATIC, actors, 1) != 1) throw std::runtime_error("Cannot find PhysX ground actor.");
+        auto* rigidGround = static_cast<physx::PxRigidStatic*>(actors[0]);
+        physx::PxShape* shapes[1]{};
+        if (rigidGround->getShapes(shapes, 1) != 1) throw std::runtime_error("Cannot find PhysX ground shape.");
+        shapes[0]->setGeometry(physx::PxBoxGeometry(halfExtent, 0.5f, halfExtent));
+    }
+
     // 成员按声明的相反顺序销毁，必须让 bodies 先于 world 销毁。
+    inline static std::uint64_t nextObject = 0, nextVersion = 0;
+    std::uint64_t version = 0;
     PhysicsWorld world;
     SoftMeshLibrary softModels{ world.GetPhysics() };
     ModelLibrary models;
@@ -441,7 +532,9 @@ private:
     bool softSelfCollision = false;
     double frameSimulationMs = 0, frameSyncMs = 0, frameDrawMs = 0;
     int requestedMode = -1;
-    bool spawnSoft = false;
+    int sceneIndex = 0;
+    int spawnType = 0;
+    float launchSpeed = 20.0f, launchScale = 1.0f;
     MousePicker picker; // 后声明，先释放关节，再销毁bodies。
     bool paused = false;
     bool showCollisions = false;
@@ -451,4 +544,8 @@ private:
     bool leftWasDown = false;
     unsigned int focusRevision = 0;
     ModelType selectedType = ModelType::Box;
+    std::function<bool(const physx::PxRigidActor*, ModelType&, bool*&, std::uint64_t&)> externalSelection;
+    std::function<void(std::vector<const physx::PxRigidActor*>&, bool)> externalCollisions;
+    std::function<void(OutlineEffect&, const Camera&, int, int, const physx::PxRigidActor*)> externalOutline;
+    std::function<void(bool)> externalSetMeshes;
 };

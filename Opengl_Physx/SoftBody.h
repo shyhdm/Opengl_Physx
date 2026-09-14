@@ -2,18 +2,19 @@
 #include "PhysicsWorld.h"
 #include "SoftMeshLibrary.h"
 #include "SoftGpuBuffer.h"
-#include "SoftDragGpu.h"
+#include <PxDeformableAttachment.h>
 #include <cudamanager/PxCudaContext.h>
 #include <extensions/PxCudaHelpersExt.h>
 #include <map>
 #include <array>
 #include <cfloat>
+#include <algorithm>
 
 class SoftBody
 {
 public:
     SoftBody(PhysicsWorld& world, SoftMeshLibrary& library, ModelType type, glm::vec3 position, glm::vec3 velocity = glm::vec3(0), float scale = 1, unsigned int resolution = 4)
-        : world(world), type(type), cuda(world.GetCuda())
+        : world(world), type(type), cuda(world.GetCuda()), bodyScale(scale)
     {
         using namespace physx;
         if (!cuda) throw std::runtime_error("PhysX GPU is unavailable. Copy PhysXGpu_64.dll beside the executable.");
@@ -22,9 +23,10 @@ public:
         PxShape* shape = nullptr;
         try
         {
-            auto* cooked = library.Get(type, resolution);
-            material = world.GetPhysics().createDeformableVolumeMaterial(20000.0f, 0.35f, 0.2f, 0.05f);
+            auto* cooked = library.Get(type, resolution, scale);
+            material = world.AcquireSoftMaterial();
             if (!material) throw std::runtime_error("Cannot create soft-body material.");
+            ApplyMaterial();
             actor = world.GetPhysics().createDeformableVolume(*cuda);
             if (!actor) throw std::runtime_error("Cannot create soft body.");
             PxTetrahedronMeshGeometry geometry(cooked->getCollisionMesh());
@@ -35,13 +37,16 @@ public:
                 throw std::runtime_error("Cannot attach soft simulation mesh.");
             actor->setSolverIterationCounts(8);
             actor->setDeformableBodyFlag(PxDeformableBodyFlag::eDISABLE_SELF_COLLISION, true);
-            world.GetScene().addActor(*actor);
+            float initialSpeed = PxVec3(velocity.x, velocity.y, velocity.z).magnitude();
+            actor->setMaxLinearVelocity(std::max(20.0f, initialSpeed * 1.25f));
+            actor->setMaxDepenetrationVelocity(10.0f);
             PxDeformableVolumeExt::allocateAndInitializeHostMirror(*actor, cuda, simPositions, velocities, positions, rest);
             if (!simPositions || !velocities || !positions || !rest) throw std::runtime_error("Cannot allocate soft-body buffers.");
-            PxDeformableVolumeExt::transform(*actor, PxTransform(PxVec3(position.x, position.y, position.z)), scale, simPositions, velocities, positions, rest);
+            PxDeformableVolumeExt::transform(*actor, PxTransform(PxVec3(position.x, position.y, position.z)), 1.0f, simPositions, velocities, positions, rest);
             PxDeformableVolumeExt::updateMass(*actor, 100.0f, 50.0f, simPositions);
             for (PxU32 i = 0; i < actor->getSimulationMesh()->getNbVertices(); ++i) velocities[i] = PxVec4(velocity.x, velocity.y, velocity.z, 0);
             PxDeformableVolumeExt::copyToDevice(*actor, PxDeformableVolumeDataFlag::eALL, simPositions, velocities, positions, rest);
+            world.GetScene().addActor(*actor);
             BuildSurface();
             UpdateSurface();
             mesh = std::make_unique<Mesh>(vertices, indices);
@@ -80,6 +85,16 @@ public:
     const std::vector<Vertex>& GetVertices() const { const_cast<SoftBody*>(this)->ReadForPicking(); return vertices; }
     const std::vector<unsigned int>& GetIndices() const { return indices; }
     physx::PxDeformableVolumeMaterial& GetPhysicalMaterial() { return *material; }
+    float GetBaseStiffness() const { return baseStiffness; }
+
+    void SetMaterial(float stiffness, float poisson)
+    {
+        if (!std::isfinite(stiffness) || !std::isfinite(poisson)) return;
+        baseStiffness = std::clamp(stiffness, 0.001f, 10.0f);
+        ApplyMaterial();
+        material->setPoissons(std::clamp(poisson, 0.0f, 0.49f));
+        actor->setWakeCounter(0.4f);
+    }
 
     void SetSimulationSettings(unsigned int iterations, bool selfCollision)
     {
@@ -121,6 +136,7 @@ public:
         }
         dragDistance = distance;
         dragTarget = dragDesired = origin + direction * distance;
+        dragMass = 0;
         std::vector<std::pair<float, PxU32>> nearest;
         for (PxU32 i = 0; i < count; ++i)
         {
@@ -131,58 +147,81 @@ public:
         }
         if (nearest.empty()) return;
         std::sort(nearest.begin(), nearest.end());
-        glm::vec3 minimum(FLT_MAX), maximum(-FLT_MAX);
-        for (PxU32 i = 0; i < count; ++i)
-        {
-            auto& p = dragPositions[i]; glm::vec3 v(p.x, p.y, p.z);
-            minimum = glm::min(minimum, v); maximum = glm::max(maximum, v);
-        }
-        float radius = std::max(0.15f, glm::length(maximum - minimum) * 0.28f);
-        float limit = nearest.front().first + radius * radius;
         std::vector<PxU32> ids;
         std::vector<PxVec4> offsets;
-        dragFloor = 0.04f;
-        for (auto& candidate : nearest)
+        float patchRadiusSquared = 0.0001f;
+        const std::size_t pointCount = std::min<std::size_t>(16, nearest.size());
+        for (std::size_t i = 0; i < pointCount; ++i)
         {
-            if (ids.size() >= 64 || candidate.first > limit) break;
+            auto& candidate = nearest[i];
             auto& p = dragPositions[candidate.second];
             auto offset = glm::vec3(p.x, p.y, p.z) - dragTarget;
-            float weight = 0.5f + 0.5f * (1.0f - std::sqrt(candidate.first / limit));
             ids.push_back(candidate.second);
-            offsets.emplace_back(offset.x, offset.y, offset.z, weight);
-            dragFloor = std::max(dragFloor, 0.04f - offset.y);
+            offsets.emplace_back(offset.x, offset.y, offset.z, 0.0f);
+            dragMass += 1.0f / p.w;
+            patchRadiusSquared = std::max(patchRadiusSquared, candidate.first);
         }
-        dragGpu = std::make_unique<SoftDragGpu>(*cuda, ids, offsets);
+        try
+        {
+            PxTransform pose(PxVec3(dragTarget.x, dragTarget.y, dragTarget.z));
+            dragAnchor = world.GetPhysics().createRigidDynamic(pose);
+            if (!dragAnchor) throw std::runtime_error("Cannot create soft drag anchor.");
+            float mass = std::max(dragMass, 0.001f);
+            dragAnchor->setMass(mass);
+            dragAnchor->setMassSpaceInertiaTensor(PxVec3(std::max(0.4f * mass * patchRadiusSquared, 0.00001f)));
+            dragAnchor->setActorFlag(PxActorFlag::eDISABLE_GRAVITY, true);
+            dragAnchor->setMaxLinearVelocity(100.0f);
+            dragAnchor->setMaxAngularVelocity(20.0f);
+            world.GetScene().addActor(*dragAnchor);
+            dragJoint = PxD6JointCreate(world.GetPhysics(), nullptr, pose, dragAnchor, PxTransform(PxIdentity));
+            if (!dragJoint) throw std::runtime_error("Cannot create soft drag joint.");
+            for (int axis = 0; axis < 6; ++axis) dragJoint->setMotion(static_cast<PxD6Axis::Enum>(axis), PxD6Motion::eFREE);
+            PxDeformableAttachmentData desc;
+            desc.actor[0] = actor;
+            desc.type[0] = PxDeformableAttachmentTargetType::eVERTEX;
+            desc.indices[0].data = ids.data();
+            desc.indices[0].count = static_cast<PxU32>(ids.size());
+            desc.actor[1] = dragAnchor;
+            desc.type[1] = PxDeformableAttachmentTargetType::eRIGID;
+            desc.coords[1].data = offsets.data();
+            desc.coords[1].count = static_cast<PxU32>(offsets.size());
+            dragAttachment = world.GetPhysics().createDeformableAttachment(desc);
+            if (!dragAttachment) throw std::runtime_error("Cannot attach soft drag region.");
+            UpdateDrag(1.0f / 60.0f);
+        }
+        catch (...) { StopDrag(); throw; }
         actor->setWakeCounter(0.4f);
     }
 
     void MoveDrag(glm::vec3 origin, glm::vec3 direction)
     {
         auto target = origin + direction * dragDistance;
-        if (std::isfinite(target.x) && std::isfinite(target.y) && std::isfinite(target.z))
-        {
-            target.y = std::max(target.y, dragFloor);
-            dragDesired = target;
-        }
+        if (std::isfinite(target.x) && std::isfinite(target.y) && std::isfinite(target.z)) dragDesired = target;
     }
 
     void UpdateDrag(float deltaTime)
     {
         if (!IsDragging() || !std::isfinite(deltaTime) || deltaTime <= 0) return;
-        deltaTime = std::min(deltaTime, 1.0f / 60.0f);
-        auto delta = dragDesired - dragTarget;
-        float distance = glm::length(delta);
-        if (distance > 0.00001f) dragTarget += delta * (std::min(distance, 12.0f * deltaTime) / distance);
-        dragGpu->Apply(*actor, dragTarget.x, dragTarget.y, dragTarget.z, deltaTime);
+        dragTarget = dragDesired;
+        float mass = dragMass + dragAnchor->getMass();
+        physx::PxD6JointDrive drive(120.0f * mass, 22.0f * mass, 200.0f * mass);
+        dragJoint->setDrive(physx::PxD6Drive::eX, drive);
+        dragJoint->setDrive(physx::PxD6Drive::eY, drive);
+        dragJoint->setDrive(physx::PxD6Drive::eZ, drive);
+        dragJoint->setLocalPose(physx::PxJointActorIndex::eACTOR0, physx::PxTransform(physx::PxVec3(dragTarget.x, dragTarget.y, dragTarget.z)));
+        dragAnchor->wakeUp();
+        actor->setWakeCounter(0.4f);
     }
 
     void StopDrag()
     {
-        dragGpu.reset();
+        if (dragAttachment) { dragAttachment->release(); dragAttachment = nullptr; }
+        if (dragJoint) { dragJoint->release(); dragJoint = nullptr; }
+        if (dragAnchor) { dragAnchor->release(); dragAnchor = nullptr; }
         if (actor) actor->setWakeCounter(0.4f);
     }
 
-    bool IsDragging() const { return dragGpu != nullptr; }
+    bool IsDragging() const { return dragAttachment && dragJoint; }
 
     bool Raycast(glm::vec3 origin, glm::vec3 direction, float& distance) const
     {
@@ -208,13 +247,17 @@ private:
     PhysicsWorld& world;
     ModelType type;
     physx::PxCudaContextManager* cuda = nullptr;
+    float bodyScale = 1.0f;
+    float baseStiffness = 0.2f;
     physx::PxDeformableVolume* actor = nullptr;
     physx::PxDeformableVolumeMaterial* material = nullptr;
     physx::PxVec4* positions = nullptr;
     physx::PxVec4* dragPositions = nullptr;
-    std::unique_ptr<SoftDragGpu> dragGpu;
+    physx::PxRigidDynamic* dragAnchor = nullptr;
+    physx::PxD6Joint* dragJoint = nullptr;
+    physx::PxDeformableAttachment* dragAttachment = nullptr;
     glm::vec3 dragTarget = glm::vec3(0), dragDesired = glm::vec3(0);
-    float dragDistance = 0, dragFloor = 0.04f;
+    float dragDistance = 0, dragMass = 0;
     std::vector<Vertex> vertices;
     std::vector<unsigned int> indices;
     std::unique_ptr<Mesh> mesh;
@@ -223,6 +266,10 @@ private:
     unsigned long long revision = 0, cpuRevision = 0, birthRevision = 0;
 
     void Free(physx::PxVec4* memory) { if (memory) PX_EXT_PINNED_MEMORY_FREE(*cuda, memory); }
+    void ApplyMaterial()
+    {
+        material->setYoungsModulus(baseStiffness * 100000.0f * bodyScale);
+    }
     void Release()
     {
         StopDrag();
@@ -231,7 +278,7 @@ private:
         if (actor) { actor->release(); actor = nullptr; }
         Free(positions); positions = nullptr;
         Free(dragPositions); dragPositions = nullptr;
-        if (material) { material->release(); material = nullptr; }
+        if (material) { world.ReturnSoftMaterial(material); material = nullptr; }
     }
     void ReadForPicking()
     {

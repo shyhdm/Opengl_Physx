@@ -3,22 +3,46 @@
 #include "Scene.h"
 #include "ImGuiLayer.h"
 #include "ImGuiPanel.h"
+#include "BlastContext.h"
+#include "BlastLibrary.h"
+#include "BlastScene.h"
+#include "DebugOverlay.h"
+#include "BlastChunkRenderer.h"
 #include <exception>
+#include <memory>
 
 int main()
 {
     try
     {
-        Window window(1280, 720, "OpenGL");
+        BlastContext blast;
+        Window window(1280, 720, "OpenGL + PhysX + Blast");
         GL::Load();
         Camera camera;
         camera.position = glm::vec3(7.0f, 5.0f, 10.0f);
         camera.yaw = -125.0f;
         camera.pitch = -18.0f;
         auto scene = std::make_unique<Scene>();
+        auto blastLibrary = std::make_unique<BlastLibrary>();
+        auto blastScene = std::make_unique<BlastScene>(blast, *blastLibrary, scene->GetPhysicsWorld());
+        auto blastRenderer = std::make_unique<BlastChunkRenderer>(*blastLibrary);
+        auto connectBlastSelection = [&]()
+            {
+                scene->SetExternalRigidHandlers(
+                    [&](const physx::PxRigidActor* actor, ModelType& type, bool*& mesh, std::uint64_t& id) {return blastScene->Resolve(actor, type, mesh, id); },
+                    [&](std::vector<const physx::PxRigidActor*>& actors, bool all) {blastScene->AppendCollisionActors(actors, all); },
+                    [&](OutlineEffect& outline, const Camera& view, int width, int height, const physx::PxRigidActor* actor) {blastRenderer->DrawOutline(outline, *blastScene, view, width, height, actor); },
+                    [&](bool value) {blastScene->SetShowCollisions(value); });
+            };
+        connectBlastSelection();
         ImGuiLayer gui(window);
         ImGuiPanel panel(gui.HasChineseFont());
+        DebugOverlay debugOverlay;
         double lastTime = glfwGetTime();
+        bool previousF1Key = false;
+        bool showGui = true;
+        float displayedFps = 0.0f;
+        double nextStatsRefresh = 0.0;
 
         while (!window.ShouldClose())
         {
@@ -27,33 +51,56 @@ int main()
             float deltaTime = static_cast<float>(currentTime - lastTime);
             lastTime = currentTime;
             if (!ready) continue;
-
             gui.BeginFrame();
-            panel.Draw(*scene);
-            bool mouseBlocked = gui.CapturesMouse();
+            bool refreshStats = currentTime >= nextStatsRefresh;
+            if (refreshStats)
+            {
+                displayedFps = ImGui::GetIO().Framerate;
+                nextStatsRefresh = currentTime + 0.5;
+            }
+            bool f1Key = window.IsKeyDown(GLFW_KEY_F1);
+            if (f1Key && !previousF1Key) showGui = !showGui;
+            previousF1Key = f1Key;
+            bool mouseBlocked = showGui && gui.CapturesMouse();
             camera.Update(window, deltaTime, mouseBlocked);
-            scene->HandleInput(window, camera, mouseBlocked);
+            scene->HandleInput(window, camera, mouseBlocked, [&](ModelType type, glm::vec3 position, glm::vec3 velocity, float scale)
+                {
+                    blastScene->Spawn(type, position, velocity, scale);
+                });
+            if (showGui) panel.Draw(*scene, displayedFps, [&]() {scene->ClearRigidSelection(); blastScene->Clear(); }, [&](ModelType type, glm::vec3 position, float scale) {blastScene->Spawn(type, position, glm::vec3(0), scale); });
             if (window.IsKeyDown(GLFW_KEY_ESCAPE)) window.RequestClose();
+            blastScene->BeforePhysics();
             scene->Update(deltaTime);
-
+            blastScene->AfterPhysics([&](const physx::PxRigidActor* actor) {scene->ForgetActor(actor); });
             int width = 0, height = 0;
             window.GetFramebufferSize(width, height);
-            scene->Draw(camera, width, height);
+            scene->Draw(camera, width, height, [&](ModelRenderer& renderer, bool shadowPass)
+                {
+                    blastRenderer->Draw(renderer, *blastScene, shadowPass);
+                });
+            debugOverlay.Draw(*scene, blastScene.get(), displayedFps, refreshStats);
             gui.Render();
             window.Present();
             if (scene->GetRequestedMode() >= 0)
             {
+                int activeScene = scene->GetSceneIndex();
                 bool useGpu = scene->GetRequestedMode() == 1;
+                scene->ClearRigidSelection();
+                blastScene.reset();
                 scene.reset();
                 scene = std::make_unique<Scene>(useGpu);
-                panel.ResetFps();
+                scene->SetSceneIndex(activeScene);
+                blastScene = std::make_unique<BlastScene>(blast, *blastLibrary, scene->GetPhysicsWorld());
+                connectBlastSelection();
                 lastTime = glfwGetTime();
             }
         }
+        scene->ClearRigidSelection();
+        blastScene->Clear();
     }
     catch (const std::exception& error)
     {
-        MessageBoxA(nullptr, error.what(), "OpenGL + PhysX Error", MB_OK | MB_ICONERROR);
+        OutputDebugStringA(error.what());
         return 1;
     }
     return 0;

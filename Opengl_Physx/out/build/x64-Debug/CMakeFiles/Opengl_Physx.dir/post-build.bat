@@ -1,0 +1,42 @@
+@echo off
+cd /D D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\out\build\x64-Debug || (set FAIL_LINE=2& goto :ABORT)
+"C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_directory D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/Assets D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/out/build/x64-Debug/bin/Assets || (set FAIL_LINE=3& goto :ABORT)
+"C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_if_different D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/../packages/glfw.3.4.0/build/native/bin/dynamic/v143/x64/glfw3.dll D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/out/build/x64-Debug/bin || (set FAIL_LINE=4& goto :ABORT)
+cd /D D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\out\build\x64-Debug || (set FAIL_LINE=5& goto :ABORT)
+"C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_if_different D:/Dev/.cpp/_Library/PhysX-main/physx/bin/win.x86_64.vc143.md/release/PVDRuntime_64.dll D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/out/build/x64-Debug/bin || (set FAIL_LINE=6& goto :ABORT)
+cd /D D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\out\build\x64-Debug || (set FAIL_LINE=7& goto :ABORT)
+"C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_if_different D:/Dev/.cpp/_Library/PhysX-main/physx/bin/win.x86_64.vc143.md/release/PhysXCommon_64.dll D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/out/build/x64-Debug/bin || (set FAIL_LINE=8& goto :ABORT)
+cd /D D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\out\build\x64-Debug || (set FAIL_LINE=9& goto :ABORT)
+"C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_if_different D:/Dev/.cpp/_Library/PhysX-main/physx/bin/win.x86_64.vc143.md/release/PhysXCooking_64.dll D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/out/build/x64-Debug/bin || (set FAIL_LINE=10& goto :ABORT)
+cd /D D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\out\build\x64-Debug || (set FAIL_LINE=11& goto :ABORT)
+"C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_if_different D:/Dev/.cpp/_Library/PhysX-main/physx/bin/win.x86_64.vc143.md/release/PhysXFoundation_64.dll D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/out/build/x64-Debug/bin || (set FAIL_LINE=12& goto :ABORT)
+cd /D D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\out\build\x64-Debug || (set FAIL_LINE=13& goto :ABORT)
+"C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_if_different D:/Dev/.cpp/_Library/PhysX-main/physx/bin/win.x86_64.vc143.md/release/PhysXGpu_64.dll D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/out/build/x64-Debug/bin || (set FAIL_LINE=14& goto :ABORT)
+cd /D D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\out\build\x64-Debug || (set FAIL_LINE=15& goto :ABORT)
+"C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_if_different D:/Dev/.cpp/_Library/PhysX-main/physx/bin/win.x86_64.vc143.md/release/PhysX_64.dll D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/out/build/x64-Debug/bin || (set FAIL_LINE=16& goto :ABORT)
+cd /D D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\out\build\x64-Debug || (set FAIL_LINE=17& goto :ABORT)
+"C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_if_different D:/Dev/.cpp/_Library/PhysX-main/physx/bin/win.x86_64.vc143.md/release/freeglut.dll D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/out/build/x64-Debug/bin || (set FAIL_LINE=18& goto :ABORT)
+cd /D D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\out\build\x64-Debug || (set FAIL_LINE=19& goto :ABORT)
+"C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_if_different D:/Dev/.cpp/_Library/PhysX-main/blast/_build/windows-x86_64/release/blast-sdk/bin/NvBlast.dll D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/out/build/x64-Debug/bin || (set FAIL_LINE=20& goto :ABORT)
+cd /D D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\out\build\x64-Debug || (set FAIL_LINE=21& goto :ABORT)
+"C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_if_different D:/Dev/.cpp/_Library/PhysX-main/blast/_build/windows-x86_64/release/blast-sdk/bin/NvBlastExtAssetUtils.dll D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/out/build/x64-Debug/bin || (set FAIL_LINE=22& goto :ABORT)
+cd /D D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\out\build\x64-Debug || (set FAIL_LINE=23& goto :ABORT)
+"C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_if_different D:/Dev/.cpp/_Library/PhysX-main/blast/_build/windows-x86_64/release/blast-sdk/bin/NvBlastExtAuthoring.dll D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/out/build/x64-Debug/bin || (set FAIL_LINE=24& goto :ABORT)
+cd /D D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\out\build\x64-Debug || (set FAIL_LINE=25& goto :ABORT)
+"C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_if_different D:/Dev/.cpp/_Library/PhysX-main/blast/_build/windows-x86_64/release/blast-sdk/bin/NvBlastExtSerialization.dll D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/out/build/x64-Debug/bin || (set FAIL_LINE=26& goto :ABORT)
+cd /D D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\out\build\x64-Debug || (set FAIL_LINE=27& goto :ABORT)
+"C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_if_different D:/Dev/.cpp/_Library/PhysX-main/blast/_build/windows-x86_64/release/blast-sdk/bin/NvBlastExtShaders.dll D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/out/build/x64-Debug/bin || (set FAIL_LINE=28& goto :ABORT)
+cd /D D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\out\build\x64-Debug || (set FAIL_LINE=29& goto :ABORT)
+"C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_if_different D:/Dev/.cpp/_Library/PhysX-main/blast/_build/windows-x86_64/release/blast-sdk/bin/NvBlastExtStress.dll D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/out/build/x64-Debug/bin || (set FAIL_LINE=30& goto :ABORT)
+cd /D D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\out\build\x64-Debug || (set FAIL_LINE=31& goto :ABORT)
+"C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_if_different D:/Dev/.cpp/_Library/PhysX-main/blast/_build/windows-x86_64/release/blast-sdk/bin/NvBlastExtTkSerialization.dll D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/out/build/x64-Debug/bin || (set FAIL_LINE=32& goto :ABORT)
+cd /D D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\out\build\x64-Debug || (set FAIL_LINE=33& goto :ABORT)
+"C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_if_different D:/Dev/.cpp/_Library/PhysX-main/blast/_build/windows-x86_64/release/blast-sdk/bin/NvBlastGlobals.dll D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/out/build/x64-Debug/bin || (set FAIL_LINE=34& goto :ABORT)
+cd /D D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\out\build\x64-Debug || (set FAIL_LINE=35& goto :ABORT)
+"C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_if_different D:/Dev/.cpp/_Library/PhysX-main/blast/_build/windows-x86_64/release/blast-sdk/bin/NvBlastTk.dll D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/out/build/x64-Debug/bin || (set FAIL_LINE=36& goto :ABORT)
+goto :EOF
+
+:ABORT
+set ERROR_CODE=%ERRORLEVEL%
+echo Batch file failed at line %FAIL_LINE% with errorcode %ERRORLEVEL%
+exit /b %ERROR_CODE%

@@ -9,6 +9,7 @@
 #include <memory>
 #include <functional>
 #include <chrono>
+#include <vector>
 
 // 一个程序先创建一个物理世界；刚体必须在世界销毁之前销毁。
 class PhysicsWorld
@@ -96,6 +97,38 @@ public:
 
     void ClearAccumulator() { accumulator = 0; }
 
+    physx::PxDeformableVolumeMaterial* AcquireSoftMaterial()
+    {
+        physx::PxDeformableVolumeMaterial* value = nullptr;
+        if (freeSoftMaterials.empty())
+        {
+            value = physics->createDeformableVolumeMaterial(20000.0f, 0.35f, 0.2f, 0.05f);
+            if (!value) throw std::runtime_error("Cannot create soft-body material.");
+            try
+            {
+                if (freeSoftMaterials.capacity() < softMaterials.size() + 1)
+                    freeSoftMaterials.reserve(std::max<std::size_t>(8, freeSoftMaterials.capacity() * 2));
+                softMaterials.push_back(value);
+            }
+            catch (...) { value->release(); throw; }
+        }
+        else
+        {
+            value = freeSoftMaterials.back();
+            freeSoftMaterials.pop_back();
+            value->setYoungsModulus(20000.0f);
+            value->setPoissons(0.35f);
+            value->setDynamicFriction(0.2f);
+            value->setElasticityDamping(0.05f);
+        }
+        return value;
+    }
+
+    void ReturnSoftMaterial(physx::PxDeformableVolumeMaterial* value)
+    {
+        if (value) freeSoftMaterials.push_back(value);
+    }
+
     physx::PxPhysics& GetPhysics() { return *physics; }
     physx::PxScene& GetScene() { return *scene; }
     physx::PxMaterial& GetMaterial() { return *material; }
@@ -114,6 +147,7 @@ private:
     physx::PxRigidStatic* ground = nullptr;
     std::unique_ptr<CollisionLibrary> collisions;
     physx::PxCudaContextManager* cuda = nullptr;
+    std::vector<physx::PxDeformableVolumeMaterial*> softMaterials, freeSoftMaterials;
     bool extensions = false;
     unsigned long long simulationRevision = 0;
     double lastSimulationMs = 0;
@@ -134,6 +168,9 @@ private:
         if (scene) { scene->release(); scene = nullptr; }
         if (dispatcher) { dispatcher->release(); dispatcher = nullptr; }
         if (material) { material->release(); material = nullptr; }
+        for (auto* value : softMaterials) value->release();
+        softMaterials.clear();
+        freeSoftMaterials.clear();
         collisions.reset();
         if (extensions) { PxCloseExtensions(); extensions = false; }
         if (physics) { physics->release(); physics = nullptr; }

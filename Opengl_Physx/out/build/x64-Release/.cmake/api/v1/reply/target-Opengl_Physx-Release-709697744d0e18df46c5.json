@@ -1,0 +1,606 @@
+{
+	"artifacts" : 
+	[
+		{
+			"path" : "bin/Opengl_Physx.exe"
+		},
+		{
+			"path" : "bin/Opengl_Physx.pdb"
+		}
+	],
+	"backtrace" : 1,
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"add_executable",
+			"target_link_options",
+			"target_link_directories",
+			"target_link_libraries",
+			"target_compile_options",
+			"target_compile_definitions",
+			"target_include_directories",
+			"target_sources"
+		],
+		"files" : 
+		[
+			"CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 26,
+				"parent" : 0
+			},
+			{
+				"command" : 1,
+				"file" : 0,
+				"line" : 41,
+				"parent" : 0
+			},
+			{
+				"command" : 2,
+				"file" : 0,
+				"line" : 59,
+				"parent" : 0
+			},
+			{
+				"command" : 3,
+				"file" : 0,
+				"line" : 60,
+				"parent" : 0
+			},
+			{
+				"command" : 4,
+				"file" : 0,
+				"line" : 40,
+				"parent" : 0
+			},
+			{
+				"command" : 5,
+				"file" : 0,
+				"line" : 39,
+				"parent" : 0
+			},
+			{
+				"command" : 6,
+				"file" : 0,
+				"line" : 43,
+				"parent" : 0
+			},
+			{
+				"command" : 7,
+				"file" : 0,
+				"line" : 37,
+				"parent" : 0
+			}
+		]
+	},
+	"codemodelVersion" : 
+	{
+		"major" : 2,
+		"minor" : 10
+	},
+	"compileGroups" : 
+	[
+		{
+			"compileCommandFragments" : 
+			[
+				{
+					"fragment" : "/DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -std:c++20 -MD"
+				},
+				{
+					"backtrace" : 5,
+					"fragment" : "/utf-8"
+				}
+			],
+			"defines" : 
+			[
+				{
+					"backtrace" : 6,
+					"define" : "GLFW_DLL"
+				},
+				{
+					"backtrace" : 6,
+					"define" : "NOMINMAX"
+				}
+			],
+			"includes" : 
+			[
+				{
+					"backtrace" : 7,
+					"path" : "D:/Dev/.cpp/Opengl_Physx/Opengl_Physx"
+				},
+				{
+					"backtrace" : 7,
+					"path" : "D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/ThirdParty/imgui"
+				},
+				{
+					"backtrace" : 7,
+					"path" : "D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/../packages/glfw.3.4.0/build/native/include"
+				},
+				{
+					"backtrace" : 7,
+					"path" : "D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/../packages/glm.1.0.3/build/native/include"
+				},
+				{
+					"backtrace" : 7,
+					"path" : "D:/Dev/.cpp/_Library/PhysX-main/physx/include"
+				},
+				{
+					"backtrace" : 7,
+					"path" : "D:/Dev/.cpp/_Library/PhysX-main/blast/_build/windows-x86_64/release/blast-sdk/include/globals"
+				},
+				{
+					"backtrace" : 7,
+					"path" : "D:/Dev/.cpp/_Library/PhysX-main/blast/_build/windows-x86_64/release/blast-sdk/include/lowlevel"
+				},
+				{
+					"backtrace" : 7,
+					"path" : "D:/Dev/.cpp/_Library/PhysX-main/blast/_build/windows-x86_64/release/blast-sdk/include/toolkit"
+				},
+				{
+					"backtrace" : 7,
+					"path" : "D:/Dev/.cpp/_Library/PhysX-main/blast/_build/windows-x86_64/release/blast-sdk/include/extensions/assetutils"
+				},
+				{
+					"backtrace" : 7,
+					"path" : "D:/Dev/.cpp/_Library/PhysX-main/blast/_build/windows-x86_64/release/blast-sdk/include/extensions/authoring"
+				},
+				{
+					"backtrace" : 7,
+					"path" : "D:/Dev/.cpp/_Library/PhysX-main/blast/_build/windows-x86_64/release/blast-sdk/include/extensions/authoringCommon"
+				},
+				{
+					"backtrace" : 7,
+					"path" : "D:/Dev/.cpp/_Library/PhysX-main/blast/_build/windows-x86_64/release/blast-sdk/include/extensions/shaders"
+				},
+				{
+					"backtrace" : 7,
+					"path" : "D:/Dev/.cpp/_Library/PhysX-main/blast/_build/windows-x86_64/release/blast-sdk/include/shared/NvFoundation"
+				}
+			],
+			"language" : "CXX",
+			"languageStandard" : 
+			{
+				"backtraces" : 
+				[
+					1
+				],
+				"standard" : "20"
+			},
+			"sourceIndexes" : 
+			[
+				0,
+				1,
+				2,
+				3,
+				4,
+				5,
+				6
+			]
+		}
+	],
+	"id" : "Opengl_Physx::@6890427a1f51a3e7e1df",
+	"link" : 
+	{
+		"commandFragments" : 
+		[
+			{
+				"fragment" : "/DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -MD",
+				"role" : "flags"
+			},
+			{
+				"fragment" : "/machine:x64 /INCREMENTAL:NO",
+				"role" : "flags"
+			},
+			{
+				"fragment" : "/subsystem:windows",
+				"role" : "flags"
+			},
+			{
+				"backtrace" : 2,
+				"fragment" : "/ENTRY:mainCRTStartup",
+				"role" : "flags"
+			},
+			{
+				"backtrace" : 3,
+				"fragment" : "-LIBPATH:D:\\Dev\\.cpp\\_Library\\PhysX-main\\physx\\bin\\win.x86_64.vc143.md\\release",
+				"role" : "libraryPath"
+			},
+			{
+				"backtrace" : 3,
+				"fragment" : "-LIBPATH:D:\\Dev\\.cpp\\_Library\\PhysX-main\\blast\\_build\\windows-x86_64\\release\\blast-sdk\\bin",
+				"role" : "libraryPath"
+			},
+			{
+				"backtrace" : 4,
+				"fragment" : "D:\\Dev\\.cpp\\Opengl_Physx\\Opengl_Physx\\..\\packages\\glfw.3.4.0\\build\\native\\lib\\dynamic\\v143\\x64\\glfw3dll.lib",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 4,
+				"fragment" : "opengl32.lib",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 4,
+				"fragment" : "PhysX_64.lib",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 4,
+				"fragment" : "PhysXCommon_64.lib",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 4,
+				"fragment" : "PhysXFoundation_64.lib",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 4,
+				"fragment" : "PhysXExtensions_static_64.lib",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 4,
+				"fragment" : "PhysXPvdSDK_static_64.lib",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 4,
+				"fragment" : "PhysXCooking_64.lib",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 4,
+				"fragment" : "NvBlast.lib",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 4,
+				"fragment" : "NvBlastGlobals.lib",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 4,
+				"fragment" : "NvBlastTk.lib",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 4,
+				"fragment" : "NvBlastExtAssetUtils.lib",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 4,
+				"fragment" : "NvBlastExtAuthoring.lib",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 4,
+				"fragment" : "NvBlastExtShaders.lib",
+				"role" : "libraries"
+			},
+			{
+				"fragment" : "kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib",
+				"role" : "libraries"
+			}
+		],
+		"language" : "CXX"
+	},
+	"linkLibraries" : 
+	[
+		{
+			"backtrace" : 4,
+			"fragment" : "D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/../packages/glfw.3.4.0/build/native/lib/dynamic/v143/x64/glfw3dll.lib"
+		},
+		{
+			"backtrace" : 4,
+			"fragment" : "opengl32"
+		},
+		{
+			"backtrace" : 4,
+			"fragment" : "PhysX_64"
+		},
+		{
+			"backtrace" : 4,
+			"fragment" : "PhysXCommon_64"
+		},
+		{
+			"backtrace" : 4,
+			"fragment" : "PhysXFoundation_64"
+		},
+		{
+			"backtrace" : 4,
+			"fragment" : "PhysXExtensions_static_64"
+		},
+		{
+			"backtrace" : 4,
+			"fragment" : "PhysXPvdSDK_static_64"
+		},
+		{
+			"backtrace" : 4,
+			"fragment" : "PhysXCooking_64"
+		},
+		{
+			"backtrace" : 4,
+			"fragment" : "NvBlast"
+		},
+		{
+			"backtrace" : 4,
+			"fragment" : "NvBlastGlobals"
+		},
+		{
+			"backtrace" : 4,
+			"fragment" : "NvBlastTk"
+		},
+		{
+			"backtrace" : 4,
+			"fragment" : "NvBlastExtAssetUtils"
+		},
+		{
+			"backtrace" : 4,
+			"fragment" : "NvBlastExtAuthoring"
+		},
+		{
+			"backtrace" : 4,
+			"fragment" : "NvBlastExtShaders"
+		}
+	],
+	"name" : "Opengl_Physx",
+	"nameOnDisk" : "Opengl_Physx.exe",
+	"paths" : 
+	{
+		"build" : ".",
+		"source" : "."
+	},
+	"sourceGroups" : 
+	[
+		{
+			"name" : "Source Files",
+			"sourceIndexes" : 
+			[
+				0,
+				1,
+				2,
+				3,
+				4,
+				5,
+				6
+			]
+		},
+		{
+			"name" : "Header Files",
+			"sourceIndexes" : 
+			[
+				7,
+				8,
+				9,
+				10,
+				11,
+				12,
+				13,
+				14,
+				15,
+				16,
+				17,
+				18,
+				19,
+				20,
+				21,
+				22,
+				23,
+				24,
+				25,
+				26,
+				27,
+				28,
+				29,
+				30,
+				31,
+				32,
+				33,
+				34,
+				35
+			]
+		}
+	],
+	"sources" : 
+	[
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "main.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "ThirdParty/imgui/imgui.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "ThirdParty/imgui/imgui_draw.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "ThirdParty/imgui/imgui_tables.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "ThirdParty/imgui/imgui_widgets.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "ThirdParty/imgui/backends/imgui_impl_glfw.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "ThirdParty/imgui/backends/imgui_impl_opengl3.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 8,
+			"path" : "BlastAsset.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 8,
+			"path" : "BlastContext.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 8,
+			"path" : "BlastMesh.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 8,
+			"path" : "BlastRuntime.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 8,
+			"path" : "BlastVoronoi.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 8,
+			"path" : "Camera.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 8,
+			"path" : "CollisionDebugRenderer.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 8,
+			"path" : "CollisionLibrary.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 8,
+			"path" : "ImGuiLayer.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 8,
+			"path" : "ImGuiPanel.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 8,
+			"path" : "Material.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 8,
+			"path" : "Mesh.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 8,
+			"path" : "ModelData.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 8,
+			"path" : "ModelLibrary.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 8,
+			"path" : "ModelRenderer.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 8,
+			"path" : "MousePicker.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 8,
+			"path" : "OpenGL.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 8,
+			"path" : "OutlineEffect.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 8,
+			"path" : "PhysicsWorld.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 8,
+			"path" : "RigidBody.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 8,
+			"path" : "Scene.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 8,
+			"path" : "Shader.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 8,
+			"path" : "ShadowMap.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 8,
+			"path" : "SoftBody.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 8,
+			"path" : "SoftGpuBuffer.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 8,
+			"path" : "SoftMeshLibrary.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 8,
+			"path" : "Texture.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 8,
+			"path" : "Transform.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 8,
+			"path" : "Window.h",
+			"sourceGroupIndex" : 1
+		}
+	],
+	"type" : "EXECUTABLE"
+}
