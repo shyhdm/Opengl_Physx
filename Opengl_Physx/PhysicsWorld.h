@@ -24,6 +24,7 @@ public:
         physx::PxVec3 relativeVelocity{ 0 };
         float impulseMagnitude = 0.0f;
         float velocityChange = 0.0f;
+        float colliderVolume = 0.0f;
     };
 
     explicit PhysicsWorld(bool useGpu = true)
@@ -169,6 +170,9 @@ private:
             {
                 const PxContactPair& pair = pairs[pairIndex];
                 if (pair.flags & (PxContactPairFlag::eREMOVED_SHAPE_0 | PxContactPairFlag::eREMOVED_SHAPE_1)) continue;
+                bool fractureActor0 = pair.shapes[0] && pair.shapes[0]->getSimulationFilterData().word0 == fractureFilterTag;
+                bool fractureActor1 = pair.shapes[1] && pair.shapes[1]->getSimulationFilterData().word0 == fractureFilterTag;
+                if (!fractureActor0 && !fractureActor1) continue;
                 PxContactPairPoint points[32];
                 PxU32 count = pair.extractContacts(points, 32);
                 PxVec3 totalImpulse(0.0f), weightedPosition(0.0f), weightedNormal(0.0f);
@@ -187,8 +191,10 @@ private:
                 PxVec3 normal = weightedNormal;
                 if (normal.normalize() <= 0.0001f) normal = PxVec3(0.0f, 1.0f, 0.0f);
                 float velocityChange = impulseMagnitude / std::max(effectiveMass, 0.01f);
-                events.push_back({ header.actors[0]->is<PxRigidActor>(),{position,normal,totalImpulse,relativeVelocity,impulseMagnitude,velocityChange} });
-                events.push_back({ header.actors[1]->is<PxRigidActor>(),{position,-normal,-totalImpulse,-relativeVelocity,impulseMagnitude,velocityChange} });
+                float colliderVolume0 = ColliderVolume(header.actors[0]);
+                float colliderVolume1 = ColliderVolume(header.actors[1]);
+                if (fractureActor0) events.push_back({ header.actors[0]->is<PxRigidActor>(),{position,normal,totalImpulse,relativeVelocity,impulseMagnitude,velocityChange,colliderVolume1} });
+                if (fractureActor1) events.push_back({ header.actors[1]->is<PxRigidActor>(),{position,-normal,-totalImpulse,-relativeVelocity,impulseMagnitude,velocityChange,colliderVolume0} });
             }
         }
     private:
@@ -202,6 +208,57 @@ private:
         {
             const auto* dynamic = actor ? actor->is<physx::PxRigidDynamic>() : nullptr;
             return dynamic && !dynamic->getRigidBodyFlags().isSet(physx::PxRigidBodyFlag::eKINEMATIC) ? dynamic->getLinearVelocity() : physx::PxVec3(0.0f);
+        }
+        static float ColliderVolume(const physx::PxActor* actor)
+        {
+            using namespace physx;
+            const auto* dynamic = actor ? actor->is<physx::PxRigidDynamic>() : nullptr;
+            if (!dynamic || dynamic->getRigidBodyFlags().isSet(PxRigidBodyFlag::eKINEMATIC)) return 0.0f;
+            PxShape* shapes[32]{};
+            PxU32 shapeCount = dynamic->getShapes(shapes, 32);
+            float volume = 0.0f;
+            constexpr float pi = 3.14159265358979323846f;
+            for (PxU32 index = 0; index < shapeCount; ++index)
+            {
+                PxGeometryHolder geometry = shapes[index]->getGeometry();
+                switch (geometry.getType())
+                {
+                case PxGeometryType::eBOX:
+                {
+                    const PxVec3& half = geometry.box().halfExtents;
+                    volume += 8.0f * half.x * half.y * half.z;
+                    break;
+                }
+                case PxGeometryType::eSPHERE:
+                {
+                    float radius = geometry.sphere().radius;
+                    volume += 4.0f * pi * radius * radius * radius / 3.0f;
+                    break;
+                }
+                case PxGeometryType::eCAPSULE:
+                {
+                    const PxCapsuleGeometry& capsule = geometry.capsule();
+                    volume += pi * capsule.radius * capsule.radius * (2.0f * capsule.halfHeight) + 4.0f * pi * capsule.radius * capsule.radius * capsule.radius / 3.0f;
+                    break;
+                }
+                case PxGeometryType::eCONVEXMESH:
+                {
+                    const PxConvexMeshGeometry& convex = geometry.convexMesh();
+                    float unitMass = 0.0f; PxMat33 inertia(PxIdentity); PxVec3 center(0.0f);
+                    if (convex.convexMesh) convex.convexMesh->getMassInformation(unitMass, inertia, center);
+                    const PxVec3& scale = convex.scale.scale;
+                    volume += std::abs(unitMass * scale.x * scale.y * scale.z);
+                    break;
+                }
+                default: break;
+                }
+            }
+            if (volume <= 0.0f)
+            {
+                PxVec3 extents = dynamic->getWorldBounds(1.0f).getExtents();
+                volume = 8.0f * extents.x * extents.y * extents.z;
+            }
+            return std::isfinite(volume) ? std::clamp(volume, 0.0f, 4096.0f) : 0.0f;
         }
     };
 

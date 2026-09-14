@@ -429,11 +429,98 @@ public:
             {
                 glm::vec3 position(startX + static_cast<float>(column) * stepX, y, 0.0f);
                 if (spawnType == 1) AddSoftBody(selectedType, position, glm::vec3(0), testScale);
-                else if (spawnType == 2 && spawnDestructible) spawnDestructible(selectedType, position, testScale, launchMass);
-                else AddBody(selectedType, position, glm::vec3(0), glm::vec3(testScale), launchMass);
+                else if (spawnType == 2 && spawnDestructible) spawnDestructible(selectedType, position, testScale, testDestructibleMass);
+                else AddBody(selectedType, position, glm::vec3(0), glm::vec3(testScale));
             }
             remaining -= rowCount;
         }
+        ++version;
+    }
+
+    void BuildFlatTest(int count, const std::function<void()>& clearDestructibles = {}, const std::function<void(ModelType, glm::vec3, float, float)>& spawnDestructible = {})
+    {
+        auto bounds = physx::PxBounds3::empty();
+        if (spawnType == 1)
+        {
+            if (!SoftBodiesAvailable()) return;
+            auto* cooked = softModels.Get(selectedType, softResolution)->getCollisionMesh();
+            for (physx::PxU32 i = 0; i < cooked->getNbVertices(); ++i) bounds.include(cooked->getVertices()[i]);
+        }
+        else
+        {
+            auto model = ModelBuilder::Create(selectedType);
+            for (const auto& vertex : model.vertices) bounds.include(physx::PxVec3(vertex.x, vertex.y, vertex.z));
+            if (selectedType == ModelType::Plane) bounds.minimum.y = -0.04f;
+        }
+        bounds.minimum *= testScale;
+        bounds.maximum *= testScale;
+        auto size = bounds.maximum - bounds.minimum;
+        ClearSelection();
+        softBodies.clear(); bodies.clear(); world.ClearAccumulator();
+        if (clearDestructibles) clearDestructibles();
+        count = std::clamp(count, 1, 500);
+        int columns = static_cast<int>(std::ceil(std::sqrt(static_cast<float>(count))));
+        int rows = (count + columns - 1) / columns;
+        float stepX = std::max(size.x, 0.05f) + 0.12f;
+        float stepZ = std::max(size.z, 0.05f) + 0.12f;
+        float y = 0.3f - bounds.minimum.y;
+        for (int index = 0; index < count; ++index)
+        {
+            int row = index / columns, column = index % columns;
+            int rowCount = std::min(columns, count - row * columns);
+            float x = (static_cast<float>(column) - static_cast<float>(rowCount - 1) * 0.5f) * stepX;
+            float z = (static_cast<float>(row) - static_cast<float>(rows - 1) * 0.5f) * stepZ;
+            glm::vec3 position(x, y, z);
+            if (spawnType == 1) AddSoftBody(selectedType, position, glm::vec3(0), testScale);
+            else if (spawnType == 2 && spawnDestructible) spawnDestructible(selectedType, position, testScale, testDestructibleMass);
+            else AddBody(selectedType, position, glm::vec3(0), glm::vec3(testScale));
+        }
+        paused = false;
+        ++version;
+    }
+
+    void BuildCubeStack5000(const std::function<void()>& clearDestructibles = {})
+    {
+        ModelData model = ModelBuilder::Create(ModelType::Box);
+        auto bounds = physx::PxBounds3::empty();
+        for (const auto& vertex : model.vertices) bounds.include(physx::PxVec3(vertex.x, vertex.y, vertex.z));
+        bounds.minimum *= testScale;
+        bounds.maximum *= testScale;
+        auto size = bounds.maximum - bounds.minimum;
+        ClearSelection();
+        softBodies.clear(); bodies.clear(); world.ClearAccumulator();
+        if (clearDestructibles) clearDestructibles();
+        constexpr int count = 5000;
+        constexpr int side = 17;
+        constexpr int layerCapacity = side * side;
+        constexpr int fullCubeCount = side * side * side;
+        constexpr int capCount = count - fullCubeCount;
+        constexpr int capColumns = 10;
+        constexpr int capRows = (capCount + capColumns - 1) / capColumns;
+        float stepX = size.x + 0.015f, stepY = size.y + 0.015f, stepZ = size.z + 0.015f;
+        for (int index = 0; index < count; ++index)
+        {
+            int layer = index / layerCapacity, withinLayer = index % layerCapacity;
+            float gridX = 0.0f, gridZ = 0.0f;
+            if (index < fullCubeCount)
+            {
+                gridX = static_cast<float>(withinLayer % side) - static_cast<float>(side - 1) * 0.5f;
+                gridZ = static_cast<float>(withinLayer / side) - static_cast<float>(side - 1) * 0.5f;
+            }
+            else
+            {
+                int capIndex = index - fullCubeCount;
+                int capRow = capIndex / capColumns, capColumn = capIndex % capColumns;
+                int rowCount = std::min(capColumns, capCount - capRow * capColumns);
+                gridX = static_cast<float>(capColumn) - static_cast<float>(rowCount - 1) * 0.5f;
+                gridZ = static_cast<float>(capRow) - static_cast<float>(capRows - 1) * 0.5f;
+            }
+            float x = gridX * stepX;
+            float y = 0.02f - bounds.minimum.y + static_cast<float>(layer) * stepY;
+            float z = gridZ * stepZ;
+            AddBody(ModelType::Box, glm::vec3(x, y, z), glm::vec3(0), glm::vec3(testScale));
+        }
+        paused = false;
         ++version;
     }
 
@@ -465,8 +552,8 @@ public:
             int layer = singleColumn ? i : stacked ? i % 4 : 0;
             glm::vec3 position(x * (size.x + 0.7f), 0.3f - bounds.minimum.y + layer * (size.y + 0.08f), z * (size.z + 0.7f));
             if (spawnType == 1) AddSoftBody(selectedType, position, glm::vec3(0), testScale);
-            else if (spawnType == 2 && spawnDestructible) spawnDestructible(selectedType, position, testScale, launchMass);
-            else AddBody(selectedType, position, glm::vec3(0), glm::vec3(testScale), launchMass);
+            else if (spawnType == 2 && spawnDestructible) spawnDestructible(selectedType, position, testScale, testDestructibleMass);
+            else AddBody(selectedType, position, glm::vec3(0), glm::vec3(testScale));
             if (!singleColumn && (!stacked || i % 4 == 3))
             {
                 x += dx; z += dz;
@@ -802,6 +889,7 @@ private:
     int sceneIndex = 0;
     int spawnType = 0;
     static constexpr float minimumLaunchMass = 0.01f;
+    static constexpr float testDestructibleMass = 1.0f;
     float launchSpeed = 20.0f, launchScale = 1.0f, testScale = 1.0f, launchMass = 1.0f;
     MousePicker picker; // 后声明，先释放关节，再销毁bodies。
     bool paused = false;

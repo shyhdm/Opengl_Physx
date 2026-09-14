@@ -125,7 +125,11 @@ public:
             testCount = std::clamp(testCount, 1, 500);
             if (ImGui::Button(T("墙体", "Wall"))) scene2Action = 0;
             ImGui::SameLine();
+            if (ImGui::Button(T("平摊", "Flat"))) scene2Action = 2;
+            ImGui::SameLine();
             if (ImGui::Button(T("金字塔", "Pyramid"))) scene2Action = 1;
+            ImGui::SameLine();
+            if (ImGui::Button(T("5000正方体", "5000 cubes"))) scene2Action = 3;
             if (blastScene)
             {
                 auto fracture = blastScene->GetWallSettings();
@@ -147,7 +151,9 @@ public:
         {
             scene.Reset();
             if (scene2Action == 0) { if (buildWall) buildWall(); }
-            else scene.BuildPyramidTest(testCount, clearDestructibles, spawnDestructible);
+            else if (scene2Action == 1) scene.BuildPyramidTest(testCount, clearDestructibles, spawnDestructible);
+            else if (scene2Action == 2) scene.BuildFlatTest(testCount, clearDestructibles, spawnDestructible);
+            else scene.BuildCubeStack5000(clearDestructibles);
             ResetProperties(scene.GetVersion());
             ImGui::End();
             return;

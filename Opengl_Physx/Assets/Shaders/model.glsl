@@ -2,9 +2,17 @@
 #if defined(VERTEX_SHADER)
 layout(location = 0) in vec3 position;
 layout(location = 4) in mat4 instanceModel;
+layout(location = 8) in float transformIndex;
 uniform mat4 model;
 uniform bool instanced;
-mat4 GetObjectModel() { return instanced ? instanceModel : model; }
+uniform bool indexedTransforms;
+uniform samplerBuffer transformMatrices;
+mat4 GetIndexedModel()
+{
+    int first = int(transformIndex + 0.5) * 4;
+    return mat4(texelFetch(transformMatrices,first),texelFetch(transformMatrices,first+1),texelFetch(transformMatrices,first+2),texelFetch(transformMatrices,first+3));
+}
+mat4 GetObjectModel() { return indexedTransforms ? GetIndexedModel() : (instanced ? instanceModel : model); }
 uniform mat4 lightSpaceMatrix;
 #if defined(PASS_COLLISION)
 layout(location=1) in vec3 color;
@@ -66,7 +74,7 @@ void main()
     v.uv = texCoord;
     v.worldPosition = worldPosition.xyz;
     v.worldNormal = transpose(inverse(mat3(objectModel))) * GetNormal();
-    gl_Position = instanced ? (mvp * objectModel * vec4(position,1.0)) : (mvp * vec4(position,1.0));
+    gl_Position = (instanced || indexedTransforms) ? (mvp * objectModel * vec4(position,1.0)) : (mvp * vec4(position,1.0));
 }
 #endif
 #endif
@@ -194,4 +202,3 @@ void main()
 
 #endif
 #endif
-

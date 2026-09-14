@@ -90,7 +90,8 @@ public:
             stagedPieces.clear();
             return CommitFracture(beforeRelease);
         }
-        if (world.GetSimulationRevision() < lastFractureRevision + cooldownSteps) return false;
+        bool removedSmallFragments = CleanupExpiredSmallFragments(beforeRelease);
+        if (world.GetSimulationRevision() < lastFractureRevision + cooldownSteps) return removedSmallFragments;
         Piece* target = nullptr;
         PhysicsWorld::Impact strongest;
         for (const auto& piece : pieces)
@@ -103,15 +104,22 @@ public:
                 target = piece.get();
             }
         }
-        float normalImpactSpeed = std::abs(strongest.relativeVelocity.dot(strongest.normal));
-        if (!target || strongest.impulseMagnitude < settings.breakingImpulse || normalImpactSpeed < minimumImpactSpeed) return false;
+        if (!target || strongest.impulseMagnitude < settings.breakingImpulse) return removedSmallFragments;
         StartFracture(*target, strongest);
         lastFractureRevision = world.GetSimulationRevision();
-        return false;
+        return removedSmallFragments;
     }
 
     void Draw(ModelRenderer& renderer, bool shadowPass) const
     {
+        if (renderer.SupportsIndexedTransforms())
+        {
+            UpdateIndexedRenderBatch();
+            if (!indexedRenderBatch) return;
+            if (shadowPass) renderer.DrawShadowIndexed(*indexedRenderBatch);
+            else renderer.DrawMeshIndexed(*indexedRenderBatch, wallMaterial);
+            return;
+        }
         UpdateRenderBatch();
         if (!renderBatch) return;
         if (shadowPass) renderer.DrawShadow(*renderBatch, glm::mat4(1.0f));
@@ -163,6 +171,7 @@ private:
         bool fixed = false;
         bool showMesh = false;
         std::uint64_t id = 0;
+        unsigned long long createdRevision = 0;
         glm::vec3 centroid{ 0.0f };
     };
 
@@ -185,10 +194,10 @@ private:
         glm::vec3 localHit{ 0.0f };
         physx::PxVec3 localNormal{ 0.0f,1.0f,0.0f };
         physx::PxVec3 localImpulse{ 0.0f };
-        physx::PxVec3 localRelativeVelocity{ 0.0f };
-        float velocityChange = 0.0f;
+        float impulseMagnitude = 0.0f;
         float radius = 0.0f;
         float chainRadius = 0.0f;
+        bool largeCollider = false;
     };
 
     struct AsyncFractureJob
@@ -204,13 +213,17 @@ private:
     std::vector<std::unique_ptr<Piece>> pieces;
     bool showCollisions = false;
     unsigned long long lastFractureRevision = 0;
+    unsigned long long nextSmallFragmentCleanupRevision = 0;
     std::shared_ptr<AsyncFractureJob> fractureJob;
     std::optional<FracturePlan> commitPlan;
     std::vector<std::unique_ptr<Piece>> stagedPieces;
     mutable std::unique_ptr<Mesh> renderBatch;
     mutable std::vector<Vertex> renderVertices;
+    mutable std::unique_ptr<Mesh> indexedRenderBatch;
+    mutable std::vector<glm::mat4> indexedTransformMatrices;
     mutable bool renderTopologyDirty = true;
     mutable unsigned long long renderRevision = std::numeric_limits<unsigned long long>::max();
+    mutable unsigned long long indexedRenderRevision = std::numeric_limits<unsigned long long>::max();
     std::size_t commitIndex = 0;
     std::size_t retainedCommitIndex = 0;
     bool retainedStaged = false;
@@ -221,10 +234,11 @@ private:
     inline static const physx::PxTransform wallPose{ physx::PxVec3(0.0f,5.0f,-2.0f) };
     static constexpr unsigned int initialPieceCount = 40;
     static constexpr unsigned int maximumDepth = 2;
-    static constexpr float minimumFractureExtent = 1.4f;
-    static constexpr float minimumFractureVolume = 0.35f;
+    static constexpr float minimumFractureExtent = 0.55f;
+    static constexpr float minimumFractureVolume = 0.04f;
+    static constexpr float smallFragmentCleanupVolume = 0.0015f;
+    static constexpr unsigned long long smallFragmentLifetimeSteps = 480;
     static constexpr unsigned long long cooldownSteps = 4;
-    static constexpr float minimumImpactSpeed = 1.0f;
     static constexpr float supportHeight = 0.08f;
     static constexpr float supportTolerance = 0.035f;
     static constexpr float unsupportedKickSpeed = 0.18f;
@@ -254,14 +268,15 @@ private:
         glm::vec3 towardCenter = boundsCenter - localHit;
         float towardLength = glm::length(towardCenter);
         if (towardLength > 0.0001f) localHit += towardCenter / towardLength * std::min(0.18f, towardLength * 0.25f);
-        float impactEnergy = std::max(0.5f * impact.impulseMagnitude * impact.velocityChange, 0.0f);
-        float energyScale = std::sqrt(impactEnergy);
-        float radius = std::clamp(settings.damageRadius + energyScale * 0.02f, settings.damageRadius, 2.0f);
-        float minimumCoreRadius = std::min(0.18f, radius * 0.2f);
-        float maximumCoreRadius = std::min(0.55f, std::max(minimumCoreRadius, radius * 0.45f));
-        float coreRadius = std::clamp(0.18f + energyScale * 0.002f, minimumCoreRadius, maximumCoreRadius);
-        unsigned int coreSites = std::clamp(settings.localFragments + static_cast<unsigned int>(std::sqrt(std::max(impact.velocityChange, 0.0f)) * 1.5f), 8u, 48u);
-        unsigned int outerSites = std::clamp(5u + static_cast<unsigned int>(energyScale * 0.12f), 5u, 16u);
+        float colliderSpan = std::cbrt(std::clamp(impact.colliderVolume, 0.0f, 4096.0f));
+        bool largeCollider = colliderSpan >= 1.25f;
+        float radiusScale = settings.damageRadius / 0.65f;
+        float radius = largeCollider ? std::clamp((0.55f + colliderSpan * 0.90f) * radiusScale, 0.85f, 6.0f) : std::clamp((0.24f + colliderSpan * 0.42f) * radiusScale, 0.22f, 1.25f);
+        float impulseRatio = std::max(impact.impulseMagnitude / std::max(settings.breakingImpulse, 0.01f), 1.0f);
+        float impulseLevel = std::clamp(std::log2(1.0f + impulseRatio), 1.0f, 8.0f);
+        float coreRadius = radius * (largeCollider ? 0.42f : 0.34f);
+        unsigned int coreSites = largeCollider ? std::clamp(10u + static_cast<unsigned int>(impulseLevel * 3.0f), 12u, 36u) : std::clamp(settings.localFragments + static_cast<unsigned int>(impulseLevel * 6.0f), 16u, 72u);
+        unsigned int outerSites = largeCollider ? std::clamp(3u + static_cast<unsigned int>(impulseLevel * 0.75f), 4u, 9u) : std::clamp(4u + static_cast<unsigned int>(impulseLevel * 1.25f), 5u, 14u);
         unsigned int guardSites = target.depth == 0 ? 12 : target.depth == 1 ? 6 : 3;
         ModelData source = target.source;
         bool fixed = target.fixed;
@@ -272,10 +287,10 @@ private:
         pending.localHit = localHit;
         pending.localNormal = pose.q.rotateInv(impact.normal);
         pending.localImpulse = pose.q.rotateInv(impact.impulse);
-        pending.localRelativeVelocity = pose.q.rotateInv(impact.relativeVelocity);
-        pending.velocityChange = impact.velocityChange;
+        pending.impulseMagnitude = impact.impulseMagnitude;
         pending.radius = radius;
-        pending.chainRadius = radius * settings.chainRadius;
+        pending.chainRadius = largeCollider ? radius * settings.chainRadius : radius;
+        pending.largeCollider = largeCollider;
         auto job = std::make_shared<AsyncFractureJob>();
         fractureJob = job;
         std::thread([job, source = std::move(source), localHit, radius, coreRadius, coreSites, outerSites, guardSites, seed, fixed, cookingParams]() mutable
@@ -326,7 +341,9 @@ private:
         if (auto* dynamic = target.actor->is<PxRigidDynamic>()) { inheritedLinear = dynamic->getLinearVelocity(); inheritedAngular = dynamic->getAngularVelocity(); }
         PxVec3 impactPosition = pose.transform(PxVec3(pending.localHit.x, pending.localHit.y, pending.localHit.z));
         PxVec3 totalImpulse = pose.q.rotate(pending.localImpulse);
-        PxVec3 relativeVelocity = pose.q.rotate(pending.localRelativeVelocity);
+        PxVec3 impactDirection = pose.transform(PxVec3(target.centroid.x, target.centroid.y, target.centroid.z)) - impactPosition;
+        if (impactDirection.normalize() <= 0.0001f) impactDirection = -pose.q.rotate(pending.localNormal);
+        if (impactDirection.normalize() <= 0.0001f) impactDirection = PxVec3(0.0f, 0.0f, -1.0f);
         float totalMass = 0.0f, totalWeight = 0.0f;
         for (const auto& piece : stagedPieces)
         {
@@ -343,11 +360,11 @@ private:
             totalWeight += mass * (0.1f + 0.9f * proximity * proximity);
         }
         float impulseMagnitude = totalImpulse.magnitude();
-        if (impulseMagnitude <= 0.0001f && relativeVelocity.normalize() > 0.0001f) totalImpulse = -relativeVelocity * totalMass * std::min(pending.velocityChange * 0.2f, 4.0f);
+        if (impulseMagnitude <= 0.0001f) totalImpulse = impactDirection * pending.impulseMagnitude;
+        else if (totalImpulse.dot(impactDirection) < 0.0f) totalImpulse = -totalImpulse;
         impulseMagnitude = totalImpulse.magnitude();
-        float maximumImpulse = totalMass * std::clamp(pending.velocityChange, 0.0f, 25.0f);
-        if (impulseMagnitude > maximumImpulse && impulseMagnitude > 0.0001f) totalImpulse *= maximumImpulse / impulseMagnitude;
-        float transfer = target.fixed ? 0.75f : 0.25f;
+        float separationSpeed = pending.largeCollider ? std::clamp(std::sqrt(std::max(pending.impulseMagnitude, 0.0f)) * 0.20f, 0.08f, 6.0f) : std::clamp(std::sqrt(std::max(pending.impulseMagnitude, 0.0f)) * 0.035f, 0.02f, 0.80f);
+        float transfer = pending.largeCollider ? (target.fixed ? 0.75f : 0.25f) : (target.fixed ? 0.18f : 0.10f);
         for (const auto& piece : stagedPieces)
         {
             if (piece->fixed) continue;
@@ -360,15 +377,25 @@ private:
             float mass = dynamic->getMass();
             float weight = mass * (0.1f + 0.9f * proximity * proximity);
             PxVec3 transferredImpulse = totalWeight > 0.0001f ? totalImpulse * (transfer * weight / totalWeight) : PxVec3(0.0f);
-            PxVec3 separationImpulse = radial * mass * proximity * std::min(pending.velocityChange * 0.035f, 0.65f);
+            PxVec3 separationDirection = radial * (pending.largeCollider ? 0.35f : 0.70f) + impactDirection * (pending.largeCollider ? 0.85f : 0.45f);
+            if (separationDirection.normalize() <= 0.0001f) separationDirection = impactDirection;
+            PxVec3 separationImpulse = separationDirection * mass * proximity * separationSpeed;
+            PxVec3 appliedImpulse = transferredImpulse + separationImpulse;
+            if (!pending.largeCollider)
+            {
+                float maximumSpeedChange = std::clamp(std::sqrt(std::max(pending.impulseMagnitude, 0.0f)) * 0.12f, 0.12f, 2.5f);
+                float maximumPieceImpulse = mass * maximumSpeedChange;
+                float appliedMagnitude = appliedImpulse.magnitude();
+                if (appliedMagnitude > maximumPieceImpulse && appliedMagnitude > 0.0001f) appliedImpulse *= maximumPieceImpulse / appliedMagnitude;
+            }
             PxVec3 forcePoint = impactPosition + (worldCenter - impactPosition) * 0.65f;
-            PxRigidBodyExt::addForceAtPos(*dynamic, transferredImpulse + separationImpulse, forcePoint, PxForceMode::eIMPULSE);
+            PxRigidBodyExt::addForceAtPos(*dynamic, appliedImpulse, forcePoint, PxForceMode::eIMPULSE);
         }
         if (beforeRelease) beforeRelease(target.actor);
         pieces.erase(found);
         for (auto& piece : stagedPieces) pieces.push_back(std::move(piece));
         renderTopologyDirty = true;
-        ReleaseChain(impactPosition, beforeRelease);
+        ReleaseChain(impactPosition, impactDirection, beforeRelease);
         ReleaseUnsupported(impactPosition, beforeRelease);
         stagedPieces.clear(); commitPlan.reset();
         lastFractureRevision = world.GetSimulationRevision();
@@ -416,6 +443,46 @@ private:
         renderRevision = revision;
     }
 
+    void UpdateIndexedRenderBatch() const
+    {
+        unsigned long long revision = world.GetSimulationRevision();
+        if (!renderTopologyDirty && indexedRenderRevision == revision) return;
+        if (renderTopologyDirty)
+        {
+            std::size_t vertexCount = 0, indexCount = 0;
+            for (const auto& piece : pieces) { vertexCount += piece->source.vertices.size(); indexCount += piece->source.indices.size(); }
+            if (vertexCount == 0 || indexCount == 0)
+            {
+                indexedRenderBatch.reset();
+                indexedTransformMatrices.clear();
+                renderTopologyDirty = false;
+                indexedRenderRevision = revision;
+                return;
+            }
+            if (vertexCount > static_cast<std::size_t>(std::numeric_limits<unsigned int>::max())) throw std::length_error("Runtime fracture indexed batch has too many vertices.");
+            std::vector<Vertex> vertices; vertices.reserve(vertexCount);
+            std::vector<unsigned int> indices; indices.reserve(indexCount);
+            std::vector<float> transformIndices; transformIndices.reserve(vertexCount);
+            unsigned int baseVertex = 0;
+            for (std::size_t pieceIndex = 0; pieceIndex < pieces.size(); ++pieceIndex)
+            {
+                const auto& piece = pieces[pieceIndex];
+                vertices.insert(vertices.end(), piece->source.vertices.begin(), piece->source.vertices.end());
+                transformIndices.insert(transformIndices.end(), piece->source.vertices.size(), static_cast<float>(pieceIndex));
+                for (unsigned int index : piece->source.indices) indices.push_back(baseVertex + index);
+                baseVertex += static_cast<unsigned int>(piece->source.vertices.size());
+            }
+            indexedRenderBatch = std::make_unique<Mesh>(vertices, indices);
+            indexedRenderBatch->SetTransformIndices(transformIndices);
+            indexedTransformMatrices.resize(pieces.size());
+            renderTopologyDirty = false;
+        }
+        indexedTransformMatrices.resize(pieces.size());
+        for (std::size_t index = 0; index < pieces.size(); ++index) indexedTransformMatrices[index] = ToMatrix(pieces[index]->actor->getGlobalPose());
+        indexedRenderBatch->SetTransformMatrices(indexedTransformMatrices);
+        indexedRenderRevision = revision;
+    }
+
     std::unique_ptr<Piece> CreatePiece(ModelData&& model, const physx::PxTransform& pose, unsigned int depth, bool fixed, const physx::PxVec3& linearVelocity, const physx::PxVec3& angularVelocity, const std::vector<physx::PxU8>& cookedCollision, bool triangleCollision)
     {
         using namespace physx;
@@ -424,7 +491,7 @@ private:
         piece->source = std::move(model);
         piece->mesh = std::make_unique<Mesh>(piece->source.vertices, piece->source.indices);
         piece->cookedCollision = cookedCollision;
-        piece->depth = depth; piece->fixed = fixed; piece->showMesh = showCollisions; piece->id = ++nextId;
+        piece->depth = depth; piece->fixed = fixed; piece->showMesh = showCollisions; piece->id = ++nextId; piece->createdRevision = world.GetSimulationRevision();
         if (fixed) piece->actor = world.GetPhysics().createRigidStatic(pose);
         else piece->actor = world.GetPhysics().createRigidDynamic(pose);
         if (!piece->actor) throw std::runtime_error("Cannot create runtime fracture piece actor.");
@@ -447,7 +514,7 @@ private:
             collision->release();
         }
         if (!shape) throw std::runtime_error("Cannot create runtime fracture piece shape.");
-        PxFilterData filter; filter.word0 = PhysicsWorld::fractureFilterTag; shape->setSimulationFilterData(filter);
+        PxFilterData filter; filter.word0 = depth < maximumDepth ? PhysicsWorld::fractureFilterTag : 0; shape->setSimulationFilterData(filter);
         bool attached = piece->actor->attachShape(*shape); shape->release();
         if (!attached) throw std::runtime_error("Cannot attach runtime fracture piece shape.");
         if (!fixed)
@@ -461,9 +528,11 @@ private:
         return piece;
     }
 
-    void ReleaseChain(const physx::PxVec3& impactPosition, const std::function<void(const physx::PxRigidActor*)>& beforeRelease)
+    void ReleaseChain(const physx::PxVec3& impactPosition, const physx::PxVec3& impactDirection, const std::function<void(const physx::PxRigidActor*)>& beforeRelease)
     {
         using namespace physx;
+        if (!pending.largeCollider) return;
+        float shockSpeed = std::clamp(std::sqrt(std::max(pending.impulseMagnitude, 0.0f)) * 0.20f, 0.15f, 8.0f);
         for (const auto& holder : pieces)
         {
             Piece& piece = *holder;
@@ -475,8 +544,9 @@ private:
             if (distance > pending.chainRadius) continue;
             if (radial.normalize() <= 0.0001f) radial = -pose.q.rotate(pending.localNormal);
             float proximity = std::clamp(1.0f - distance / std::max(pending.chainRadius, 0.01f), 0.0f, 1.0f);
-            float kickSpeed = std::clamp(pending.velocityChange * 0.02f, 0.25f, 2.0f);
-            MakeDynamic(piece, radial * kickSpeed * proximity, impactPosition, beforeRelease);
+            PxVec3 direction = impactDirection * 0.80f + radial * 0.35f;
+            if (direction.normalize() <= 0.0001f) direction = impactDirection;
+            MakeDynamic(piece, direction * shockSpeed * (0.2f + 0.8f * proximity), impactPosition, beforeRelease);
         }
     }
 
@@ -491,7 +561,7 @@ private:
         PxShape* shape = world.GetPhysics().createShape(sourceShape->getGeometry(), world.GetMaterial(), true);
         if (!shape) { dynamic->release(); return false; }
         shape->setLocalPose(sourceShape->getLocalPose());
-        PxFilterData filter; filter.word0 = PhysicsWorld::fractureFilterTag; shape->setSimulationFilterData(filter);
+        PxFilterData filter; filter.word0 = piece.depth < maximumDepth ? PhysicsWorld::fractureFilterTag : 0; shape->setSimulationFilterData(filter);
         bool attached = dynamic->attachShape(*shape); shape->release();
         if (!attached || !PxRigidBodyExt::updateMassAndInertia(*dynamic, 30.0f)) { dynamic->release(); return false; }
         dynamic->setLinearDamping(0.08f); dynamic->setAngularDamping(0.15f);
@@ -502,7 +572,32 @@ private:
         piece.actor->release();
         piece.actor = dynamic;
         piece.fixed = false;
+        piece.createdRevision = world.GetSimulationRevision();
         return true;
+    }
+
+    bool CleanupExpiredSmallFragments(const std::function<void(const physx::PxRigidActor*)>& beforeRelease)
+    {
+        unsigned long long revision = world.GetSimulationRevision();
+        if (revision < nextSmallFragmentCleanupRevision) return false;
+        nextSmallFragmentCleanupRevision = revision + 60;
+        bool removed = false;
+        for (auto iterator = pieces.begin(); iterator != pieces.end();)
+        {
+            Piece& piece = **iterator;
+            auto* dynamic = piece.actor ? piece.actor->is<physx::PxRigidDynamic>() : nullptr;
+            bool oldEnough = revision >= piece.createdRevision + smallFragmentLifetimeSteps;
+            float physicalVolume = dynamic ? dynamic->getMass() / 30.0f : std::numeric_limits<float>::infinity();
+            if (!piece.fixed && piece.depth > 0 && dynamic && oldEnough && std::isfinite(physicalVolume) && physicalVolume < smallFragmentCleanupVolume)
+            {
+                if (beforeRelease) beforeRelease(piece.actor);
+                iterator = pieces.erase(iterator);
+                removed = true;
+            }
+            else ++iterator;
+        }
+        if (removed) renderTopologyDirty = true;
+        return removed;
     }
 
     static bool CanFracture(const Piece& piece)

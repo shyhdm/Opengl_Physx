@@ -141,6 +141,36 @@ public:
         GL::BindBuffer(GL::ArrayBuffer, 0);
     }
 
+    void SetTransformIndices(const std::vector<float>& indices)
+    {
+        if (!transformIndexVbo) GL::GenBuffers(1, &transformIndexVbo);
+        if (!transformIndexVbo) throw std::runtime_error("Cannot create transform-index GPU buffer.");
+        GL::BindVertexArray(vao);
+        GL::BindBuffer(GL::ArrayBuffer, transformIndexVbo);
+        GL::BufferData(GL::ArrayBuffer, static_cast<std::ptrdiff_t>(indices.size() * sizeof(float)), indices.data(), GL::StaticDraw);
+        GL::VertexAttribPointer(8, 1, GL_FLOAT, GL_FALSE, sizeof(float), nullptr);
+        GL::EnableVertexAttribArray(8);
+        GL::BindVertexArray(0);
+        GL::BindBuffer(GL::ArrayBuffer, 0);
+    }
+
+    void SetTransformMatrices(const std::vector<glm::mat4>& matrices)
+    {
+        if (matrices.empty()) return;
+        if (!transformMatrixBuffer) GL::GenBuffers(1, &transformMatrixBuffer);
+        if (!transformMatrixTexture) glGenTextures(1, &transformMatrixTexture);
+        if (!transformMatrixBuffer || !transformMatrixTexture) throw std::runtime_error("Cannot create indexed-transform GPU objects.");
+        GL::BindBuffer(0x8C2A, transformMatrixBuffer);
+        GL::BufferData(0x8C2A, static_cast<std::ptrdiff_t>(matrices.size() * sizeof(glm::mat4)), matrices.data(), 0x88E8);
+        glBindTexture(0x8C2A, transformMatrixTexture);
+        using TexBufferFunction = void(APIENTRY*)(GLenum, GLenum, GLuint);
+        static TexBufferFunction texBuffer = reinterpret_cast<TexBufferFunction>(glfwGetProcAddress("glTexBuffer"));
+        if (!texBuffer) throw std::runtime_error("Cannot load OpenGL function: glTexBuffer");
+        texBuffer(0x8C2A, 0x8814, transformMatrixBuffer);
+        glBindTexture(0x8C2A, 0);
+        GL::BindBuffer(0x8C2A, 0);
+    }
+
     void Draw(GLuint program = 0) const
     {
         GLint active = 0;
@@ -193,8 +223,33 @@ public:
         GL::BindVertexArray(0);
     }
 
+    void DrawIndexedTransforms(GLuint program = 0) const
+    {
+        if (!transformMatrixTexture) return;
+        if (!program)
+        {
+            GLint current = 0;
+            glGetIntegerv(0x8B8D, &current);
+            program = static_cast<GLuint>(current);
+        }
+        GLint softEnabled = GL::GetUniformLocation(program, "softGpu");
+        if (softEnabled >= 0) GL::Uniform1i(softEnabled, 0);
+        GLint matrixSampler = GL::GetUniformLocation(program, "transformMatrices");
+        if (matrixSampler < 0) return;
+        GLint active = 0;
+        glGetIntegerv(0x84E0, &active);
+        GL::Uniform1i(matrixSampler, 11);
+        GL::ActiveTexture(0x84C0 + 11);
+        glBindTexture(0x8C2A, transformMatrixTexture);
+        GL::BindVertexArray(vao);
+        glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, nullptr);
+        GL::BindVertexArray(0);
+        glBindTexture(0x8C2A, 0);
+        GL::ActiveTexture(static_cast<GLenum>(active));
+    }
+
 private:
-    GLuint vao = 0, vbo = 0, ebo = 0, instanceVbo = 0;
+    GLuint vao = 0, vbo = 0, ebo = 0, instanceVbo = 0, transformIndexVbo = 0, transformMatrixBuffer = 0, transformMatrixTexture = 0;
     GLsizei indexCount = 0, instanceCount = 0;
     GLuint gpuTextures[3] = {};
     mutable std::map<GLuint, std::array<GLint, 4>> uniforms;
@@ -205,8 +260,16 @@ private:
         if (vbo) GL::DeleteBuffers(1, &vbo);
         if (ebo) GL::DeleteBuffers(1, &ebo);
         if (instanceVbo) GL::DeleteBuffers(1, &instanceVbo);
+        if (transformIndexVbo) GL::DeleteBuffers(1, &transformIndexVbo);
+        if (transformMatrixBuffer) GL::DeleteBuffers(1, &transformMatrixBuffer);
+        if (transformMatrixTexture) glDeleteTextures(1, &transformMatrixTexture);
         vao = 0;
         vbo = 0;
         ebo = 0;
+        instanceVbo = 0;
+        transformIndexVbo = 0;
+        transformMatrixBuffer = 0;
+        transformMatrixTexture = 0;
     }
 };
+
