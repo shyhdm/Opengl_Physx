@@ -1,7 +1,10 @@
 // =================== Vertex ===================
 #if defined(VERTEX_SHADER)
 layout(location = 0) in vec3 position;
+layout(location = 4) in mat4 instanceModel;
 uniform mat4 model;
+uniform bool instanced;
+mat4 GetObjectModel() { return instanced ? instanceModel : model; }
 uniform mat4 lightSpaceMatrix;
 #if defined(PASS_COLLISION)
 layout(location=1) in vec3 color;
@@ -20,7 +23,7 @@ void main()
 uniform mat4 mvp;
 void main() { gl_Position=mvp*vec4(position,1.0); }
 #elif defined(PASS_SHADOW)
-void main() { gl_Position = lightSpaceMatrix * model * vec4(position,1.0); }
+void main() { gl_Position = lightSpaceMatrix * GetObjectModel() * vec4(position,1.0); }
 #else
 layout(location = 2) in vec3 normal;
 uniform bool softGpu;
@@ -57,12 +60,13 @@ out VS_OUT
 } v;
 void main()
 {
-    vec4 worldPosition = model * vec4(position,1.0);
+    mat4 objectModel = GetObjectModel();
+    vec4 worldPosition = objectModel * vec4(position,1.0);
     v.lightPosition = lightSpaceMatrix * worldPosition;
     v.uv = texCoord;
     v.worldPosition = worldPosition.xyz;
-    v.worldNormal = transpose(inverse(mat3(model))) * GetNormal();
-    gl_Position = mvp * vec4(position,1.0);
+    v.worldNormal = transpose(inverse(mat3(objectModel))) * GetNormal();
+    gl_Position = instanced ? (mvp * objectModel * vec4(position,1.0)) : (mvp * vec4(position,1.0));
 }
 #endif
 #endif
@@ -190,3 +194,4 @@ void main()
 
 #endif
 #endif
+

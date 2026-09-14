@@ -28,6 +28,7 @@ public:
             data.meshes.resize(authored.chunkCount);
             data.models.resize(authored.chunkCount);
             data.materials.resize(authored.chunkCount);
+            data.chunkInstances.resize(authored.chunkCount);
             ModelData combined;
             for (uint32_t chunk = 0; chunk < authored.chunkCount; ++chunk)
             {
@@ -49,12 +50,19 @@ public:
     void Draw(ModelRenderer& renderer, const BlastScene& scene, bool shadowPass)
     {
         if (shadowPass) UpdateBatches(scene);
-        for (std::size_t type = 0; type < batches.size(); ++type)
+        for (TypeData& data : types)
         {
-            Batch& batch = batches[type];
-            if (!batch.mesh) continue;
-            if (shadowPass) renderer.DrawShadow(*batch.mesh, glm::mat4(1.0f));
-            else renderer.DrawMesh(*batch.mesh, glm::mat4(1.0f), types[type].materials[0]);
+            if (data.combined && !data.wholeInstances.empty())
+            {
+                if (shadowPass) renderer.DrawShadowInstanced(*data.combined, data.wholeInstances);
+                else renderer.DrawMeshInstanced(*data.combined, data.wholeInstances, data.materials[0]);
+            }
+            for (std::size_t chunk = 0; chunk < data.meshes.size(); ++chunk)
+            {
+                if (!data.meshes[chunk] || data.chunkInstances[chunk].empty()) continue;
+                if (shadowPass) renderer.DrawShadowInstanced(*data.meshes[chunk], data.chunkInstances[chunk]);
+                else renderer.DrawMeshInstanced(*data.meshes[chunk], data.chunkInstances[chunk], data.materials[chunk]);
+            }
         }
     }
 
@@ -79,67 +87,29 @@ private:
         std::vector<Material> materials;
         std::unique_ptr<Mesh> combined;
         ModelData combinedModel;
+        std::vector<glm::mat4> wholeInstances;
+        std::vector<std::vector<glm::mat4>> chunkInstances;
     };
-    struct Batch { std::vector<std::size_t> renders; std::vector<Vertex> vertices; std::unique_ptr<Mesh> mesh; };
-
     std::array<TypeData, static_cast<size_t>(ModelType::Count)> types;
-    std::array<Batch, static_cast<size_t>(ModelType::Count)> batches;
-    std::uint64_t batchSignature = 0;
-
-    const ModelData* Source(const BlastScene::RenderChunk& render) const
-    {
-        const TypeData& data = types[static_cast<std::size_t>(render.type)];
-        if (render.pose.whole) return data.combinedModel.vertices.empty() ? nullptr : &data.combinedModel;
-        return render.pose.chunk < data.models.size() && !data.models[render.pose.chunk].vertices.empty() ? &data.models[render.pose.chunk] : nullptr;
-    }
 
     void UpdateBatches(const BlastScene& scene)
     {
-        const auto& renders = scene.GetRenderChunks();
-        std::uint64_t signature = 0xCBF29CE484222325ull;
-        for (const auto& render : renders)
+        for (TypeData& data : types)
         {
-            signature ^= reinterpret_cast<std::uintptr_t>(render.pose.actor) + 0x9E3779B97F4A7C15ull + (signature << 6) + (signature >> 2);
-            signature ^= (static_cast<std::uint64_t>(render.type) << 33) ^ (static_cast<std::uint64_t>(render.pose.chunk) << 1) ^ static_cast<std::uint64_t>(render.pose.whole);
+            data.wholeInstances.clear();
+            for (auto& instances : data.chunkInstances) instances.clear();
         }
-        if (signature != batchSignature)
+        for (const BlastScene::RenderChunk& render : scene.GetRenderChunks())
         {
-            for (Batch& batch : batches) { batch.renders.clear(); batch.vertices.clear(); batch.mesh.reset(); }
-            for (std::size_t i = 0; i < renders.size(); ++i) if (Source(renders[i])) batches[static_cast<std::size_t>(renders[i].type)].renders.push_back(i);
-            for (Batch& batch : batches)
-            {
-                std::vector<unsigned int> indices;
-                unsigned int base = 0;
-                for (std::size_t renderIndex : batch.renders)
-                {
-                    const ModelData& source = *Source(renders[renderIndex]);
-                    batch.vertices.insert(batch.vertices.end(), source.vertices.begin(), source.vertices.end());
-                    for (unsigned int index : source.indices) indices.push_back(base + index);
-                    base += static_cast<unsigned int>(source.vertices.size());
-                }
-                if (!batch.vertices.empty()) batch.mesh = std::make_unique<Mesh>(batch.vertices, indices);
-            }
-            batchSignature = signature;
+            TypeData& data = types[static_cast<std::size_t>(render.type)];
+            if (render.pose.whole) data.wholeInstances.push_back(render.pose.matrix);
+            else if (render.pose.chunk < data.chunkInstances.size()) data.chunkInstances[render.pose.chunk].push_back(render.pose.matrix);
         }
-        for (Batch& batch : batches)
+        for (TypeData& data : types)
         {
-            std::size_t output = 0;
-            for (std::size_t renderIndex : batch.renders)
-            {
-                const auto& render = renders[renderIndex];
-                const ModelData& source = *Source(render);
-                glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(render.pose.matrix)));
-                for (const Vertex& input : source.vertices)
-                {
-                    Vertex& vertex = batch.vertices[output++];
-                    glm::vec4 position = render.pose.matrix * glm::vec4(input.x, input.y, input.z, 1.0f);
-                    glm::vec3 normal = normalMatrix * glm::vec3(input.nx, input.ny, input.nz);
-                    float length = glm::length(normal); normal = length > 0.000001f ? normal / length : glm::vec3(0, 1, 0);
-                    vertex = input; vertex.x = position.x; vertex.y = position.y; vertex.z = position.z;
-                    vertex.nx = normal.x; vertex.ny = normal.y; vertex.nz = normal.z;
-                }
-            }
-            if (batch.mesh) batch.mesh->UpdateVertices(batch.vertices);
+            if (data.combined) data.combined->SetInstances(data.wholeInstances);
+            for (std::size_t chunk = 0; chunk < data.meshes.size(); ++chunk)
+                if (data.meshes[chunk]) data.meshes[chunk]->SetInstances(data.chunkInstances[chunk]);
         }
     }
 
@@ -235,3 +205,4 @@ private:
         }
     }
 };
+

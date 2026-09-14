@@ -6,6 +6,8 @@
 #include <type_traits>
 #include <map>
 #include <array>
+#include <cstdint>
+#include <glm/glm.hpp>
 
 // 位置、颜色、法线、UV。默认值兼容之前只填写六个数字的顶点。
 struct Vertex
@@ -115,6 +117,30 @@ public:
         for (int i = 0; i < 3; ++i) gpuTextures[i] = textures[i];
     }
 
+    void SetInstances(const std::vector<glm::mat4>& matrices)
+    {
+        if (matrices.size() > static_cast<std::size_t>(std::numeric_limits<GLsizei>::max())) throw std::length_error("Too many mesh instances.");
+        instanceCount = static_cast<GLsizei>(matrices.size());
+        if (matrices.empty()) return;
+        if (!instanceVbo) GL::GenBuffers(1, &instanceVbo);
+        if (!instanceVbo) throw std::runtime_error("Cannot create instance GPU buffer.");
+        using DivisorFunction = void(APIENTRY*)(GLuint, GLuint);
+        static DivisorFunction divisor = reinterpret_cast<DivisorFunction>(glfwGetProcAddress("glVertexAttribDivisor"));
+        if (!divisor) throw std::runtime_error("Cannot load OpenGL function: glVertexAttribDivisor");
+        GL::BindVertexArray(vao);
+        GL::BindBuffer(GL::ArrayBuffer, instanceVbo);
+        GL::BufferData(GL::ArrayBuffer, static_cast<std::ptrdiff_t>(matrices.size() * sizeof(glm::mat4)), matrices.data(), 0x88E8);
+        for (GLuint column = 0; column < 4; ++column)
+        {
+            GLuint location = 4 + column;
+            GL::VertexAttribPointer(location, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4), reinterpret_cast<const void*>(static_cast<std::uintptr_t>(column * sizeof(glm::vec4))));
+            GL::EnableVertexAttribArray(location);
+            divisor(location, 1);
+        }
+        GL::BindVertexArray(0);
+        GL::BindBuffer(GL::ArrayBuffer, 0);
+    }
+
     void Draw(GLuint program = 0) const
     {
         GLint active = 0;
@@ -154,9 +180,22 @@ public:
         GL::BindVertexArray(0);
     }
 
+    void DrawInstanced(GLuint program = 0) const
+    {
+        if (instanceCount <= 0) return;
+        GLint enabled = program ? GL::GetUniformLocation(program, "softGpu") : -1;
+        if (enabled >= 0) GL::Uniform1i(enabled, 0);
+        using DrawInstancedFunction = void(APIENTRY*)(GLenum, GLsizei, GLenum, const void*, GLsizei);
+        static DrawInstancedFunction drawInstanced = reinterpret_cast<DrawInstancedFunction>(glfwGetProcAddress("glDrawElementsInstanced"));
+        if (!drawInstanced) throw std::runtime_error("Cannot load OpenGL function: glDrawElementsInstanced");
+        GL::BindVertexArray(vao);
+        drawInstanced(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, nullptr, instanceCount);
+        GL::BindVertexArray(0);
+    }
+
 private:
-    GLuint vao = 0, vbo = 0, ebo = 0;
-    GLsizei indexCount = 0;
+    GLuint vao = 0, vbo = 0, ebo = 0, instanceVbo = 0;
+    GLsizei indexCount = 0, instanceCount = 0;
     GLuint gpuTextures[3] = {};
     mutable std::map<GLuint, std::array<GLint, 4>> uniforms;
 
@@ -165,6 +204,7 @@ private:
         if (vao) GL::DeleteVertexArrays(1, &vao);
         if (vbo) GL::DeleteBuffers(1, &vbo);
         if (ebo) GL::DeleteBuffers(1, &ebo);
+        if (instanceVbo) GL::DeleteBuffers(1, &instanceVbo);
         vao = 0;
         vbo = 0;
         ebo = 0;

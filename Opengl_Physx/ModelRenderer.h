@@ -4,6 +4,7 @@
 #include "Mesh.h"
 #include "Material.h"
 #include "ShadowMap.h"
+#include <vector>
 
 class ModelRenderer
 {
@@ -37,8 +38,23 @@ public:
     void DrawShadow(const Mesh& mesh, const glm::mat4& model)
     {
         if (!shadowsEnabled) return;
+        shader.SetBool("instanced", false);
         shader.SetMatrix4("model", model);
         mesh.Draw(shader.GetProgram());
+    }
+
+    void DrawShadowInstanced(const Mesh& mesh, const std::vector<glm::mat4>& instances)
+    {
+        if (!shadowsEnabled) return;
+        if (shader.GetUniformLocation("instanced") < 0)
+        {
+            for (const glm::mat4& instance : instances) DrawShadow(mesh, instance);
+            return;
+        }
+        shader.SetBool("instanced", true);
+        shader.SetMatrix4("model", glm::mat4(1.0f));
+        mesh.DrawInstanced(shader.GetProgram());
+        shader.SetBool("instanced", false);
     }
 
     void EndShadowPass()
@@ -72,6 +88,7 @@ public:
 
     void DrawMesh(const Mesh& mesh, const glm::mat4& model, const Material& material = Material{}) const
     {
+        shader.SetBool("instanced", false);
         shader.SetMatrix4("mvp", viewProjection * model);
         shader.SetMatrix4("model", model);
         shader.SetVector3("materialColor", material.baseColor);
@@ -83,6 +100,28 @@ public:
         if (material.baseTexture) material.baseTexture->Bind();
         else { GL::ActiveTexture(0x84C0); glBindTexture(GL_TEXTURE_2D, 0); }
         mesh.Draw(shader.GetProgram());
+    }
+
+    void DrawMeshInstanced(const Mesh& mesh, const std::vector<glm::mat4>& instances, const Material& material = Material{}) const
+    {
+        if (shader.GetUniformLocation("instanced") < 0)
+        {
+            for (const glm::mat4& instance : instances) DrawMesh(mesh, instance, material);
+            return;
+        }
+        shader.SetBool("instanced", true);
+        shader.SetMatrix4("mvp", viewProjection);
+        shader.SetMatrix4("model", glm::mat4(1.0f));
+        shader.SetVector3("materialColor", material.baseColor);
+        shader.SetFloat("specularStrength", material.specularStrength);
+        shader.SetFloat("shininess", material.shininess);
+        shader.SetBool("hasBaseTexture", material.baseTexture != nullptr);
+        shader.SetInt("baseTexture", 0);
+        shader.SetVector2("textureTiling", material.textureTiling);
+        if (material.baseTexture) material.baseTexture->Bind();
+        else { GL::ActiveTexture(0x84C0); glBindTexture(GL_TEXTURE_2D, 0); }
+        mesh.DrawInstanced(shader.GetProgram());
+        shader.SetBool("instanced", false);
     }
 
     void Draw(const Mesh& mesh, const Camera& camera, int width, int height, const glm::mat4& model, const Material& material = Material{}) const
