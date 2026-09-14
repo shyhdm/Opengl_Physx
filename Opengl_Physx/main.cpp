@@ -6,8 +6,8 @@
 #include "BlastContext.h"
 #include "BlastLibrary.h"
 #include "BlastScene.h"
-#include "DebugOverlay.h"
 #include "BlastChunkRenderer.h"
+#include "DebugOverlay.h"
 #include <exception>
 #include <memory>
 
@@ -31,10 +31,11 @@ int main()
                 scene->SetExternalRigidHandlers(
                     [&](const physx::PxRigidActor* actor, ModelType& type, bool*& mesh, std::uint64_t& id) {return blastScene->Resolve(actor, type, mesh, id); },
                     [&](std::vector<const physx::PxRigidActor*>& actors, bool all) {blastScene->AppendCollisionActors(actors, all); },
-                    [&](OutlineEffect& outline, const Camera& view, int width, int height, const physx::PxRigidActor* actor) {blastRenderer->DrawOutline(outline, *blastScene, view, width, height, actor); },
+                    [&](OutlineEffect& outline, const Camera& view, int width, int height, const physx::PxRigidActor* actor) {blastRenderer->DrawOutline(outline, *blastScene, view, width, height, actor); blastScene->DrawRuntimeWallOutline(outline, view, width, height, actor); },
                     [&](bool value) {blastScene->SetShowCollisions(value); });
             };
         connectBlastSelection();
+        blastScene->SetSceneIndex(scene->GetSceneIndex());
         ImGuiLayer gui(window);
         ImGuiPanel panel(gui.HasChineseFont());
         DebugOverlay debugOverlay;
@@ -67,7 +68,8 @@ int main()
                 {
                     blastScene->Spawn(type, position, velocity, scale);
                 });
-            if (showGui) panel.Draw(*scene, displayedFps, [&]() {scene->ClearRigidSelection(); blastScene->Clear(); }, [&](ModelType type, glm::vec3 position, float scale) {blastScene->Spawn(type, position, glm::vec3(0), scale); });
+            if (showGui) panel.Draw(*scene, displayedFps, [&]() {scene->ClearRigidSelection(); blastScene->Clear(); }, [&](ModelType type, glm::vec3 position, float scale) {blastScene->Spawn(type, position, glm::vec3(0), scale); }, [&]() {blastScene->BuildWall(); });
+            blastScene->SetSceneIndex(scene->GetSceneIndex());
             if (window.IsKeyDown(GLFW_KEY_ESCAPE)) window.RequestClose();
             blastScene->BeforePhysics();
             scene->Update(deltaTime);
@@ -77,6 +79,7 @@ int main()
             scene->Draw(camera, width, height, [&](ModelRenderer& renderer, bool shadowPass)
                 {
                     blastRenderer->Draw(renderer, *blastScene, shadowPass);
+                    blastScene->DrawRuntimeWall(renderer, shadowPass);
                 });
             debugOverlay.Draw(*scene, blastScene.get(), displayedFps, refreshStats);
             gui.Render();
@@ -92,6 +95,7 @@ int main()
                 scene->SetSceneIndex(activeScene);
                 blastScene = std::make_unique<BlastScene>(blast, *blastLibrary, scene->GetPhysicsWorld());
                 connectBlastSelection();
+                blastScene->SetSceneIndex(activeScene);
                 lastTime = glfwGetTime();
             }
         }

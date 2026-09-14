@@ -3,18 +3,28 @@
 #include <gpu/PxGpu.h>
 #include <cudamanager/PxCudaContextManager.h>
 #include <algorithm>
-#include <cmath>
-#include <stdexcept>
-#include "CollisionLibrary.h"
-#include <memory>
-#include <functional>
 #include <chrono>
+#include <cmath>
+#include <functional>
+#include <limits>
+#include <memory>
+#include <mutex>
+#include <stdexcept>
 #include <vector>
+#include "CollisionLibrary.h"
 
-// 一个程序先创建一个物理世界；刚体必须在世界销毁之前销毁。
 class PhysicsWorld
 {
 public:
+    struct Impact
+    {
+        physx::PxVec3 position{ 0 };
+        physx::PxVec3 normal{ 0,1,0 };
+        physx::PxVec3 impulse{ 0 };
+        physx::PxVec3 relativeVelocity{ 0 };
+        float velocityChange = 0.0f;
+    };
+
     explicit PhysicsWorld(bool useGpu = true)
     {
         using namespace physx;
@@ -36,6 +46,7 @@ public:
             description.gravity = PxVec3(0.0f, -9.81f, 0.0f);
             description.cpuDispatcher = dispatcher;
             description.filterShader = Filter;
+            description.simulationEventCallback = &contacts;
             description.flags |= PxSceneFlag::eENABLE_CCD;
             description.solverType = PxSolverType::eTGS;
             if (cuda)
@@ -43,33 +54,26 @@ public:
                 description.cudaContextManager = cuda;
                 description.flags |= PxSceneFlag::eENABLE_GPU_DYNAMICS | PxSceneFlag::eENABLE_PCM;
                 description.broadPhaseType = PxBroadPhaseType::eGPU;
-                description.solverType = PxSolverType::eTGS;
                 description.flags |= PxSceneFlag::eENABLE_EXTERNAL_FORCES_EVERY_ITERATION_TGS;
             }
             scene = physics->createScene(description);
             if (!scene) throw std::runtime_error("Cannot create PhysX scene.");
             material = physics->createMaterial(0.6f, 0.5f, 0.15f);
             if (!material) throw std::runtime_error("Cannot create PhysX material.");
-            // 地面厚 1 米，顶面位于 y = 0，与显示的地面一致。
             ground = PxCreateStatic(*physics, PxTransform(PxVec3(0.0f, -0.5f, 0.0f)), PxBoxGeometry(10.0f, 0.5f, 10.0f), *material);
             if (!ground) throw std::runtime_error("Cannot create PhysX ground.");
             scene->addActor(*ground);
         }
-        catch (...)
-        {
-            Release();
-            throw;
-        }
+        catch (...) { Release(); throw; }
     }
 
     ~PhysicsWorld() { Release(); }
     PhysicsWorld(const PhysicsWorld&) = delete;
     PhysicsWorld& operator=(const PhysicsWorld&) = delete;
 
-    // 渲染帧率可以变化，物理始终按每秒 60 步计算。
     void Update(float deltaTime, const std::function<void(float)>& beforeStep = {})
     {
-        lastSimulationMs = 0; lastSteps = 0;
+        lastSimulationMs = 0; lastSteps = 0; contacts.Clear();
         if (!std::isfinite(deltaTime) || deltaTime <= 0.0f) return;
         accumulator += std::min(static_cast<double>(deltaTime), 0.1);
         while (accumulator >= step)
@@ -79,22 +83,33 @@ public:
             scene->simulate(static_cast<float>(step));
             scene->fetchResults(true);
             lastSimulationMs += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - started).count();
-            ++lastSteps;
-            ++simulationRevision;
-            accumulator -= step;
+            ++lastSteps; ++simulationRevision; accumulator -= step;
         }
     }
 
     void SingleStep()
     {
+        contacts.Clear();
         scene->simulate(static_cast<float>(step));
         scene->fetchResults(true);
-        ++simulationRevision;
-        accumulator = 0;
+        ++simulationRevision; accumulator = 0;
     }
+
+    bool GetStrongestImpact(const physx::PxRigidActor* actor, Impact& result) const
+    {
+        std::lock_guard<std::mutex> lock(contacts.mutex);
+        bool found = false;
+        for (const auto& event : contacts.events)
+            if (event.actor == actor && (!found || event.impact.velocityChange > result.velocityChange))
+            {
+                result = event.impact;
+                found = true;
+            }
+        return found;
+    }
+
     double GetLastSimulationMs() const { return lastSimulationMs; }
     unsigned int GetLastSteps() const { return lastSteps; }
-
     void ClearAccumulator() { accumulator = 0; }
 
     physx::PxDeformableVolumeMaterial* AcquireSoftMaterial()
@@ -106,39 +121,82 @@ public:
             if (!value) throw std::runtime_error("Cannot create soft-body material.");
             try
             {
-                if (freeSoftMaterials.capacity() < softMaterials.size() + 1)
-                    freeSoftMaterials.reserve(std::max<std::size_t>(8, freeSoftMaterials.capacity() * 2));
+                if (freeSoftMaterials.capacity() < softMaterials.size() + 1) freeSoftMaterials.reserve(std::max<std::size_t>(8, freeSoftMaterials.capacity() * 2));
                 softMaterials.push_back(value);
             }
             catch (...) { value->release(); throw; }
         }
         else
         {
-            value = freeSoftMaterials.back();
-            freeSoftMaterials.pop_back();
-            value->setYoungsModulus(20000.0f);
-            value->setPoissons(0.35f);
-            value->setDynamicFriction(0.2f);
-            value->setElasticityDamping(0.05f);
+            value = freeSoftMaterials.back(); freeSoftMaterials.pop_back();
+            value->setYoungsModulus(20000.0f); value->setPoissons(0.35f); value->setDynamicFriction(0.2f); value->setElasticityDamping(0.05f);
         }
         return value;
     }
 
-    void ReturnSoftMaterial(physx::PxDeformableVolumeMaterial* value)
-    {
-        if (value) freeSoftMaterials.push_back(value);
-    }
-
+    void ReturnSoftMaterial(physx::PxDeformableVolumeMaterial* value) { if (value) freeSoftMaterials.push_back(value); }
     physx::PxPhysics& GetPhysics() { return *physics; }
     physx::PxScene& GetScene() { return *scene; }
     physx::PxMaterial& GetMaterial() { return *material; }
     physx::PxCudaContextManager* GetCuda() const { return cuda; }
     unsigned long long GetSimulationRevision() const { return simulationRevision; }
     CollisionLibrary& GetCollisions() { return *collisions; }
+    static constexpr physx::PxU32 fractureFilterTag = 0x46524143u;
 
 private:
+    class ContactCollector final : public physx::PxSimulationEventCallback
+    {
+    public:
+        struct Event { const physx::PxRigidActor* actor = nullptr; Impact impact; };
+        std::vector<Event> events;
+        mutable std::mutex mutex;
+        void Clear() { std::lock_guard<std::mutex> lock(mutex); events.clear(); }
+        void onConstraintBreak(physx::PxConstraintInfo*, physx::PxU32) override {}
+        void onWake(physx::PxActor**, physx::PxU32) override {}
+        void onSleep(physx::PxActor**, physx::PxU32) override {}
+        void onTrigger(physx::PxTriggerPair*, physx::PxU32) override {}
+        void onAdvance(const physx::PxRigidBody* const*, const physx::PxTransform*, const physx::PxU32) override {}
+        void onContact(const physx::PxContactPairHeader& header, const physx::PxContactPair* pairs, physx::PxU32 pairCount) override
+        {
+            using namespace physx;
+            if (!header.actors[0] || !header.actors[1]) return;
+            float effectiveMass = std::min(Mass(header.actors[0]), Mass(header.actors[1]));
+            if (!std::isfinite(effectiveMass)) return;
+            PxVec3 relativeVelocity = Velocity(header.actors[0]) - Velocity(header.actors[1]);
+            float relativeSpeed = relativeVelocity.magnitude();
+            std::lock_guard<std::mutex> lock(mutex);
+            for (PxU32 pairIndex = 0; pairIndex < pairCount; ++pairIndex)
+            {
+                const PxContactPair& pair = pairs[pairIndex];
+                if (pair.flags & (PxContactPairFlag::eREMOVED_SHAPE_0 | PxContactPairFlag::eREMOVED_SHAPE_1)) continue;
+                PxContactPairPoint points[32];
+                PxU32 count = pair.extractContacts(points, 32);
+                for (PxU32 i = 0; i < count; ++i)
+                {
+                    float velocityChange = std::max(points[i].impulse.magnitude() / std::max(effectiveMass, 0.01f), relativeSpeed);
+                    if (!std::isfinite(velocityChange) || velocityChange <= 0.0f) continue;
+                    events.push_back({ header.actors[0]->is<PxRigidActor>(),{points[i].position,points[i].normal,points[i].impulse,relativeVelocity,velocityChange} });
+                    events.push_back({ header.actors[1]->is<PxRigidActor>(),{points[i].position,-points[i].normal,-points[i].impulse,-relativeVelocity,velocityChange} });
+                }
+            }
+        }
+    private:
+        static float Mass(const physx::PxActor* actor)
+        {
+            const auto* dynamic = actor ? actor->is<physx::PxRigidDynamic>() : nullptr;
+            if (!dynamic || dynamic->getRigidBodyFlags().isSet(physx::PxRigidBodyFlag::eKINEMATIC)) return std::numeric_limits<float>::infinity();
+            return std::max(dynamic->getMass(), 0.01f);
+        }
+        static physx::PxVec3 Velocity(const physx::PxActor* actor)
+        {
+            const auto* dynamic = actor ? actor->is<physx::PxRigidDynamic>() : nullptr;
+            return dynamic && !dynamic->getRigidBodyFlags().isSet(physx::PxRigidBodyFlag::eKINEMATIC) ? dynamic->getLinearVelocity() : physx::PxVec3(0.0f);
+        }
+    };
+
     physx::PxDefaultAllocator allocator;
     physx::PxDefaultErrorCallback errors;
+    ContactCollector contacts;
     physx::PxFoundation* foundation = nullptr;
     physx::PxPhysics* physics = nullptr;
     physx::PxDefaultCpuDispatcher* dispatcher = nullptr;
@@ -150,16 +208,20 @@ private:
     std::vector<physx::PxDeformableVolumeMaterial*> softMaterials, freeSoftMaterials;
     bool extensions = false;
     unsigned long long simulationRevision = 0;
-    double lastSimulationMs = 0;
+    double lastSimulationMs = 0, accumulator = 0.0;
     unsigned int lastSteps = 0;
-    double accumulator = 0.0;
     static constexpr double step = 1.0 / 60.0;
 
     static physx::PxFilterFlags Filter(physx::PxFilterObjectAttributes a, physx::PxFilterData ad, physx::PxFilterObjectAttributes b, physx::PxFilterData bd, physx::PxPairFlags& pair, const void* data, physx::PxU32 size)
     {
-        auto flags = physx::PxDefaultSimulationFilterShader(a, ad, b, bd, pair, data, size);
-        if (!physx::PxFilterObjectIsTrigger(a) && !physx::PxFilterObjectIsTrigger(b)) pair |= physx::PxPairFlag::eDETECT_CCD_CONTACT;
-        return flags;
+        if (physx::PxFilterObjectIsTrigger(a) || physx::PxFilterObjectIsTrigger(b))
+        {
+            pair = physx::PxPairFlag::eTRIGGER_DEFAULT;
+            return physx::PxFilterFlag::eDEFAULT;
+        }
+        pair = physx::PxPairFlag::eCONTACT_DEFAULT | physx::PxPairFlag::eDETECT_CCD_CONTACT;
+        if (ad.word0 == fractureFilterTag || bd.word0 == fractureFilterTag) pair |= physx::PxPairFlag::eNOTIFY_TOUCH_FOUND | physx::PxPairFlag::eNOTIFY_TOUCH_PERSISTS | physx::PxPairFlag::eNOTIFY_CONTACT_POINTS;
+        return physx::PxFilterFlag::eDEFAULT;
     }
 
     void Release()
@@ -169,9 +231,7 @@ private:
         if (dispatcher) { dispatcher->release(); dispatcher = nullptr; }
         if (material) { material->release(); material = nullptr; }
         for (auto* value : softMaterials) value->release();
-        softMaterials.clear();
-        freeSoftMaterials.clear();
-        collisions.reset();
+        softMaterials.clear(); freeSoftMaterials.clear(); collisions.reset();
         if (extensions) { PxCloseExtensions(); extensions = false; }
         if (physics) { physics->release(); physics = nullptr; }
         if (cuda) { cuda->release(); cuda = nullptr; }

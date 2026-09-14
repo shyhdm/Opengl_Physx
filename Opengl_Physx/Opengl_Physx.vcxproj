@@ -185,6 +185,7 @@ copy /D /Y "D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\
     <ClInclude Include="OutlineEffect.h" />
     <ClInclude Include="PhysicsWorld.h" />
     <ClInclude Include="RigidBody.h" />
+    <ClInclude Include="RuntimeFractureWall.h" />
     <ClInclude Include="Scene.h" />
     <ClInclude Include="Shader.h" />
     <ClInclude Include="ShadowMap.h" />

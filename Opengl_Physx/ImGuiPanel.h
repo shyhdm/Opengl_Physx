@@ -9,7 +9,7 @@ class ImGuiPanel
 public:
     explicit ImGuiPanel(bool chinese = true) : chinese(chinese) {}
 
-    void Draw(Scene& scene, float fps, const std::function<void()>& clearDestructibles = {}, const std::function<void(ModelType, glm::vec3, float)>& spawnDestructible = {})
+    void Draw(Scene& scene, float fps, const std::function<void()>& clearDestructibles = {}, const std::function<void(ModelType, glm::vec3, float)>& spawnDestructible = {}, const std::function<void()>& buildWall = {})
     {
         const auto display = ImGui::GetIO().DisplaySize;
         float scale = ImGui::GetStyle().FontScaleDpi;
@@ -37,6 +37,15 @@ public:
         }
         if (ImGui::CollapsingHeader(T("全局", "Global")))
         {
+            const char* modelsCN[] = { "方块","平面","球体","圆柱","圆锥","胶囊","圆环" };
+            const char* modelsEN[] = { "Box","Plane","Sphere","Cylinder","Cone","Capsule","Torus" };
+            const char* typesCN[] = { "刚体","软体","碎裂刚体" };
+            const char* typesEN[] = { "Rigid","Soft","Destructible" };
+            int type = scene.GetSpawnType(), model = static_cast<int>(scene.GetSpawnModel());
+            ImGui::PushItemWidth(160.0f * scale);
+            if (ImGui::Combo(T("类型", "Type"), &type, chinese ? typesCN : typesEN, 3)) scene.SetSpawnType(type);
+            if (ImGui::Combo(T("模型", "Model"), &model, chinese ? modelsCN : modelsEN, static_cast<int>(ModelType::Count))) scene.SetSpawnModel(static_cast<ModelType>(model));
+            ImGui::PopItemWidth();
             const char* iterations[] = { "4","8","16" };
             const char* densities[] = { "4","6","10" };
             const unsigned int iterationValues[] = { 4,8,16 }, densityValues[] = { 4,6,10 };
@@ -75,15 +84,8 @@ public:
             }
             if (ImGui::TreeNode(T("发射", "Launch")))
             {
-                const char* modelsCN[] = { "方块","平面","球体","圆柱","圆锥","胶囊","圆环" };
-                const char* modelsEN[] = { "Box","Plane","Sphere","Cylinder","Cone","Capsule","Torus" };
-                const char* typesCN[] = { "刚体","软体","碎裂刚体" };
-                const char* typesEN[] = { "Rigid","Soft","Destructible" };
-                int type = scene.GetSpawnType(), model = static_cast<int>(scene.GetSpawnModel());
                 float speed = scene.GetLaunchSpeed(), size = scene.GetLaunchScale();
                 ImGui::PushItemWidth(160.0f * scale);
-                if (ImGui::Combo(T("类型", "Type"), &type, chinese ? typesCN : typesEN, 3)) scene.SetSpawnType(type);
-                if (ImGui::Combo(T("模型", "Model"), &model, chinese ? modelsCN : modelsEN, static_cast<int>(ModelType::Count))) scene.SetSpawnModel(static_cast<ModelType>(model));
                 bool launchChanged = Number(T("速度", "Speed"), speed, 0.25f, 0.0f, 100.0f);
                 launchChanged |= Number(T("大小", "Size"), size, 0.05f, 0.1f, 10.0f);
                 if (launchChanged) scene.SetLaunchSettings(speed, size);
@@ -108,8 +110,25 @@ public:
             if (ImGui::Button(T("单列", "Column"))) sceneAction = 3;
             ImGui::EndDisabled();
         }
+        int scene2Action = -1;
         if (scene.GetSceneIndex() == 1 && ImGui::CollapsingHeader(T("测试", "Test"), ImGuiTreeNodeFlags_DefaultOpen))
         {
+            ImGui::SetNextItemWidth(150 * scale);
+            ImGui::InputInt(T("数量", "Count"), &testCount);
+            testCount = std::clamp(testCount, 1, 500);
+            if (ImGui::Button(T("墙体", "Wall"))) scene2Action = 0;
+            ImGui::SameLine();
+            if (ImGui::Button(T("金字塔", "Pyramid"))) scene2Action = 1;
+        }
+
+        if (scene2Action >= 0)
+        {
+            scene.Reset();
+            if (scene2Action == 0) { if (buildWall) buildWall(); }
+            else scene.BuildPyramidTest(testCount, clearDestructibles, spawnDestructible);
+            ResetProperties(scene.GetVersion());
+            ImGui::End();
+            return;
         }
 
         if (sceneAction >= 0)

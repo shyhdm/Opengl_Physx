@@ -159,6 +159,9 @@
     <ClInclude Include="BlastCollisionLibrary.h">
       <Filter>头文件\Physics\Blast</Filter>
     </ClInclude>
+    <ClInclude Include="RuntimeFractureWall.h">
+      <Filter>头文件\Physics\Blast</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">

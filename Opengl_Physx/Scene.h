@@ -369,6 +369,48 @@ public:
         BuildTest(stacked, count, singleColumn);
     }
 
+    void BuildPyramidTest(int count, const std::function<void()>& clearDestructibles = {}, const std::function<void(ModelType, glm::vec3, float)>& spawnDestructible = {})
+    {
+        auto bounds = physx::PxBounds3::empty();
+        if (spawnType == 1)
+        {
+            if (!SoftBodiesAvailable()) return;
+            auto* cooked = softModels.Get(selectedType, softResolution)->getCollisionMesh();
+            for (physx::PxU32 i = 0; i < cooked->getNbVertices(); ++i) bounds.include(cooked->getVertices()[i]);
+        }
+        else
+        {
+            auto model = ModelBuilder::Create(selectedType);
+            for (const auto& vertex : model.vertices) bounds.include(physx::PxVec3(vertex.x, vertex.y, vertex.z));
+        }
+        bounds.minimum *= launchScale;
+        bounds.maximum *= launchScale;
+        auto size = bounds.maximum - bounds.minimum;
+        ClearSelection();
+        softBodies.clear(); bodies.clear(); world.ClearAccumulator();
+        if (clearDestructibles) clearDestructibles();
+        count = std::clamp(count, 1, 500);
+        int rows = 1;
+        while (rows * (rows + 1) / 2 < count) ++rows;
+        int remaining = count;
+        float stepX = size.x + 0.08f, stepY = size.y + 0.08f;
+        for (int row = 0; row < rows && remaining > 0; ++row)
+        {
+            int rowCount = std::min(rows - row, remaining);
+            float y = 0.3f - bounds.minimum.y + static_cast<float>(row) * stepY;
+            float startX = -0.5f * static_cast<float>(rowCount - 1) * stepX;
+            for (int column = 0; column < rowCount; ++column)
+            {
+                glm::vec3 position(startX + static_cast<float>(column) * stepX, y, 0.0f);
+                if (spawnType == 1) AddSoftBody(selectedType, position, glm::vec3(0), launchScale);
+                else if (spawnType == 2 && spawnDestructible) spawnDestructible(selectedType, position, launchScale);
+                else AddBody(selectedType, position, glm::vec3(0), glm::vec3(launchScale));
+            }
+            remaining -= rowCount;
+        }
+        ++version;
+    }
+
     void BuildTest(bool stacked, int count, bool singleColumn = false, const std::function<void()>& clearDestructibles = {}, const std::function<void(ModelType, glm::vec3, float)>& spawnDestructible = {})
     {
         auto bounds = physx::PxBounds3::empty();
