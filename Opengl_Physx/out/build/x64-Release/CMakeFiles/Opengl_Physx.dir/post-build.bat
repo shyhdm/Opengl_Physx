@@ -34,6 +34,18 @@ cd /D D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\out\build\x64-Release || (set FAIL_L
 "C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_if_different D:/Dev/.cpp/_Library/PhysX-main/blast/_build/windows-x86_64/release/blast-sdk/bin/NvBlastGlobals.dll D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/out/build/x64-Release/bin || (set FAIL_LINE=34& goto :ABORT)
 cd /D D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\out\build\x64-Release || (set FAIL_LINE=35& goto :ABORT)
 "C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_if_different D:/Dev/.cpp/_Library/PhysX-main/blast/_build/windows-x86_64/release/blast-sdk/bin/NvBlastTk.dll D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/out/build/x64-Release/bin || (set FAIL_LINE=36& goto :ABORT)
+cd /D D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\out\build\x64-Release || (set FAIL_LINE=37& goto :ABORT)
+"C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_if_different D:/Dev/.cpp/_Library/PhysX-main/flow/_build/windows-x86_64/release/nvflow.dll D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/out/build/x64-Release/bin || (set FAIL_LINE=38& goto :ABORT)
+cd /D D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\out\build\x64-Release || (set FAIL_LINE=39& goto :ABORT)
+"C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_if_different D:/Dev/.cpp/_Library/PhysX-main/flow/_build/windows-x86_64/release/nvflow_rtx.dll D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/out/build/x64-Release/bin || (set FAIL_LINE=40& goto :ABORT)
+cd /D D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\out\build\x64-Release || (set FAIL_LINE=41& goto :ABORT)
+"C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_if_different D:/Dev/.cpp/_Library/PhysX-main/flow/_build/windows-x86_64/release/nvflowext.dll D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/out/build/x64-Release/bin || (set FAIL_LINE=42& goto :ABORT)
+cd /D D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\out\build\x64-Release || (set FAIL_LINE=43& goto :ABORT)
+"C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_if_different D:/Dev/.cpp/_Library/PhysX-main/flow/_build/windows-x86_64/release/nvflowext_rtx.dll D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/out/build/x64-Release/bin || (set FAIL_LINE=44& goto :ABORT)
+cd /D D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\out\build\x64-Release || (set FAIL_LINE=45& goto :ABORT)
+"C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_if_different D:/Dev/.cpp/_Library/PhysX-main/flow/_build/windows-x86_64/release/slang-glslang.dll D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/out/build/x64-Release/bin || (set FAIL_LINE=46& goto :ABORT)
+cd /D D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\out\build\x64-Release || (set FAIL_LINE=47& goto :ABORT)
+"C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_if_different D:/Dev/.cpp/_Library/PhysX-main/flow/_build/windows-x86_64/release/slang.dll D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/out/build/x64-Release/bin || (set FAIL_LINE=48& goto :ABORT)
 goto :EOF
 
 :ABORT

@@ -8,7 +8,11 @@
 #include "BlastScene.h"
 #include "BlastChunkRenderer.h"
 #include "DebugOverlay.h"
+#include "FlowContext.h"
+#include "FlowSimulation.h"
+#include "FlowVolumeRenderer.h"
 #include <exception>
+#include <stdexcept>
 #include <memory>
 #include <chrono>
 
@@ -17,8 +21,11 @@ int main()
     try
     {
         BlastContext blast;
-        Window window(1280, 720, "OpenGL + PhysX + Blast");
+        Window window(1280, 720, "Flow");
         GL::Load();
+        FlowVolumeRenderer flowVolumeRenderer;
+        FlowContext flow;
+        std::unique_ptr<FlowSimulation> flowSimulation;
         Camera camera;
         camera.position = glm::vec3(7.0f, 5.0f, 10.0f);
         camera.yaw = -125.0f;
@@ -75,8 +82,14 @@ int main()
                     {
                         blastScene->PredictProjectile(position, velocity, radius, mass, volume);
                     });
-                if (showGui) panel.Draw(*scene, displayedFps, [&]() {scene->ClearRigidSelection(); blastScene->Clear(); }, [&](ModelType type, glm::vec3 position, float scale, float mass) {blastScene->Spawn(type, position, glm::vec3(0), scale, mass); }, [&]() {blastScene->BuildWall(); }, blastScene.get(), debugOverlay.GetText());
+                if (showGui) panel.Draw(*scene, displayedFps, [&]() {scene->ClearRigidSelection(); blastScene->Clear(); }, [&](ModelType type, glm::vec3 position, float scale, float mass) {blastScene->Spawn(type, position, glm::vec3(0), scale, mass); }, [&]() {blastScene->BuildWall(); }, blastScene.get(), debugOverlay.GetText(), flowSimulation.get());
                 blastScene->SetSceneIndex(scene->GetSceneIndex());
+                if (flowSimulation)
+                {
+                    flowSimulation->SetSceneActive(scene->GetSceneIndex() == 2);
+                    flowSimulation->Update(deltaTime);
+                    flowVolumeRenderer.Update(flowSimulation->LatestReadback());
+                }
                 if (window.IsKeyDown(GLFW_KEY_ESCAPE)) window.RequestClose();
                 blastScene->BeforePhysics();
                 scene->Update(deltaTime);
@@ -88,10 +101,23 @@ int main()
                         blastRenderer->Draw(renderer, *blastScene, shadowPass);
                         blastScene->DrawRuntimeWall(renderer, shadowPass);
                     });
+                if (scene->GetSceneIndex() == 2 && flowSimulation)
+                {
+                    flowVolumeRenderer.Draw(
+                        camera,
+                        width,
+                        height,
+                        flowSimulation->GetSettings()
+                    );
+                }
                 debugOverlay.Draw();
                 gui.Render();
                 cpuFrameMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - cpuFrameStarted).count();
                 window.Present();
+                if (scene->GetSceneIndex() == 2 && !flowSimulation)
+                {
+                    flowSimulation = std::make_unique<FlowSimulation>(flow);
+                }
                 if (scene->GetRequestedMode() >= 0)
                 {
                     int activeScene = scene->GetSceneIndex();
@@ -113,6 +139,7 @@ int main()
     catch (const std::exception& error)
     {
         OutputDebugStringA(error.what());
+        MessageBoxA(nullptr, error.what(), "Application error", MB_OK | MB_ICONERROR);
         return 1;
     }
     return 0;

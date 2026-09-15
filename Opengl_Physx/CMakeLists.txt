@@ -13,11 +13,23 @@ set(APP_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}" CACHE PATH "Application source 
 set(PHYSX_ROOT "D:/Dev/.cpp/_Library/PhysX-main" CACHE PATH "PhysX source root")
 set(PHYSX_BIN "${PHYSX_ROOT}/physx/bin/win.x86_64.vc143.md/release")
 set(BLAST_SDK "${PHYSX_ROOT}/blast/_build/windows-x86_64/release/blast-sdk")
+set(FLOW_ROOT "${PHYSX_ROOT}/flow" CACHE PATH "NVIDIA Flow root")
+set(FLOW_BIN "${FLOW_ROOT}/_build/windows-x86_64/release")
 set(GLFW_ROOT "${APP_SOURCE_DIR}/../packages/glfw.3.4.0/build/native")
 set(GLM_ROOT "${APP_SOURCE_DIR}/../packages/glm.1.0.3/build/native")
 set(IMGUI_ROOT "${APP_SOURCE_DIR}/ThirdParty/imgui")
 
-foreach(required_path IN ITEMS "${PHYSX_ROOT}/physx/include" "${PHYSX_BIN}" "${BLAST_SDK}/include" "${BLAST_SDK}/bin" "${GLFW_ROOT}" "${GLM_ROOT}" "${IMGUI_ROOT}")
+foreach(required_path IN ITEMS
+    "${PHYSX_ROOT}/physx/include"
+    "${PHYSX_BIN}"
+    "${BLAST_SDK}/include"
+    "${BLAST_SDK}/bin"
+    "${FLOW_ROOT}/include"
+    "${FLOW_BIN}"
+    "${GLFW_ROOT}"
+    "${GLM_ROOT}"
+    "${IMGUI_ROOT}"
+)
     if(NOT EXISTS "${required_path}")
         message(FATAL_ERROR "Required dependency path does not exist: ${required_path}")
     endif()
@@ -54,9 +66,17 @@ target_include_directories(Opengl_Physx PRIVATE
     "${BLAST_SDK}/include/extensions/authoringCommon"
     "${BLAST_SDK}/include/extensions/shaders"
     "${BLAST_SDK}/include/shared/NvFoundation"
+    "${FLOW_ROOT}/include"
+    "${FLOW_ROOT}/include/nvflow"
+    "${FLOW_ROOT}/include/nvflowext"
 )
 
-target_link_directories(Opengl_Physx PRIVATE "${PHYSX_BIN}" "${BLAST_SDK}/bin")
+target_link_directories(Opengl_Physx PRIVATE
+    "${PHYSX_BIN}"
+    "${BLAST_SDK}/bin"
+    "${FLOW_BIN}"
+)
+
 target_link_libraries(Opengl_Physx PRIVATE
     "${GLFW_ROOT}/lib/dynamic/v143/x64/glfw3dll.lib"
     opengl32
@@ -72,6 +92,8 @@ target_link_libraries(Opengl_Physx PRIVATE
     NvBlastExtAssetUtils
     NvBlastExtAuthoring
     NvBlastExtShaders
+    nvflow
+    nvflowext
 )
 
 set_target_properties(Opengl_Physx PROPERTIES
@@ -80,12 +102,25 @@ set_target_properties(Opengl_Physx PROPERTIES
 )
 
 add_custom_command(TARGET Opengl_Physx POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory "${APP_SOURCE_DIR}/Assets" "$<TARGET_FILE_DIR:Opengl_Physx>/Assets"
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${GLFW_ROOT}/bin/dynamic/v143/x64/glfw3.dll" "$<TARGET_FILE_DIR:Opengl_Physx>"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${APP_SOURCE_DIR}/Assets"
+        "$<TARGET_FILE_DIR:Opengl_Physx>/Assets"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${GLFW_ROOT}/bin/dynamic/v143/x64/glfw3.dll"
+        "$<TARGET_FILE_DIR:Opengl_Physx>"
 )
 
 file(GLOB PHYSX_DLLS "${PHYSX_BIN}/*.dll")
 file(GLOB BLAST_DLLS "${BLAST_SDK}/bin/NvBlast*.dll")
-foreach(runtime_dll IN LISTS PHYSX_DLLS BLAST_DLLS)
-    add_custom_command(TARGET Opengl_Physx POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different "${runtime_dll}" "$<TARGET_FILE_DIR:Opengl_Physx>")
+file(GLOB FLOW_DLLS
+    "${FLOW_BIN}/nvflow*.dll"
+    "${FLOW_BIN}/slang*.dll"
+)
+
+foreach(runtime_dll IN LISTS PHYSX_DLLS BLAST_DLLS FLOW_DLLS)
+    add_custom_command(TARGET Opengl_Physx POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${runtime_dll}"
+            "$<TARGET_FILE_DIR:Opengl_Physx>"
+    )
 endforeach()

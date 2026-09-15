@@ -52,6 +52,13 @@ public:
             SetGroundHalfExtent(30.0f);
             return;
         }
+        if (sceneIndex == 2)
+        {
+            ground.scale = glm::vec3(30.0f, 1.0f, 30.0f);
+            groundMaterial.textureTiling = glm::vec2(15.0f);
+            SetGroundHalfExtent(15.0f);
+            return;
+        }
         ground.scale = glm::vec3(20.0f, 1.0f, 20.0f);
         groundMaterial.textureTiling = glm::vec2(10.0f);
         SetGroundHalfExtent(10.0f);
@@ -321,7 +328,7 @@ public:
     int GetSceneIndex() const { return sceneIndex; }
     void SetSceneIndex(int value)
     {
-        if (value < 0 || value > 1) throw std::invalid_argument("Invalid scene index.");
+        if (value < 0 || value > 2) throw std::invalid_argument("Invalid scene index.");
         if (sceneIndex == value) return;
         sceneIndex = value;
         Reset();

@@ -1,6 +1,7 @@
 #pragma once
 #include "Scene.h"
 #include "BlastScene.h"
+#include "FlowSimulation.h"
 #include "ThirdParty/imgui/imgui.h"
 #include "ThirdParty/imgui/imgui_internal.h"
 #include <string>
@@ -10,7 +11,7 @@ class ImGuiPanel
 public:
     explicit ImGuiPanel(bool chinese = true) : chinese(chinese) {}
 
-    void Draw(Scene& scene, float fps, const std::function<void()>& clearDestructibles = {}, const std::function<void(ModelType, glm::vec3, float, float)>& spawnDestructible = {}, const std::function<void()>& buildWall = {}, BlastScene* blastScene = nullptr, const char* debugText = nullptr)
+    void Draw(Scene& scene, float fps, const std::function<void()>& clearDestructibles = {}, const std::function<void(ModelType, glm::vec3, float, float)>& spawnDestructible = {}, const std::function<void()>& buildWall = {}, BlastScene* blastScene = nullptr, const char* debugText = nullptr, FlowSimulation* flowSimulation = nullptr)
     {
         const auto display = ImGui::GetIO().DisplaySize;
         float scale = ImGui::GetStyle().FontScaleDpi;
@@ -29,11 +30,11 @@ public:
         ImGui::Text("FPS: %.0f", fps);
         ImGui::SameLine();
         if (ImGui::Button(T("复制调试信息", "Copy debug info")) && debugText) ImGui::SetClipboardText(debugText);
-        const char* scenesCN[] = { "场景 1","场景 2" };
-        const char* scenesEN[] = { "Scene 1","Scene 2" };
+        const char* scenesCN[] = { "场景 1","场景 2","场景 3 - Flow 火焰" };
+        const char* scenesEN[] = { "Scene 1","Scene 2","Scene 3 - Flow Fire" };
         int activeScene = scene.GetSceneIndex();
         ImGui::SetNextItemWidth(210.0f * scale);
-        if (ImGui::Combo(T("场景", "Scene"), &activeScene, chinese ? scenesCN : scenesEN, 2))
+        if (ImGui::Combo(T("场景", "Scene"), &activeScene, chinese ? scenesCN : scenesEN, 3))
         {
             if (clearDestructibles) clearDestructibles();
             scene.SetSceneIndex(activeScene);
@@ -150,6 +151,50 @@ public:
                 fracture.localFragments = static_cast<unsigned int>(std::clamp(fragments, 8, 48));
                 if (changed) blastScene->SetWallSettings(fracture);
             }
+        }
+
+        if (scene.GetSceneIndex() == 2 && flowSimulation &&
+            ImGui::CollapsingHeader(T("Flow 火焰", "Flow Fire"), ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            auto& fire = flowSimulation->GetSettings();
+            ImGui::Checkbox(T("持续发射", "Continuous emission"), &fire.emitting);
+            ImGui::SetNextItemWidth(210.0f * scale);
+            ImGui::DragFloat3(T("发射器位置", "Emitter position"), fire.position, 0.05f, -20.0f, 20.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+            ImGui::SetNextItemWidth(150.0f * scale);
+            Number(T("发射器半径", "Emitter radius"), fire.radius, 0.02f, 0.1f, 5.0f);
+            ImGui::SetNextItemWidth(150.0f * scale);
+            Number(T("上升速度", "Upward velocity"), fire.upwardVelocity, 0.05f, 0.0f, 30.0f);
+            ImGui::SetNextItemWidth(150.0f * scale);
+            Number(T("温度", "Temperature"), fire.temperature, 0.05f, 0.0f, 10.0f);
+            ImGui::SetNextItemWidth(150.0f * scale);
+            Number(T("燃料", "Fuel"), fire.fuel, 0.02f, 0.0f, 5.0f);
+            ImGui::SetNextItemWidth(150.0f * scale);
+            Number(T("烟雾", "Smoke"), fire.smoke, 0.02f, 0.0f, 5.0f);
+            ImGui::SetNextItemWidth(150.0f * scale);
+            Number(T("体素大小", "Cell size"), fire.cellSize, 0.01f, 0.08f, 1.0f);
+            ImGui::SetNextItemWidth(150.0f * scale);
+            Number(T("体积浓度", "Volume density"), fire.renderDensity, 0.05f, 0.1f, 10.0f);
+            ImGui::SetNextItemWidth(150.0f * scale);
+            Number(T("火焰亮度", "Fire brightness"), fire.fireBrightness, 0.05f, 0.0f, 20.0f);
+            ImGui::SetNextItemWidth(150.0f * scale);
+            ImGui::DragInt(T("渲染步数", "Ray steps"), &fire.raySteps, 1.0f, 32, 256, "%d", ImGuiSliderFlags_AlwaysClamp);
+
+            if (ImGui::Button(T("重置火焰", "Reset fire")))
+            {
+                flowSimulation->Reset();
+            }
+            ImGui::SameLine();
+            if (ImGui::Button(T("恢复默认", "Defaults")))
+            {
+                fire = FlowSimulation::Settings{};
+                flowSimulation->Reset();
+            }
+            ImGui::Text(T("Flow 提交帧: %llu", "Flow submitted frame: %llu"),
+                static_cast<unsigned long long>(flowSimulation->LastSubmittedFrame()));
+        }
+        else if (scene.GetSceneIndex() == 2 && !flowSimulation)
+        {
+            ImGui::TextUnformatted(T("Flow 正在初始化，请稍候...", "Flow is initializing, please wait..."));
         }
 
         if (scene2Action >= 0)

@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="18.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\CMakeFiles\f29a8d04244d1251399a56843d53923a\generate.stamp.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{1A3D7C54-BF2C-3970-853E-EF1BAB2606C0}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

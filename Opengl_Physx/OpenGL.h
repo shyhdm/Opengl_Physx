@@ -57,6 +57,8 @@ namespace GL
     using Uniform3fFunction = void(APIENTRY*)(GLint, GLfloat, GLfloat, GLfloat);
     using Uniform4fFunction = void(APIENTRY*)(GLint, GLfloat, GLfloat, GLfloat, GLfloat);
     using GetActiveUniformFunction = void(APIENTRY*)(GLuint, GLuint, GLsizei, GLsizei*, GLint*, GLenum*, char*);
+    using TexImage3DFunction = void(APIENTRY*)(GLenum, GLint, GLint, GLsizei, GLsizei, GLsizei, GLint, GLenum, GLenum, const void*);
+    using TexSubImage3DFunction = void(APIENTRY*)(GLenum, GLint, GLint, GLint, GLint, GLsizei, GLsizei, GLsizei, GLenum, GLenum, const void*);
     inline CreateShaderFunction CreateShader = nullptr;
     inline ShaderSourceFunction ShaderSource = nullptr;
     inline CompileShaderFunction CompileShader = nullptr;
@@ -95,6 +97,8 @@ namespace GL
     inline Uniform3fFunction Uniform3f = nullptr;
     inline Uniform4fFunction Uniform4f = nullptr;
     inline GetActiveUniformFunction GetActiveUniform = nullptr;
+    inline TexImage3DFunction TexImage3D = nullptr;
+    inline TexSubImage3DFunction TexSubImage3D = nullptr;
 
     // Call only after an OpenGL context has been made current.
     inline void Load();
@@ -134,6 +138,8 @@ namespace GL
         LoadFunction(Uniform3f, "glUniform3f");
         LoadFunction(Uniform4f, "glUniform4f");
         LoadFunction(GetActiveUniform, "glGetActiveUniform");
+        LoadFunction(TexImage3D, "glTexImage3D");
+        LoadFunction(TexSubImage3D, "glTexSubImage3D");
         LoadFunction(CreateShader, "glCreateShader");
         LoadFunction(ShaderSource, "glShaderSource");
         LoadFunction(CompileShader, "glCompileShader");
