@@ -3,8 +3,9 @@
 	{
 		"generator" : 
 		{
-			"multiConfig" : false,
-			"name" : "Ninja"
+			"multiConfig" : true,
+			"name" : "Visual Studio 18 2026",
+			"platform" : "x64"
 		},
 		"paths" : 
 		{
@@ -26,7 +27,7 @@
 	"objects" : 
 	[
 		{
-			"jsonFile" : "codemodel-v2-d8f2fcde3128b345d45d.json",
+			"jsonFile" : "codemodel-v2-f863dc24c7d6493d2531.json",
 			"kind" : "codemodel",
 			"version" : 
 			{
@@ -35,7 +36,7 @@
 			}
 		},
 		{
-			"jsonFile" : "cache-v2-691bb3cb6905197cb084.json",
+			"jsonFile" : "cache-v2-f196d629ecc1b881561b.json",
 			"kind" : "cache",
 			"version" : 
 			{
@@ -44,7 +45,7 @@
 			}
 		},
 		{
-			"jsonFile" : "cmakeFiles-v1-db89870dde2e0241d3d3.json",
+			"jsonFile" : "cmakeFiles-v1-4d16690b293b31706ef9.json",
 			"kind" : "cmakeFiles",
 			"version" : 
 			{
@@ -53,7 +54,7 @@
 			}
 		},
 		{
-			"jsonFile" : "toolchains-v1-e76138d43c2702fe7210.json",
+			"jsonFile" : "toolchains-v1-13698aea7b0996d9362b.json",
 			"kind" : "toolchains",
 			"version" : 
 			{
@@ -64,7 +65,7 @@
 	],
 	"reply" : 
 	{
-		"client-MicrosoftVS" : 
+		"client-vscode" : 
 		{
 			"query.json" : 
 			{
@@ -75,22 +76,22 @@
 						"version" : 2
 					},
 					{
-						"kind" : "cmakeFiles",
-						"version" : 1
-					},
-					{
 						"kind" : "codemodel",
 						"version" : 2
 					},
 					{
 						"kind" : "toolchains",
 						"version" : 1
+					},
+					{
+						"kind" : "cmakeFiles",
+						"version" : 1
 					}
 				],
 				"responses" : 
 				[
 					{
-						"jsonFile" : "cache-v2-691bb3cb6905197cb084.json",
+						"jsonFile" : "cache-v2-f196d629ecc1b881561b.json",
 						"kind" : "cache",
 						"version" : 
 						{
@@ -99,16 +100,7 @@
 						}
 					},
 					{
-						"jsonFile" : "cmakeFiles-v1-db89870dde2e0241d3d3.json",
-						"kind" : "cmakeFiles",
-						"version" : 
-						{
-							"major" : 1,
-							"minor" : 1
-						}
-					},
-					{
-						"jsonFile" : "codemodel-v2-d8f2fcde3128b345d45d.json",
+						"jsonFile" : "codemodel-v2-f863dc24c7d6493d2531.json",
 						"kind" : "codemodel",
 						"version" : 
 						{
@@ -117,8 +109,17 @@
 						}
 					},
 					{
-						"jsonFile" : "toolchains-v1-e76138d43c2702fe7210.json",
+						"jsonFile" : "toolchains-v1-13698aea7b0996d9362b.json",
 						"kind" : "toolchains",
+						"version" : 
+						{
+							"major" : 1,
+							"minor" : 1
+						}
+					},
+					{
+						"jsonFile" : "cmakeFiles-v1-4d16690b293b31706ef9.json",
+						"kind" : "cmakeFiles",
 						"version" : 
 						{
 							"major" : 1,

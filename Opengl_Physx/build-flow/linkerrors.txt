@@ -1,0 +1,209 @@
+================================================================================
+Linker Errors
+Generated: 2026-09-15T21:10:53.132Z
+Total Errors: 68
+================================================================================
+
+[LNK2038] (MSVC)
+检测到“_ITERATOR_DEBUG_LEVEL”的不匹配项: 值“0”不匹配值“2”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“RuntimeLibrary”的不匹配项: 值“MD_DynamicRelease”不匹配值“MDd_DynamicDebug”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“_ITERATOR_DEBUG_LEVEL”的不匹配项: 值“0”不匹配值“2”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“RuntimeLibrary”的不匹配项: 值“MD_DynamicRelease”不匹配值“MDd_DynamicDebug”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“_ITERATOR_DEBUG_LEVEL”的不匹配项: 值“0”不匹配值“2”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“RuntimeLibrary”的不匹配项: 值“MD_DynamicRelease”不匹配值“MDd_DynamicDebug”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“_ITERATOR_DEBUG_LEVEL”的不匹配项: 值“0”不匹配值“2”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“RuntimeLibrary”的不匹配项: 值“MD_DynamicRelease”不匹配值“MDd_DynamicDebug”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“_ITERATOR_DEBUG_LEVEL”的不匹配项: 值“0”不匹配值“2”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“RuntimeLibrary”的不匹配项: 值“MD_DynamicRelease”不匹配值“MDd_DynamicDebug”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“_ITERATOR_DEBUG_LEVEL”的不匹配项: 值“0”不匹配值“2”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“RuntimeLibrary”的不匹配项: 值“MD_DynamicRelease”不匹配值“MDd_DynamicDebug”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“_ITERATOR_DEBUG_LEVEL”的不匹配项: 值“0”不匹配值“2”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“RuntimeLibrary”的不匹配项: 值“MD_DynamicRelease”不匹配值“MDd_DynamicDebug”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“_ITERATOR_DEBUG_LEVEL”的不匹配项: 值“0”不匹配值“2”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“RuntimeLibrary”的不匹配项: 值“MD_DynamicRelease”不匹配值“MDd_DynamicDebug”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“_ITERATOR_DEBUG_LEVEL”的不匹配项: 值“0”不匹配值“2”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“RuntimeLibrary”的不匹配项: 值“MD_DynamicRelease”不匹配值“MDd_DynamicDebug”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“_ITERATOR_DEBUG_LEVEL”的不匹配项: 值“0”不匹配值“2”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“RuntimeLibrary”的不匹配项: 值“MD_DynamicRelease”不匹配值“MDd_DynamicDebug”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“_ITERATOR_DEBUG_LEVEL”的不匹配项: 值“0”不匹配值“2”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“RuntimeLibrary”的不匹配项: 值“MD_DynamicRelease”不匹配值“MDd_DynamicDebug”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“_ITERATOR_DEBUG_LEVEL”的不匹配项: 值“0”不匹配值“2”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“RuntimeLibrary”的不匹配项: 值“MD_DynamicRelease”不匹配值“MDd_DynamicDebug”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“_ITERATOR_DEBUG_LEVEL”的不匹配项: 值“0”不匹配值“2”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“RuntimeLibrary”的不匹配项: 值“MD_DynamicRelease”不匹配值“MDd_DynamicDebug”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“_ITERATOR_DEBUG_LEVEL”的不匹配项: 值“0”不匹配值“2”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“RuntimeLibrary”的不匹配项: 值“MD_DynamicRelease”不匹配值“MDd_DynamicDebug”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“_ITERATOR_DEBUG_LEVEL”的不匹配项: 值“0”不匹配值“2”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“RuntimeLibrary”的不匹配项: 值“MD_DynamicRelease”不匹配值“MDd_DynamicDebug”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“_ITERATOR_DEBUG_LEVEL”的不匹配项: 值“0”不匹配值“2”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“RuntimeLibrary”的不匹配项: 值“MD_DynamicRelease”不匹配值“MDd_DynamicDebug”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“_ITERATOR_DEBUG_LEVEL”的不匹配项: 值“0”不匹配值“2”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“RuntimeLibrary”的不匹配项: 值“MD_DynamicRelease”不匹配值“MDd_DynamicDebug”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“_ITERATOR_DEBUG_LEVEL”的不匹配项: 值“0”不匹配值“2”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“RuntimeLibrary”的不匹配项: 值“MD_DynamicRelease”不匹配值“MDd_DynamicDebug”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“_ITERATOR_DEBUG_LEVEL”的不匹配项: 值“0”不匹配值“2”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“RuntimeLibrary”的不匹配项: 值“MD_DynamicRelease”不匹配值“MDd_DynamicDebug”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“_ITERATOR_DEBUG_LEVEL”的不匹配项: 值“0”不匹配值“2”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“RuntimeLibrary”的不匹配项: 值“MD_DynamicRelease”不匹配值“MDd_DynamicDebug”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“_ITERATOR_DEBUG_LEVEL”的不匹配项: 值“0”不匹配值“2”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“RuntimeLibrary”的不匹配项: 值“MD_DynamicRelease”不匹配值“MDd_DynamicDebug”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“_ITERATOR_DEBUG_LEVEL”的不匹配项: 值“0”不匹配值“2”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“RuntimeLibrary”的不匹配项: 值“MD_DynamicRelease”不匹配值“MDd_DynamicDebug”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“_ITERATOR_DEBUG_LEVEL”的不匹配项: 值“0”不匹配值“2”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“RuntimeLibrary”的不匹配项: 值“MD_DynamicRelease”不匹配值“MDd_DynamicDebug”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“_ITERATOR_DEBUG_LEVEL”的不匹配项: 值“0”不匹配值“2”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“RuntimeLibrary”的不匹配项: 值“MD_DynamicRelease”不匹配值“MDd_DynamicDebug”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“_ITERATOR_DEBUG_LEVEL”的不匹配项: 值“0”不匹配值“2”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“RuntimeLibrary”的不匹配项: 值“MD_DynamicRelease”不匹配值“MDd_DynamicDebug”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“_ITERATOR_DEBUG_LEVEL”的不匹配项: 值“0”不匹配值“2”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“RuntimeLibrary”的不匹配项: 值“MD_DynamicRelease”不匹配值“MDd_DynamicDebug”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“_ITERATOR_DEBUG_LEVEL”的不匹配项: 值“0”不匹配值“2”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“RuntimeLibrary”的不匹配项: 值“MD_DynamicRelease”不匹配值“MDd_DynamicDebug”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“_ITERATOR_DEBUG_LEVEL”的不匹配项: 值“0”不匹配值“2”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“RuntimeLibrary”的不匹配项: 值“MD_DynamicRelease”不匹配值“MDd_DynamicDebug”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“_ITERATOR_DEBUG_LEVEL”的不匹配项: 值“0”不匹配值“2”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“RuntimeLibrary”的不匹配项: 值“MD_DynamicRelease”不匹配值“MDd_DynamicDebug”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“_ITERATOR_DEBUG_LEVEL”的不匹配项: 值“0”不匹配值“2”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“RuntimeLibrary”的不匹配项: 值“MD_DynamicRelease”不匹配值“MDd_DynamicDebug”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“_ITERATOR_DEBUG_LEVEL”的不匹配项: 值“0”不匹配值“2”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“RuntimeLibrary”的不匹配项: 值“MD_DynamicRelease”不匹配值“MDd_DynamicDebug”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“_ITERATOR_DEBUG_LEVEL”的不匹配项: 值“0”不匹配值“2”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“RuntimeLibrary”的不匹配项: 值“MD_DynamicRelease”不匹配值“MDd_DynamicDebug”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“_ITERATOR_DEBUG_LEVEL”的不匹配项: 值“0”不匹配值“2”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK2038] (MSVC)
+检测到“RuntimeLibrary”的不匹配项: 值“MD_DynamicRelease”不匹配值“MDd_DynamicDebug”(main.obj 中) [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK4098] (MSVC)
+默认库“MSVCRT”与其他库的使用冲突；请使用 /NODEFAULTLIB:library [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]
+
+[LNK1319] (MSVC)
+检测到 66 个不匹配项 [D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\Opengl_Physx.vcxproj]

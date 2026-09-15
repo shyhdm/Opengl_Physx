@@ -450,7 +450,10 @@
 				39,
 				40,
 				41,
-				42
+				42,
+				43,
+				44,
+				45
 			]
 		}
 	],
@@ -566,6 +569,21 @@
 		{
 			"backtrace" : 8,
 			"path" : "DebugOverlay.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 8,
+			"path" : "FlowContext.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 8,
+			"path" : "FlowSimulation.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 8,
+			"path" : "FlowVolumeRenderer.h",
 			"sourceGroupIndex" : 1
 		},
 		{

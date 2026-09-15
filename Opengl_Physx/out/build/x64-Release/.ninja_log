@@ -1,13 +1,4 @@
 # ninja log v7
-7	67	8110263895979688	D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/out/build/x64-Release/CMakeFiles/cmake.verify_globs	17232162ed643b24
-104	390	8110263896946458	CMakeFiles/Opengl_Physx.dir/ThirdParty/imgui/backends/imgui_impl_opengl3.cpp.obj	7f0a587be5e42ae5
-98	573	8110263896896621	CMakeFiles/Opengl_Physx.dir/ThirdParty/imgui/backends/imgui_impl_glfw.cpp.obj	f48d6f3157cf22af
-87	870	8110263896777022	CMakeFiles/Opengl_Physx.dir/ThirdParty/imgui/imgui_tables.cpp.obj	54803b2ebbe3b024
-81	1228	8110263896717224	CMakeFiles/Opengl_Physx.dir/ThirdParty/imgui/imgui_draw.cpp.obj	f4a74d893ab6344e
-93	1648	8110263896836821	CMakeFiles/Opengl_Physx.dir/ThirdParty/imgui/imgui_widgets.cpp.obj	3bb3048efcc2ef1d
-76	2863	8110263896667390	CMakeFiles/Opengl_Physx.dir/ThirdParty/imgui/imgui.cpp.obj	29bfdffd0fccaa43
-69	4721	8110263896607587	CMakeFiles/Opengl_Physx.dir/main.cpp.obj	ad07e87a3c31318c
-4725	6535	8110263943155610	bin/Opengl_Physx.exe	7a7f249d62fef5b0
 3	55	8111971570396699	D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/out/build/x64-Release/CMakeFiles/cmake.verify_globs	17232162ed643b24
 89	348	8111971571253827	CMakeFiles/Opengl_Physx.dir/ThirdParty/imgui/backends/imgui_impl_opengl3.cpp.obj	4326bc08f565fe82
 84	572	8111971571203993	CMakeFiles/Opengl_Physx.dir/ThirdParty/imgui/backends/imgui_impl_glfw.cpp.obj	a52e0b8518bb285d
@@ -17,3 +8,7 @@
 63	2377	8111971570994696	CMakeFiles/Opengl_Physx.dir/ThirdParty/imgui/imgui.cpp.obj	b060582a52532e14
 57	5352	8111971570934900	CMakeFiles/Opengl_Physx.dir/main.cpp.obj	f41316f82b224aaa
 5367	7341	8111971624033423	bin/Opengl_Physx.exe	2eff08964475d0a9
+3	53	8112060804912030	D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/out/build/x64-Release/CMakeFiles/cmake.verify_globs	17232162ed643b24
+55	5157	8112060805430260	CMakeFiles/Opengl_Physx.dir/main.cpp.obj	f41316f82b224aaa
+5183	7096	8112060856710927	bin/Opengl_Physx.exe	2eff08964475d0a9
+3	53	8112060976020485	D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/out/build/x64-Release/CMakeFiles/cmake.verify_globs	17232162ed643b24

@@ -114,8 +114,8 @@ public:
         return removedSmallFragments;
     }
 
-    // É¨Ãè³¡¾°ÄÚµÄÈ«²¿¶¯Ì¬¸ÕÌå£¬ÔÚËüÃÇÕæÕı½Ó´¥Ç½ÃæÇ°Æô¶¯ËéÁÑ¼ÆËã¡£
-    // ÕâÍ¬Ê±¸²¸ÇÆÕÍ¨¸ÕÌå¡¢Blast ¸ÕÌåºÍ×¨ÓÃ¹öÇò£¬²»ÒÀÀµ¾ßÌåµÄ·¢ÉäÈë¿Ú¡£
+    // æ‰«æåœºæ™¯å†…çš„å…¨éƒ¨åŠ¨æ€åˆšä½“ï¼Œåœ¨å®ƒä»¬çœŸæ­£æ¥è§¦å¢™é¢å‰å¯åŠ¨ç¢è£‚è®¡ç®—ã€‚
+    // è¿™åŒæ—¶è¦†ç›–æ™®é€šåˆšä½“ã€Blast åˆšä½“å’Œä¸“ç”¨æ»šçƒï¼Œä¸ä¾èµ–å…·ä½“çš„å‘å°„å…¥å£ã€‚
     void PredictMovingRigidBodies()
     {
         using namespace physx;
@@ -140,7 +140,7 @@ public:
         }
     }
 
-    // ¿ÉÓÉ·¢ÉäÏµÍ³ÔÚ´´½¨ÎïÌåµÄÍ¬Ò»Ö¡µ÷ÓÃ£»ÈíÌåÒ²ÄÜÓÃÆä³õÊ¼°üÎ§Çò²ÎÓëÔ¤ÅĞ¡£
+    // å¯ç”±å‘å°„ç³»ç»Ÿåœ¨åˆ›å»ºç‰©ä½“çš„åŒä¸€å¸§è°ƒç”¨ï¼›è½¯ä½“ä¹Ÿèƒ½ç”¨å…¶åˆå§‹åŒ…å›´çƒå‚ä¸é¢„åˆ¤ã€‚
     bool PredictProjectile(glm::vec3 position, glm::vec3 velocity, float radius, float mass, float volume)
     {
         using namespace physx;
@@ -151,7 +151,7 @@ public:
         if (!p.isFinite() || !v.isFinite()) return false;
 
         constexpr float predictionHorizon = 1.25f;
-        // Ö»ÈÃÕæÕıµÄÇ½¿éÌæ»»±ÈÔ¤¼Æ½Ó´¥ÔçÔ¼Á½Ö¡£»ºÄÊ±µÄÍø¸ñÓëÅö×²Ìå×¼±¸ÈÔ»á¸üÔç½øĞĞ¡£
+        // åªè®©çœŸæ­£çš„å¢™å—æ›¿æ¢æ¯”é¢„è®¡æ¥è§¦æ—©çº¦ä¸¤å¸§ï¼›è€—æ—¶çš„ç½‘æ ¼ä¸ç¢°æ’ä½“å‡†å¤‡ä»ä¼šæ›´æ—©è¿›è¡Œã€‚
         constexpr float activationLeadTime = 0.03f;
         float wallFront = wallPose.p.z + size.z * 0.5f;
         float wallBack = wallPose.p.z - size.z * 0.5f;
@@ -214,8 +214,8 @@ public:
         return true;
     }
 
-    // ¶ÔÑØ¸´ÔÓ¹ì¼£ÔË¶¯µÄÎïÌå£¨ÀıÈç»¡ĞÎÆÂµÀ¹öÇò£©Á¢¼´Ô¤ÖÆËéÁÑÊı¾İ£¬
-    // µ«¸ù¾İ¸Ã¸ÕÌåÃ¿Ò»Ö¡µÄÕæÊµÎ»ÖÃºÍËÙ¶È¾ö¶¨×îÖÕÇ½¿éÌæ»»Ê±¿Ì¡£
+    // å¯¹æ²¿å¤æ‚è½¨è¿¹è¿åŠ¨çš„ç‰©ä½“ï¼ˆä¾‹å¦‚å¼§å½¢å¡é“æ»šçƒï¼‰ç«‹å³é¢„åˆ¶ç¢è£‚æ•°æ®ï¼Œ
+    // ä½†æ ¹æ®è¯¥åˆšä½“æ¯ä¸€å¸§çš„çœŸå®ä½ç½®å’Œé€Ÿåº¦å†³å®šæœ€ç»ˆå¢™å—æ›¿æ¢æ—¶åˆ»ã€‚
     bool PrepareTrackedProjectile(const physx::PxRigidActor* actor, glm::vec3 expectedHit, float radius, float mass, float volume)
     {
         using namespace physx;
@@ -479,7 +479,7 @@ private:
         std::size_t budget = basePiecesPreparedPerFrame;
         if (predictedFracture)
         {
-            if (remainingSteps <= 6) budget = remainingPieces;             // Ô¼ 0.10 ÃëÄÚ£ºÈ·±£È«²¿×¼±¸Íê³É¡£
+            if (remainingSteps <= 6) budget = remainingPieces;             // çº¦ 0.10 ç§’å†…ï¼šç¡®ä¿å…¨éƒ¨å‡†å¤‡å®Œæˆã€‚
             else if (remainingSteps <= 18) budget = std::max<std::size_t>(24, (remainingPieces + remainingSteps - 1) / remainingSteps);
             else if (remainingSteps <= 36) budget = std::max<std::size_t>(12, (remainingPieces + remainingSteps - 1) / remainingSteps);
         }
@@ -505,7 +505,7 @@ private:
             --budget;
         }
         if (commitIndex < plan.detached.size()) return false;
-        // Ô¤²âÈÎÎñ¿ÉÒÔÌáÇ°Íê³ÉÍø¸ñ¡¢Åö×²ÌåºÍ¸ÕÌåµÄ´´½¨£¬µ«Ö±µ½Ô¤¼Æ½Ó´¥Ç°²ÅÔ­×ÓÌæ»»¾ÉÇ½¿é¡£
+        // é¢„æµ‹ä»»åŠ¡å¯ä»¥æå‰å®Œæˆç½‘æ ¼ã€ç¢°æ’ä½“å’Œåˆšä½“çš„åˆ›å»ºï¼Œä½†ç›´åˆ°é¢„è®¡æ¥è§¦å‰æ‰åŸå­æ›¿æ¢æ—§å¢™å—ã€‚
         if (trackedPredictiveActor)
         {
             PxU32 actorCount = world.GetScene().getNbActors(PxActorTypeFlag::eRIGID_DYNAMIC);

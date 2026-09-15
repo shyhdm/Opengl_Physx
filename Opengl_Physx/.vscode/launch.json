@@ -1,0 +1,17 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "运行 Opengl_Physx (Release)",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build-flow/bin/Release/Opengl_Physx.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/build-flow/bin/Release",
+            "environment": [],
+            "console": "internalConsole",
+            "preLaunchTask": "CMake Build Release"
+        }
+    ]
+}

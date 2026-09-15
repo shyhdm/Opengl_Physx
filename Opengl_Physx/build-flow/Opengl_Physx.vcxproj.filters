@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="18.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\main.cpp">
+    <ClCompile Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\ThirdParty\imgui\imgui.cpp">
@@ -24,112 +24,121 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\BlastAsset.h">
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Data\ModelData.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\BlastChunkRenderer.h">
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Data\ModelLibrary.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\BlastCollisionLibrary.h">
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Editor\DebugOverlay.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\BlastContext.h">
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Editor\ImGuiLayer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\BlastLibrary.h">
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Editor\ImGuiPanel.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\BlastMesh.h">
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Editor\MousePicker.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\BlastPhysics.h">
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Graphics\CollisionDebugRenderer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\BlastRuntime.h">
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Graphics\Material.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\BlastScene.h">
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Graphics\Mesh.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\BlastVoronoi.h">
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Graphics\ModelRenderer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\Camera.h">
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Graphics\OutlineEffect.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\CollisionDebugRenderer.h">
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Graphics\Shader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\CollisionLibrary.h">
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Graphics\ShadowMap.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\DebugOverlay.h">
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Graphics\Texture.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\ImGuiLayer.h">
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Blast\BlastAsset.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\ImGuiPanel.h">
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Blast\BlastChunkRenderer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\Material.h">
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Blast\BlastCollisionLibrary.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\Mesh.h">
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Blast\BlastContext.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\ModelData.h">
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Blast\BlastLibrary.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\ModelLibrary.h">
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Blast\BlastMesh.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\ModelRenderer.h">
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Blast\BlastPhysics.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\MousePicker.h">
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Blast\BlastRuntime.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\OpenGL.h">
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Blast\BlastScene.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\OutlineEffect.h">
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Blast\BlastVoronoi.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\PhysicsWorld.h">
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Blast\RuntimeFractureWall.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\RigidBody.h">
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Flow\FlowContext.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\RuntimeFractureWall.h">
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Flow\FlowSimulation.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\Scene.h">
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Flow\FlowVolumeRenderer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\Shader.h">
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\PhysicsWorld\PhysicsWorld.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\ShadowMap.h">
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\RigidBody\CollisionLibrary.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\SoftBody.h">
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\RigidBody\RigidBody.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\SoftGpuBuffer.h">
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\SoftBody\SoftBody.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\SoftMeshLibrary.h">
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\SoftBody\SoftGpuBuffer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\Texture.h">
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\SoftBody\SoftMeshLibrary.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\Transform.h">
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Platform\OpenGL.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\Window.h">
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Platform\Window.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Scene\Camera.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Scene\Scene.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Scene\Transform.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

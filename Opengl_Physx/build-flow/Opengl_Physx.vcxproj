@@ -90,7 +90,7 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>D:\Dev\.cpp\Opengl_Physx\Opengl_Physx;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\ThirdParty\imgui;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\..\packages\glfw.3.4.0\build\native\include;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\..\packages\glm.1.0.3\build\native\include;D:\Dev\.cpp\_Library\PhysX-main\physx\include;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\globals;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\lowlevel;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\toolkit;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\assetutils;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\authoring;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\authoringCommon;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\shaders;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\shared\NvFoundation;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\Dev\.cpp\Opengl_Physx\Opengl_Physx;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Platform;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Scene;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Data;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Editor;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Graphics;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Blast;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Flow;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\PhysicsWorld;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\RigidBody;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\SoftBody;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\ThirdParty\imgui;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\..\packages\glfw.3.4.0\build\native\include;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\..\packages\glm.1.0.3\build\native\include;D:\Dev\.cpp\_Library\PhysX-main\physx\include;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\globals;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\lowlevel;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\toolkit;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\assetutils;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\authoring;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\authoringCommon;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\shaders;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\shared\NvFoundation;D:\Dev\.cpp\_Library\PhysX-main\flow\include;D:\Dev\.cpp\_Library\PhysX-main\flow\include\nvflow;D:\Dev\.cpp\_Library\PhysX-main\flow\include\nvflowext;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>%(AdditionalOptions) /utf-8</AdditionalOptions>
       <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
@@ -116,10 +116,10 @@
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_DEBUG;_WINDOWS;GLFW_DLL;NOMINMAX;CMAKE_INTDIR=\"Debug\"</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>D:\Dev\.cpp\Opengl_Physx\Opengl_Physx;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\ThirdParty\imgui;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\..\packages\glfw.3.4.0\build\native\include;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\..\packages\glm.1.0.3\build\native\include;D:\Dev\.cpp\_Library\PhysX-main\physx\include;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\globals;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\lowlevel;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\toolkit;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\assetutils;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\authoring;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\authoringCommon;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\shaders;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\shared\NvFoundation;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\Dev\.cpp\Opengl_Physx\Opengl_Physx;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Platform;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Scene;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Data;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Editor;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Graphics;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Blast;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Flow;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\PhysicsWorld;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\RigidBody;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\SoftBody;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\ThirdParty\imgui;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\..\packages\glfw.3.4.0\build\native\include;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\..\packages\glm.1.0.3\build\native\include;D:\Dev\.cpp\_Library\PhysX-main\physx\include;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\globals;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\lowlevel;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\toolkit;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\assetutils;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\authoring;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\authoringCommon;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\shaders;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\shared\NvFoundation;D:\Dev\.cpp\_Library\PhysX-main\flow\include;D:\Dev\.cpp\_Library\PhysX-main\flow\include\nvflow;D:\Dev\.cpp\_Library\PhysX-main\flow\include\nvflowext;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
-      <AdditionalIncludeDirectories>D:\Dev\.cpp\Opengl_Physx\Opengl_Physx;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\ThirdParty\imgui;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\..\packages\glfw.3.4.0\build\native\include;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\..\packages\glm.1.0.3\build\native\include;D:\Dev\.cpp\_Library\PhysX-main\physx\include;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\globals;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\lowlevel;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\toolkit;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\assetutils;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\authoring;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\authoringCommon;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\shaders;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\shared\NvFoundation;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\Dev\.cpp\Opengl_Physx\Opengl_Physx;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Platform;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Scene;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Data;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Editor;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Graphics;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Blast;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Flow;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\PhysicsWorld;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\RigidBody;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\SoftBody;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\ThirdParty\imgui;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\..\packages\glfw.3.4.0\build\native\include;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\..\packages\glm.1.0.3\build\native\include;D:\Dev\.cpp\_Library\PhysX-main\physx\include;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\globals;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\lowlevel;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\toolkit;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\assetutils;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\authoring;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\authoringCommon;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\shaders;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\shared\NvFoundation;D:\Dev\.cpp\_Library\PhysX-main\flow\include;D:\Dev\.cpp\_Library\PhysX-main\flow\include\nvflow;D:\Dev\.cpp\_Library\PhysX-main\flow\include\nvflowext;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
@@ -127,7 +127,7 @@
       <ProxyFileName>%(Filename)_p.c</ProxyFileName>
     </Midl>
     <PostBuildEvent>
-      <Message>																</Message>
+      <Message>																						</Message>
       <Command>setlocal
 "C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_directory D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/Assets D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/build-flow/bin/Debug/Assets
 if %errorlevel% neq 0 goto :cmEnd
@@ -282,11 +282,65 @@ endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
 :cmErrorLevel
 exit /b %1
 :cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
+"C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_if_different D:/Dev/.cpp/_Library/PhysX-main/flow/_build/windows-x86_64/release/nvflow.dll D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/build-flow/bin/Debug
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
+"C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_if_different D:/Dev/.cpp/_Library/PhysX-main/flow/_build/windows-x86_64/release/nvflow_rtx.dll D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/build-flow/bin/Debug
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
+"C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_if_different D:/Dev/.cpp/_Library/PhysX-main/flow/_build/windows-x86_64/release/nvflowext.dll D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/build-flow/bin/Debug
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
+"C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_if_different D:/Dev/.cpp/_Library/PhysX-main/flow/_build/windows-x86_64/release/nvflowext_rtx.dll D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/build-flow/bin/Debug
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
+"C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_if_different D:/Dev/.cpp/_Library/PhysX-main/flow/_build/windows-x86_64/release/slang-glslang.dll D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/build-flow/bin/Debug
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
+"C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_if_different D:/Dev/.cpp/_Library/PhysX-main/flow/_build/windows-x86_64/release/slang.dll D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/build-flow/bin/Debug
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
 if %errorlevel% neq 0 goto :VCEnd</Command>
     </PostBuildEvent>
     <Link>
-      <AdditionalDependencies>D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\..\packages\glfw.3.4.0\build\native\lib\dynamic\v143\x64\glfw3dll.lib;opengl32.lib;PhysX_64.lib;PhysXCommon_64.lib;PhysXFoundation_64.lib;PhysXExtensions_static_64.lib;PhysXPvdSDK_static_64.lib;PhysXCooking_64.lib;NvBlast.lib;NvBlastGlobals.lib;NvBlastTk.lib;NvBlastExtAssetUtils.lib;NvBlastExtAuthoring.lib;NvBlastExtShaders.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>D:/Dev/.cpp/_Library/PhysX-main/physx/bin/win.x86_64.vc143.md/release;D:/Dev/.cpp/_Library/PhysX-main/physx/bin/win.x86_64.vc143.md/release/$(Configuration);D:/Dev/.cpp/_Library/PhysX-main/blast/_build/windows-x86_64/release/blast-sdk/bin;D:/Dev/.cpp/_Library/PhysX-main/blast/_build/windows-x86_64/release/blast-sdk/bin/$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\..\packages\glfw.3.4.0\build\native\lib\dynamic\v143\x64\glfw3dll.lib;opengl32.lib;PhysX_64.lib;PhysXCommon_64.lib;PhysXFoundation_64.lib;PhysXExtensions_static_64.lib;PhysXPvdSDK_static_64.lib;PhysXCooking_64.lib;NvBlast.lib;NvBlastGlobals.lib;NvBlastTk.lib;NvBlastExtAssetUtils.lib;NvBlastExtAuthoring.lib;NvBlastExtShaders.lib;nvflow.lib;nvflowext.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>D:/Dev/.cpp/_Library/PhysX-main/physx/bin/win.x86_64.vc143.md/release;D:/Dev/.cpp/_Library/PhysX-main/physx/bin/win.x86_64.vc143.md/release/$(Configuration);D:/Dev/.cpp/_Library/PhysX-main/blast/_build/windows-x86_64/release/blast-sdk/bin;D:/Dev/.cpp/_Library/PhysX-main/blast/_build/windows-x86_64/release/blast-sdk/bin/$(Configuration);D:/Dev/.cpp/_Library/PhysX-main/flow/_build/windows-x86_64/release;D:/Dev/.cpp/_Library/PhysX-main/flow/_build/windows-x86_64/release/$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalOptions>%(AdditionalOptions) /machine:x64</AdditionalOptions>
       <DataExecutionPrevention></DataExecutionPrevention>
       <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
@@ -305,7 +359,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>D:\Dev\.cpp\Opengl_Physx\Opengl_Physx;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\ThirdParty\imgui;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\..\packages\glfw.3.4.0\build\native\include;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\..\packages\glm.1.0.3\build\native\include;D:\Dev\.cpp\_Library\PhysX-main\physx\include;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\globals;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\lowlevel;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\toolkit;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\assetutils;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\authoring;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\authoringCommon;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\shaders;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\shared\NvFoundation;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\Dev\.cpp\Opengl_Physx\Opengl_Physx;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Platform;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Scene;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Data;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Editor;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Graphics;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Blast;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Flow;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\PhysicsWorld;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\RigidBody;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\SoftBody;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\ThirdParty\imgui;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\..\packages\glfw.3.4.0\build\native\include;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\..\packages\glm.1.0.3\build\native\include;D:\Dev\.cpp\_Library\PhysX-main\physx\include;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\globals;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\lowlevel;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\toolkit;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\assetutils;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\authoring;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\authoringCommon;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\shaders;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\shared\NvFoundation;D:\Dev\.cpp\_Library\PhysX-main\flow\include;D:\Dev\.cpp\_Library\PhysX-main\flow\include\nvflow;D:\Dev\.cpp\_Library\PhysX-main\flow\include\nvflowext;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>%(AdditionalOptions) /utf-8</AdditionalOptions>
       <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
@@ -332,10 +386,10 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;GLFW_DLL;NOMINMAX;CMAKE_INTDIR=\"Release\"</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>D:\Dev\.cpp\Opengl_Physx\Opengl_Physx;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\ThirdParty\imgui;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\..\packages\glfw.3.4.0\build\native\include;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\..\packages\glm.1.0.3\build\native\include;D:\Dev\.cpp\_Library\PhysX-main\physx\include;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\globals;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\lowlevel;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\toolkit;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\assetutils;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\authoring;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\authoringCommon;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\shaders;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\shared\NvFoundation;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\Dev\.cpp\Opengl_Physx\Opengl_Physx;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Platform;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Scene;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Data;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Editor;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Graphics;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Blast;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Flow;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\PhysicsWorld;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\RigidBody;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\SoftBody;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\ThirdParty\imgui;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\..\packages\glfw.3.4.0\build\native\include;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\..\packages\glm.1.0.3\build\native\include;D:\Dev\.cpp\_Library\PhysX-main\physx\include;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\globals;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\lowlevel;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\toolkit;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\assetutils;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\authoring;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\authoringCommon;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\shaders;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\shared\NvFoundation;D:\Dev\.cpp\_Library\PhysX-main\flow\include;D:\Dev\.cpp\_Library\PhysX-main\flow\include\nvflow;D:\Dev\.cpp\_Library\PhysX-main\flow\include\nvflowext;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
-      <AdditionalIncludeDirectories>D:\Dev\.cpp\Opengl_Physx\Opengl_Physx;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\ThirdParty\imgui;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\..\packages\glfw.3.4.0\build\native\include;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\..\packages\glm.1.0.3\build\native\include;D:\Dev\.cpp\_Library\PhysX-main\physx\include;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\globals;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\lowlevel;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\toolkit;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\assetutils;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\authoring;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\authoringCommon;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\shaders;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\shared\NvFoundation;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\Dev\.cpp\Opengl_Physx\Opengl_Physx;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Platform;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Scene;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Data;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Editor;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Graphics;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Blast;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Flow;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\PhysicsWorld;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\RigidBody;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\SoftBody;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\ThirdParty\imgui;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\..\packages\glfw.3.4.0\build\native\include;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\..\packages\glm.1.0.3\build\native\include;D:\Dev\.cpp\_Library\PhysX-main\physx\include;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\globals;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\lowlevel;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\toolkit;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\assetutils;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\authoring;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\authoringCommon;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\shaders;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\shared\NvFoundation;D:\Dev\.cpp\_Library\PhysX-main\flow\include;D:\Dev\.cpp\_Library\PhysX-main\flow\include\nvflow;D:\Dev\.cpp\_Library\PhysX-main\flow\include\nvflowext;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
@@ -343,7 +397,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <ProxyFileName>%(Filename)_p.c</ProxyFileName>
     </Midl>
     <PostBuildEvent>
-      <Message>																</Message>
+      <Message>																						</Message>
       <Command>setlocal
 "C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_directory D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/Assets D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/build-flow/bin/Release/Assets
 if %errorlevel% neq 0 goto :cmEnd
@@ -498,11 +552,65 @@ endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
 :cmErrorLevel
 exit /b %1
 :cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
+"C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_if_different D:/Dev/.cpp/_Library/PhysX-main/flow/_build/windows-x86_64/release/nvflow.dll D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/build-flow/bin/Release
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
+"C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_if_different D:/Dev/.cpp/_Library/PhysX-main/flow/_build/windows-x86_64/release/nvflow_rtx.dll D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/build-flow/bin/Release
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
+"C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_if_different D:/Dev/.cpp/_Library/PhysX-main/flow/_build/windows-x86_64/release/nvflowext.dll D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/build-flow/bin/Release
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
+"C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_if_different D:/Dev/.cpp/_Library/PhysX-main/flow/_build/windows-x86_64/release/nvflowext_rtx.dll D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/build-flow/bin/Release
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
+"C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_if_different D:/Dev/.cpp/_Library/PhysX-main/flow/_build/windows-x86_64/release/slang-glslang.dll D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/build-flow/bin/Release
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
+"C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_if_different D:/Dev/.cpp/_Library/PhysX-main/flow/_build/windows-x86_64/release/slang.dll D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/build-flow/bin/Release
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
 if %errorlevel% neq 0 goto :VCEnd</Command>
     </PostBuildEvent>
     <Link>
-      <AdditionalDependencies>D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\..\packages\glfw.3.4.0\build\native\lib\dynamic\v143\x64\glfw3dll.lib;opengl32.lib;PhysX_64.lib;PhysXCommon_64.lib;PhysXFoundation_64.lib;PhysXExtensions_static_64.lib;PhysXPvdSDK_static_64.lib;PhysXCooking_64.lib;NvBlast.lib;NvBlastGlobals.lib;NvBlastTk.lib;NvBlastExtAssetUtils.lib;NvBlastExtAuthoring.lib;NvBlastExtShaders.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>D:/Dev/.cpp/_Library/PhysX-main/physx/bin/win.x86_64.vc143.md/release;D:/Dev/.cpp/_Library/PhysX-main/physx/bin/win.x86_64.vc143.md/release/$(Configuration);D:/Dev/.cpp/_Library/PhysX-main/blast/_build/windows-x86_64/release/blast-sdk/bin;D:/Dev/.cpp/_Library/PhysX-main/blast/_build/windows-x86_64/release/blast-sdk/bin/$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\..\packages\glfw.3.4.0\build\native\lib\dynamic\v143\x64\glfw3dll.lib;opengl32.lib;PhysX_64.lib;PhysXCommon_64.lib;PhysXFoundation_64.lib;PhysXExtensions_static_64.lib;PhysXPvdSDK_static_64.lib;PhysXCooking_64.lib;NvBlast.lib;NvBlastGlobals.lib;NvBlastTk.lib;NvBlastExtAssetUtils.lib;NvBlastExtAuthoring.lib;NvBlastExtShaders.lib;nvflow.lib;nvflowext.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>D:/Dev/.cpp/_Library/PhysX-main/physx/bin/win.x86_64.vc143.md/release;D:/Dev/.cpp/_Library/PhysX-main/physx/bin/win.x86_64.vc143.md/release/$(Configuration);D:/Dev/.cpp/_Library/PhysX-main/blast/_build/windows-x86_64/release/blast-sdk/bin;D:/Dev/.cpp/_Library/PhysX-main/blast/_build/windows-x86_64/release/blast-sdk/bin/$(Configuration);D:/Dev/.cpp/_Library/PhysX-main/flow/_build/windows-x86_64/release;D:/Dev/.cpp/_Library/PhysX-main/flow/_build/windows-x86_64/release/$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalOptions>%(AdditionalOptions) /machine:x64</AdditionalOptions>
       <DataExecutionPrevention></DataExecutionPrevention>
       <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
@@ -521,7 +629,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>D:\Dev\.cpp\Opengl_Physx\Opengl_Physx;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\ThirdParty\imgui;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\..\packages\glfw.3.4.0\build\native\include;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\..\packages\glm.1.0.3\build\native\include;D:\Dev\.cpp\_Library\PhysX-main\physx\include;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\globals;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\lowlevel;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\toolkit;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\assetutils;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\authoring;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\authoringCommon;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\shaders;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\shared\NvFoundation;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\Dev\.cpp\Opengl_Physx\Opengl_Physx;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Platform;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Scene;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Data;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Editor;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Graphics;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Blast;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Flow;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\PhysicsWorld;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\RigidBody;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\SoftBody;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\ThirdParty\imgui;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\..\packages\glfw.3.4.0\build\native\include;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\..\packages\glm.1.0.3\build\native\include;D:\Dev\.cpp\_Library\PhysX-main\physx\include;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\globals;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\lowlevel;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\toolkit;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\assetutils;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\authoring;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\authoringCommon;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\shaders;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\shared\NvFoundation;D:\Dev\.cpp\_Library\PhysX-main\flow\include;D:\Dev\.cpp\_Library\PhysX-main\flow\include\nvflow;D:\Dev\.cpp\_Library\PhysX-main\flow\include\nvflowext;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>%(AdditionalOptions) /utf-8</AdditionalOptions>
       <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
@@ -548,10 +656,10 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;GLFW_DLL;NOMINMAX;CMAKE_INTDIR=\"MinSizeRel\"</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>D:\Dev\.cpp\Opengl_Physx\Opengl_Physx;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\ThirdParty\imgui;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\..\packages\glfw.3.4.0\build\native\include;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\..\packages\glm.1.0.3\build\native\include;D:\Dev\.cpp\_Library\PhysX-main\physx\include;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\globals;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\lowlevel;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\toolkit;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\assetutils;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\authoring;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\authoringCommon;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\shaders;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\shared\NvFoundation;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\Dev\.cpp\Opengl_Physx\Opengl_Physx;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Platform;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Scene;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Data;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Editor;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Graphics;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Blast;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Flow;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\PhysicsWorld;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\RigidBody;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\SoftBody;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\ThirdParty\imgui;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\..\packages\glfw.3.4.0\build\native\include;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\..\packages\glm.1.0.3\build\native\include;D:\Dev\.cpp\_Library\PhysX-main\physx\include;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\globals;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\lowlevel;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\toolkit;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\assetutils;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\authoring;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\authoringCommon;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\shaders;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\shared\NvFoundation;D:\Dev\.cpp\_Library\PhysX-main\flow\include;D:\Dev\.cpp\_Library\PhysX-main\flow\include\nvflow;D:\Dev\.cpp\_Library\PhysX-main\flow\include\nvflowext;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
-      <AdditionalIncludeDirectories>D:\Dev\.cpp\Opengl_Physx\Opengl_Physx;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\ThirdParty\imgui;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\..\packages\glfw.3.4.0\build\native\include;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\..\packages\glm.1.0.3\build\native\include;D:\Dev\.cpp\_Library\PhysX-main\physx\include;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\globals;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\lowlevel;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\toolkit;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\assetutils;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\authoring;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\authoringCommon;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\shaders;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\shared\NvFoundation;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\Dev\.cpp\Opengl_Physx\Opengl_Physx;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Platform;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Scene;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Data;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Editor;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Graphics;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Blast;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Flow;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\PhysicsWorld;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\RigidBody;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\SoftBody;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\ThirdParty\imgui;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\..\packages\glfw.3.4.0\build\native\include;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\..\packages\glm.1.0.3\build\native\include;D:\Dev\.cpp\_Library\PhysX-main\physx\include;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\globals;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\lowlevel;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\toolkit;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\assetutils;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\authoring;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\authoringCommon;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\shaders;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\shared\NvFoundation;D:\Dev\.cpp\_Library\PhysX-main\flow\include;D:\Dev\.cpp\_Library\PhysX-main\flow\include\nvflow;D:\Dev\.cpp\_Library\PhysX-main\flow\include\nvflowext;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
@@ -559,7 +667,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <ProxyFileName>%(Filename)_p.c</ProxyFileName>
     </Midl>
     <PostBuildEvent>
-      <Message>																</Message>
+      <Message>																						</Message>
       <Command>setlocal
 "C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_directory D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/Assets D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/build-flow/bin/MinSizeRel/Assets
 if %errorlevel% neq 0 goto :cmEnd
@@ -714,11 +822,65 @@ endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
 :cmErrorLevel
 exit /b %1
 :cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
+"C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_if_different D:/Dev/.cpp/_Library/PhysX-main/flow/_build/windows-x86_64/release/nvflow.dll D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/build-flow/bin/MinSizeRel
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
+"C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_if_different D:/Dev/.cpp/_Library/PhysX-main/flow/_build/windows-x86_64/release/nvflow_rtx.dll D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/build-flow/bin/MinSizeRel
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
+"C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_if_different D:/Dev/.cpp/_Library/PhysX-main/flow/_build/windows-x86_64/release/nvflowext.dll D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/build-flow/bin/MinSizeRel
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
+"C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_if_different D:/Dev/.cpp/_Library/PhysX-main/flow/_build/windows-x86_64/release/nvflowext_rtx.dll D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/build-flow/bin/MinSizeRel
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
+"C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_if_different D:/Dev/.cpp/_Library/PhysX-main/flow/_build/windows-x86_64/release/slang-glslang.dll D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/build-flow/bin/MinSizeRel
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
+"C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_if_different D:/Dev/.cpp/_Library/PhysX-main/flow/_build/windows-x86_64/release/slang.dll D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/build-flow/bin/MinSizeRel
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
 if %errorlevel% neq 0 goto :VCEnd</Command>
     </PostBuildEvent>
     <Link>
-      <AdditionalDependencies>D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\..\packages\glfw.3.4.0\build\native\lib\dynamic\v143\x64\glfw3dll.lib;opengl32.lib;PhysX_64.lib;PhysXCommon_64.lib;PhysXFoundation_64.lib;PhysXExtensions_static_64.lib;PhysXPvdSDK_static_64.lib;PhysXCooking_64.lib;NvBlast.lib;NvBlastGlobals.lib;NvBlastTk.lib;NvBlastExtAssetUtils.lib;NvBlastExtAuthoring.lib;NvBlastExtShaders.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>D:/Dev/.cpp/_Library/PhysX-main/physx/bin/win.x86_64.vc143.md/release;D:/Dev/.cpp/_Library/PhysX-main/physx/bin/win.x86_64.vc143.md/release/$(Configuration);D:/Dev/.cpp/_Library/PhysX-main/blast/_build/windows-x86_64/release/blast-sdk/bin;D:/Dev/.cpp/_Library/PhysX-main/blast/_build/windows-x86_64/release/blast-sdk/bin/$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\..\packages\glfw.3.4.0\build\native\lib\dynamic\v143\x64\glfw3dll.lib;opengl32.lib;PhysX_64.lib;PhysXCommon_64.lib;PhysXFoundation_64.lib;PhysXExtensions_static_64.lib;PhysXPvdSDK_static_64.lib;PhysXCooking_64.lib;NvBlast.lib;NvBlastGlobals.lib;NvBlastTk.lib;NvBlastExtAssetUtils.lib;NvBlastExtAuthoring.lib;NvBlastExtShaders.lib;nvflow.lib;nvflowext.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>D:/Dev/.cpp/_Library/PhysX-main/physx/bin/win.x86_64.vc143.md/release;D:/Dev/.cpp/_Library/PhysX-main/physx/bin/win.x86_64.vc143.md/release/$(Configuration);D:/Dev/.cpp/_Library/PhysX-main/blast/_build/windows-x86_64/release/blast-sdk/bin;D:/Dev/.cpp/_Library/PhysX-main/blast/_build/windows-x86_64/release/blast-sdk/bin/$(Configuration);D:/Dev/.cpp/_Library/PhysX-main/flow/_build/windows-x86_64/release;D:/Dev/.cpp/_Library/PhysX-main/flow/_build/windows-x86_64/release/$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalOptions>%(AdditionalOptions) /machine:x64</AdditionalOptions>
       <DataExecutionPrevention></DataExecutionPrevention>
       <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
@@ -737,7 +899,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>D:\Dev\.cpp\Opengl_Physx\Opengl_Physx;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\ThirdParty\imgui;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\..\packages\glfw.3.4.0\build\native\include;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\..\packages\glm.1.0.3\build\native\include;D:\Dev\.cpp\_Library\PhysX-main\physx\include;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\globals;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\lowlevel;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\toolkit;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\assetutils;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\authoring;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\authoringCommon;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\shaders;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\shared\NvFoundation;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\Dev\.cpp\Opengl_Physx\Opengl_Physx;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Platform;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Scene;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Data;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Editor;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Graphics;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Blast;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Flow;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\PhysicsWorld;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\RigidBody;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\SoftBody;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\ThirdParty\imgui;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\..\packages\glfw.3.4.0\build\native\include;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\..\packages\glm.1.0.3\build\native\include;D:\Dev\.cpp\_Library\PhysX-main\physx\include;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\globals;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\lowlevel;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\toolkit;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\assetutils;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\authoring;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\authoringCommon;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\shaders;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\shared\NvFoundation;D:\Dev\.cpp\_Library\PhysX-main\flow\include;D:\Dev\.cpp\_Library\PhysX-main\flow\include\nvflow;D:\Dev\.cpp\_Library\PhysX-main\flow\include\nvflowext;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>%(AdditionalOptions) /utf-8</AdditionalOptions>
       <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
@@ -763,10 +925,10 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;GLFW_DLL;NOMINMAX;CMAKE_INTDIR=\"RelWithDebInfo\"</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>D:\Dev\.cpp\Opengl_Physx\Opengl_Physx;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\ThirdParty\imgui;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\..\packages\glfw.3.4.0\build\native\include;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\..\packages\glm.1.0.3\build\native\include;D:\Dev\.cpp\_Library\PhysX-main\physx\include;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\globals;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\lowlevel;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\toolkit;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\assetutils;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\authoring;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\authoringCommon;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\shaders;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\shared\NvFoundation;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\Dev\.cpp\Opengl_Physx\Opengl_Physx;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Platform;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Scene;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Data;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Editor;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Graphics;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Blast;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Flow;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\PhysicsWorld;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\RigidBody;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\SoftBody;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\ThirdParty\imgui;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\..\packages\glfw.3.4.0\build\native\include;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\..\packages\glm.1.0.3\build\native\include;D:\Dev\.cpp\_Library\PhysX-main\physx\include;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\globals;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\lowlevel;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\toolkit;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\assetutils;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\authoring;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\authoringCommon;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\shaders;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\shared\NvFoundation;D:\Dev\.cpp\_Library\PhysX-main\flow\include;D:\Dev\.cpp\_Library\PhysX-main\flow\include\nvflow;D:\Dev\.cpp\_Library\PhysX-main\flow\include\nvflowext;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
-      <AdditionalIncludeDirectories>D:\Dev\.cpp\Opengl_Physx\Opengl_Physx;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\ThirdParty\imgui;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\..\packages\glfw.3.4.0\build\native\include;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\..\packages\glm.1.0.3\build\native\include;D:\Dev\.cpp\_Library\PhysX-main\physx\include;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\globals;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\lowlevel;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\toolkit;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\assetutils;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\authoring;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\authoringCommon;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\shaders;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\shared\NvFoundation;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\Dev\.cpp\Opengl_Physx\Opengl_Physx;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Platform;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Scene;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Data;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Editor;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Graphics;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Blast;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Flow;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\PhysicsWorld;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\RigidBody;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\SoftBody;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\ThirdParty\imgui;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\..\packages\glfw.3.4.0\build\native\include;D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\..\packages\glm.1.0.3\build\native\include;D:\Dev\.cpp\_Library\PhysX-main\physx\include;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\globals;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\lowlevel;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\toolkit;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\assetutils;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\authoring;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\authoringCommon;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\extensions\shaders;D:\Dev\.cpp\_Library\PhysX-main\blast\_build\windows-x86_64\release\blast-sdk\include\shared\NvFoundation;D:\Dev\.cpp\_Library\PhysX-main\flow\include;D:\Dev\.cpp\_Library\PhysX-main\flow\include\nvflow;D:\Dev\.cpp\_Library\PhysX-main\flow\include\nvflowext;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
@@ -774,7 +936,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <ProxyFileName>%(Filename)_p.c</ProxyFileName>
     </Midl>
     <PostBuildEvent>
-      <Message>																</Message>
+      <Message>																						</Message>
       <Command>setlocal
 "C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_directory D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/Assets D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/build-flow/bin/RelWithDebInfo/Assets
 if %errorlevel% neq 0 goto :cmEnd
@@ -929,11 +1091,65 @@ endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
 :cmErrorLevel
 exit /b %1
 :cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
+"C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_if_different D:/Dev/.cpp/_Library/PhysX-main/flow/_build/windows-x86_64/release/nvflow.dll D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/build-flow/bin/RelWithDebInfo
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
+"C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_if_different D:/Dev/.cpp/_Library/PhysX-main/flow/_build/windows-x86_64/release/nvflow_rtx.dll D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/build-flow/bin/RelWithDebInfo
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
+"C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_if_different D:/Dev/.cpp/_Library/PhysX-main/flow/_build/windows-x86_64/release/nvflowext.dll D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/build-flow/bin/RelWithDebInfo
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
+"C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_if_different D:/Dev/.cpp/_Library/PhysX-main/flow/_build/windows-x86_64/release/nvflowext_rtx.dll D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/build-flow/bin/RelWithDebInfo
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
+"C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_if_different D:/Dev/.cpp/_Library/PhysX-main/flow/_build/windows-x86_64/release/slang-glslang.dll D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/build-flow/bin/RelWithDebInfo
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+setlocal
+"C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_if_different D:/Dev/.cpp/_Library/PhysX-main/flow/_build/windows-x86_64/release/slang.dll D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/build-flow/bin/RelWithDebInfo
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
 if %errorlevel% neq 0 goto :VCEnd</Command>
     </PostBuildEvent>
     <Link>
-      <AdditionalDependencies>D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\..\packages\glfw.3.4.0\build\native\lib\dynamic\v143\x64\glfw3dll.lib;opengl32.lib;PhysX_64.lib;PhysXCommon_64.lib;PhysXFoundation_64.lib;PhysXExtensions_static_64.lib;PhysXPvdSDK_static_64.lib;PhysXCooking_64.lib;NvBlast.lib;NvBlastGlobals.lib;NvBlastTk.lib;NvBlastExtAssetUtils.lib;NvBlastExtAuthoring.lib;NvBlastExtShaders.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>D:/Dev/.cpp/_Library/PhysX-main/physx/bin/win.x86_64.vc143.md/release;D:/Dev/.cpp/_Library/PhysX-main/physx/bin/win.x86_64.vc143.md/release/$(Configuration);D:/Dev/.cpp/_Library/PhysX-main/blast/_build/windows-x86_64/release/blast-sdk/bin;D:/Dev/.cpp/_Library/PhysX-main/blast/_build/windows-x86_64/release/blast-sdk/bin/$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\..\packages\glfw.3.4.0\build\native\lib\dynamic\v143\x64\glfw3dll.lib;opengl32.lib;PhysX_64.lib;PhysXCommon_64.lib;PhysXFoundation_64.lib;PhysXExtensions_static_64.lib;PhysXPvdSDK_static_64.lib;PhysXCooking_64.lib;NvBlast.lib;NvBlastGlobals.lib;NvBlastTk.lib;NvBlastExtAssetUtils.lib;NvBlastExtAuthoring.lib;NvBlastExtShaders.lib;nvflow.lib;nvflowext.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>D:/Dev/.cpp/_Library/PhysX-main/physx/bin/win.x86_64.vc143.md/release;D:/Dev/.cpp/_Library/PhysX-main/physx/bin/win.x86_64.vc143.md/release/$(Configuration);D:/Dev/.cpp/_Library/PhysX-main/blast/_build/windows-x86_64/release/blast-sdk/bin;D:/Dev/.cpp/_Library/PhysX-main/blast/_build/windows-x86_64/release/blast-sdk/bin/$(Configuration);D:/Dev/.cpp/_Library/PhysX-main/flow/_build/windows-x86_64/release;D:/Dev/.cpp/_Library/PhysX-main/flow/_build/windows-x86_64/release/$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalOptions>%(AdditionalOptions) /machine:x64</AdditionalOptions>
       <DataExecutionPrevention></DataExecutionPrevention>
       <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
@@ -1008,49 +1224,52 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\main.cpp" />
+    <ClCompile Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\main.cpp" />
     <ClCompile Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\ThirdParty\imgui\imgui.cpp" />
     <ClCompile Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\ThirdParty\imgui\imgui_draw.cpp" />
     <ClCompile Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\ThirdParty\imgui\imgui_tables.cpp" />
     <ClCompile Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\ThirdParty\imgui\imgui_widgets.cpp" />
     <ClCompile Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\ThirdParty\imgui\backends\imgui_impl_glfw.cpp" />
     <ClCompile Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\ThirdParty\imgui\backends\imgui_impl_opengl3.cpp" />
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\BlastAsset.h" />
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\BlastChunkRenderer.h" />
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\BlastCollisionLibrary.h" />
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\BlastContext.h" />
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\BlastLibrary.h" />
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\BlastMesh.h" />
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\BlastPhysics.h" />
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\BlastRuntime.h" />
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\BlastScene.h" />
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\BlastVoronoi.h" />
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\Camera.h" />
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\CollisionDebugRenderer.h" />
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\CollisionLibrary.h" />
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\DebugOverlay.h" />
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\ImGuiLayer.h" />
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\ImGuiPanel.h" />
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\Material.h" />
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\Mesh.h" />
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\ModelData.h" />
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\ModelLibrary.h" />
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\ModelRenderer.h" />
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\MousePicker.h" />
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\OpenGL.h" />
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\OutlineEffect.h" />
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\PhysicsWorld.h" />
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\RigidBody.h" />
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\RuntimeFractureWall.h" />
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\Scene.h" />
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\Shader.h" />
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\ShadowMap.h" />
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\SoftBody.h" />
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\SoftGpuBuffer.h" />
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\SoftMeshLibrary.h" />
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\Texture.h" />
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\Transform.h" />
-    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\Window.h" />
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Data\ModelData.h" />
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Data\ModelLibrary.h" />
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Editor\DebugOverlay.h" />
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Editor\ImGuiLayer.h" />
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Editor\ImGuiPanel.h" />
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Editor\MousePicker.h" />
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Graphics\CollisionDebugRenderer.h" />
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Graphics\Material.h" />
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Graphics\Mesh.h" />
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Graphics\ModelRenderer.h" />
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Graphics\OutlineEffect.h" />
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Graphics\Shader.h" />
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Graphics\ShadowMap.h" />
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Graphics\Texture.h" />
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Blast\BlastAsset.h" />
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Blast\BlastChunkRenderer.h" />
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Blast\BlastCollisionLibrary.h" />
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Blast\BlastContext.h" />
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Blast\BlastLibrary.h" />
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Blast\BlastMesh.h" />
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Blast\BlastPhysics.h" />
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Blast\BlastRuntime.h" />
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Blast\BlastScene.h" />
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Blast\BlastVoronoi.h" />
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Blast\RuntimeFractureWall.h" />
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Flow\FlowContext.h" />
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Flow\FlowSimulation.h" />
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Flow\FlowVolumeRenderer.h" />
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\PhysicsWorld\PhysicsWorld.h" />
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\RigidBody\CollisionLibrary.h" />
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\RigidBody\RigidBody.h" />
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\SoftBody\SoftBody.h" />
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\SoftBody\SoftGpuBuffer.h" />
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\SoftBody\SoftMeshLibrary.h" />
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Platform\OpenGL.h" />
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Platform\Window.h" />
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Scene\Camera.h" />
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Scene\Scene.h" />
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Scene\Transform.h" />
   </ItemGroup>
   <ItemGroup />
   <ItemGroup>

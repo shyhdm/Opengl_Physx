@@ -36,7 +36,7 @@ foreach(required_path IN ITEMS
 endforeach()
 
 add_executable(Opengl_Physx WIN32
-    "${APP_SOURCE_DIR}/src/main.cpp"
+    "${APP_SOURCE_DIR}/main.cpp"
     "${IMGUI_ROOT}/imgui.cpp"
     "${IMGUI_ROOT}/imgui_draw.cpp"
     "${IMGUI_ROOT}/imgui_tables.cpp"
@@ -45,7 +45,7 @@ add_executable(Opengl_Physx WIN32
     "${IMGUI_ROOT}/backends/imgui_impl_opengl3.cpp"
 )
 
-file(GLOB_RECURSE PROJECT_HEADERS CONFIGURE_DEPENDS "${APP_SOURCE_DIR}/src/*.h")
+file(GLOB PROJECT_HEADERS CONFIGURE_DEPENDS "${APP_SOURCE_DIR}/*.h")
 target_sources(Opengl_Physx PRIVATE ${PROJECT_HEADERS})
 
 target_compile_definitions(Opengl_Physx PRIVATE GLFW_DLL NOMINMAX)
@@ -54,17 +54,6 @@ target_link_options(Opengl_Physx PRIVATE /ENTRY:mainCRTStartup)
 
 target_include_directories(Opengl_Physx PRIVATE
     "${APP_SOURCE_DIR}"
-    "${APP_SOURCE_DIR}/src"
-    "${APP_SOURCE_DIR}/src/Platform"
-    "${APP_SOURCE_DIR}/src/Scene"
-    "${APP_SOURCE_DIR}/src/Data"
-    "${APP_SOURCE_DIR}/src/Editor"
-    "${APP_SOURCE_DIR}/src/Graphics"
-    "${APP_SOURCE_DIR}/src/Physics/Blast"
-    "${APP_SOURCE_DIR}/src/Physics/Flow"
-    "${APP_SOURCE_DIR}/src/Physics/PhysicsWorld"
-    "${APP_SOURCE_DIR}/src/Physics/RigidBody"
-    "${APP_SOURCE_DIR}/src/Physics/SoftBody"
     "${IMGUI_ROOT}"
     "${GLFW_ROOT}/include"
     "${GLM_ROOT}/include"

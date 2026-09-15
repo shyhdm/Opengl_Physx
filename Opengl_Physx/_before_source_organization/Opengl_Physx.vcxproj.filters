@@ -54,117 +54,117 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\Platform\Window.h">
+    <ClInclude Include="Window.h">
       <Filter>头文件\Platform</Filter>
     </ClInclude>
-    <ClInclude Include="src\Platform\OpenGL.h">
+    <ClInclude Include="OpenGL.h">
       <Filter>头文件\Platform</Filter>
     </ClInclude>
-    <ClInclude Include="src\Graphics\Mesh.h">
+    <ClInclude Include="Mesh.h">
       <Filter>头文件\Graphics</Filter>
     </ClInclude>
-    <ClInclude Include="src\Graphics\Shader.h">
+    <ClInclude Include="Shader.h">
       <Filter>头文件\Graphics</Filter>
     </ClInclude>
-    <ClInclude Include="src\Graphics\Texture.h">
+    <ClInclude Include="Texture.h">
       <Filter>头文件\Graphics</Filter>
     </ClInclude>
-    <ClInclude Include="src\Graphics\Material.h">
+    <ClInclude Include="Material.h">
       <Filter>头文件\Graphics</Filter>
     </ClInclude>
-    <ClInclude Include="src\Graphics\ModelRenderer.h">
+    <ClInclude Include="ModelRenderer.h">
       <Filter>头文件\Graphics</Filter>
     </ClInclude>
-    <ClInclude Include="src\Graphics\ShadowMap.h">
+    <ClInclude Include="ShadowMap.h">
       <Filter>头文件\Graphics</Filter>
     </ClInclude>
-    <ClInclude Include="src\Graphics\CollisionDebugRenderer.h">
+    <ClInclude Include="CollisionDebugRenderer.h">
       <Filter>头文件\Graphics</Filter>
     </ClInclude>
-    <ClInclude Include="src\Graphics\OutlineEffect.h">
+    <ClInclude Include="OutlineEffect.h">
       <Filter>头文件\Graphics</Filter>
     </ClInclude>
-    <ClInclude Include="src\Scene\Camera.h">
+    <ClInclude Include="Camera.h">
       <Filter>头文件\Scene</Filter>
     </ClInclude>
-    <ClInclude Include="src\Scene\Scene.h">
+    <ClInclude Include="Scene.h">
       <Filter>头文件\Scene</Filter>
     </ClInclude>
-    <ClInclude Include="src\Scene\Transform.h">
+    <ClInclude Include="Transform.h">
       <Filter>头文件\Scene</Filter>
     </ClInclude>
-    <ClInclude Include="src\Data\ModelData.h">
+    <ClInclude Include="ModelData.h">
       <Filter>头文件\Data</Filter>
     </ClInclude>
-    <ClInclude Include="src\Data\ModelLibrary.h">
+    <ClInclude Include="ModelLibrary.h">
       <Filter>头文件\Data</Filter>
     </ClInclude>
-    <ClInclude Include="src\Editor\ImGuiLayer.h">
+    <ClInclude Include="ImGuiLayer.h">
       <Filter>头文件\Editor</Filter>
     </ClInclude>
-    <ClInclude Include="src\Editor\ImGuiPanel.h">
+    <ClInclude Include="ImGuiPanel.h">
       <Filter>头文件\Editor</Filter>
     </ClInclude>
-    <ClInclude Include="src\Editor\MousePicker.h">
+    <ClInclude Include="MousePicker.h">
       <Filter>头文件\Editor</Filter>
     </ClInclude>
-    <ClInclude Include="src\Physics\RigidBody\CollisionLibrary.h">
+    <ClInclude Include="CollisionLibrary.h">
       <Filter>头文件\Physics</Filter>
     </ClInclude>
-    <ClInclude Include="src\Physics\PhysicsWorld\PhysicsWorld.h">
+    <ClInclude Include="PhysicsWorld.h">
       <Filter>头文件\Physics</Filter>
     </ClInclude>
-    <ClInclude Include="src\Physics\RigidBody\RigidBody.h">
+    <ClInclude Include="RigidBody.h">
       <Filter>头文件\Physics</Filter>
     </ClInclude>
-    <ClInclude Include="src\Physics\SoftBody\SoftBody.h">
+    <ClInclude Include="SoftBody.h">
       <Filter>头文件\Physics\SoftBody</Filter>
     </ClInclude>
-    <ClInclude Include="src\Physics\SoftBody\SoftGpuBuffer.h">
+    <ClInclude Include="SoftGpuBuffer.h">
       <Filter>头文件\Physics\SoftBody</Filter>
     </ClInclude>
-    <ClInclude Include="src\Physics\SoftBody\SoftMeshLibrary.h">
+    <ClInclude Include="SoftMeshLibrary.h">
       <Filter>头文件\Physics\SoftBody</Filter>
     </ClInclude>
-    <ClInclude Include="src\Physics\Blast\BlastContext.h">
+    <ClInclude Include="BlastContext.h">
       <Filter>头文件\Physics\Blast</Filter>
     </ClInclude>
-    <ClInclude Include="src\Physics\Blast\BlastMesh.h">
+    <ClInclude Include="BlastMesh.h">
       <Filter>头文件\Physics\Blast</Filter>
     </ClInclude>
-    <ClInclude Include="src\Physics\Blast\BlastVoronoi.h">
+    <ClInclude Include="BlastVoronoi.h">
       <Filter>头文件\Physics\Blast</Filter>
     </ClInclude>
-    <ClInclude Include="src\Physics\Blast\BlastAsset.h">
+    <ClInclude Include="BlastAsset.h">
       <Filter>头文件\Physics\Blast</Filter>
     </ClInclude>
-    <ClInclude Include="src\Physics\Blast\BlastRuntime.h">
+    <ClInclude Include="BlastRuntime.h">
       <Filter>头文件\Physics\Blast</Filter>
     </ClInclude>
-    <ClInclude Include="src\Physics\Blast\BlastChunkRenderer.h">
+    <ClInclude Include="BlastChunkRenderer.h">
       <Filter>头文件\Physics\Blast</Filter>
     </ClInclude>
-    <ClInclude Include="src\Editor\DebugOverlay.h">
+    <ClInclude Include="DebugOverlay.h">
       <Filter>头文件\Editor</Filter>
     </ClInclude>
-    <ClInclude Include="src\Physics\Blast\BlastPhysics.h">
+    <ClInclude Include="BlastPhysics.h">
       <Filter>头文件\Physics\Blast</Filter>
     </ClInclude>
-    <ClInclude Include="src\Physics\Blast\BlastScene.h">
+    <ClInclude Include="BlastScene.h">
       <Filter>头文件\Scene</Filter>
     </ClInclude>
-    <ClInclude Include="src\Physics\Blast\BlastLibrary.h">
+    <ClInclude Include="BlastLibrary.h">
       <Filter>头文件\Physics\Blast</Filter>
     </ClInclude>
-    <ClInclude Include="src\Physics\Blast\BlastCollisionLibrary.h">
+    <ClInclude Include="BlastCollisionLibrary.h">
       <Filter>头文件\Physics\Blast</Filter>
     </ClInclude>
-    <ClInclude Include="src\Physics\Blast\RuntimeFractureWall.h">
+    <ClInclude Include="RuntimeFractureWall.h">
       <Filter>头文件\Physics\Blast</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\main.cpp">
+    <ClCompile Include="main.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
