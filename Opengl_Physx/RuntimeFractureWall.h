@@ -80,10 +80,14 @@ public:
             }
             fractureJob.reset();
             if (!completed) return false;
-            FracturePlan plan = std::move(*completed);
+            preparedPlan.emplace(std::move(*completed));
+        }
+        if (preparedPlan)
+        {
             auto found = std::find_if(pieces.begin(), pieces.end(), [&](const auto& piece) { return piece->id == pending.targetId; });
-            if (found == pieces.end() || plan.detached.empty()) return false;
-            commitPlan.emplace(std::move(plan));
+            if (found == pieces.end() || preparedPlan->detached.empty()) { preparedPlan.reset(); return false; }
+            commitPlan.emplace(std::move(*preparedPlan));
+            preparedPlan.reset();
             commitIndex = 0;
             retainedCommitIndex = 0;
             retainedStaged = false;
@@ -108,6 +112,153 @@ public:
         StartFracture(*target, strongest);
         lastFractureRevision = world.GetSimulationRevision();
         return removedSmallFragments;
+    }
+
+    // 扫描场景内的全部动态刚体，在它们真正接触墙面前启动碎裂计算。
+    // 这同时覆盖普通刚体、Blast 刚体和专用滚球，不依赖具体的发射入口。
+    void PredictMovingRigidBodies()
+    {
+        using namespace physx;
+        if (fractureJob || preparedPlan || commitPlan) return;
+        PxU32 count = world.GetScene().getNbActors(PxActorTypeFlag::eRIGID_DYNAMIC);
+        if (count == 0) return;
+        std::vector<PxActor*> actors(count);
+        count = world.GetScene().getActors(PxActorTypeFlag::eRIGID_DYNAMIC, actors.data(), count);
+        for (PxU32 index = 0; index < count; ++index)
+        {
+            auto* body = actors[index] ? actors[index]->is<PxRigidDynamic>() : nullptr;
+            if (!body || body->getRigidBodyFlags().isSet(PxRigidBodyFlag::eKINEMATIC) || body->isSleeping()) continue;
+            bool wallActor = std::any_of(pieces.begin(), pieces.end(), [&](const auto& piece) { return piece->actor == body; });
+            if (wallActor) continue;
+            PxVec3 velocity = body->getLinearVelocity();
+            if (!velocity.isFinite() || velocity.magnitudeSquared() < 0.01f) continue;
+            PxBounds3 bounds = body->getWorldBounds(1.01f);
+            PxVec3 center = bounds.getCenter(), extents = bounds.getExtents();
+            float radius = std::max({ extents.x,extents.y,extents.z,0.05f });
+            float volume = std::max(8.0f * extents.x * extents.y * extents.z, 0.001f);
+            if (PredictProjectile({ center.x,center.y,center.z }, { velocity.x,velocity.y,velocity.z }, radius, body->getMass(), volume)) return;
+        }
+    }
+
+    // 可由发射系统在创建物体的同一帧调用；软体也能用其初始包围球参与预判。
+    bool PredictProjectile(glm::vec3 position, glm::vec3 velocity, float radius, float mass, float volume)
+    {
+        using namespace physx;
+        if (fractureJob || preparedPlan || commitPlan || !std::isfinite(radius) || !std::isfinite(mass) ||
+            !std::isfinite(volume) || radius <= 0.0f || mass <= 0.0f || volume <= 0.0f) return false;
+        if (lastFractureRevision > 0 && world.GetSimulationRevision() < lastFractureRevision + cooldownSteps) return false;
+        PxVec3 p(position.x, position.y, position.z), v(velocity.x, velocity.y, velocity.z);
+        if (!p.isFinite() || !v.isFinite()) return false;
+
+        constexpr float predictionHorizon = 1.25f;
+        // 只让真正的墙块替换比预计接触早约两帧；耗时的网格与碰撞体准备仍会更早进行。
+        constexpr float activationLeadTime = 0.03f;
+        float wallFront = wallPose.p.z + size.z * 0.5f;
+        float wallBack = wallPose.p.z - size.z * 0.5f;
+        float distance = 0.0f, speedToward = 0.0f, face = 0.0f;
+        PxVec3 travelDirection(0.0f), surfaceNormal(0.0f);
+        if (p.z >= wallPose.p.z)
+        {
+            distance = p.z - radius - wallFront;
+            speedToward = -v.z;
+            face = wallFront;
+            travelDirection = PxVec3(0, 0, -1);
+            surfaceNormal = PxVec3(0, 0, 1);
+        }
+        else
+        {
+            distance = wallBack - (p.z + radius);
+            speedToward = v.z;
+            face = wallBack;
+            travelDirection = PxVec3(0, 0, 1);
+            surfaceNormal = PxVec3(0, 0, -1);
+        }
+        if (speedToward <= 0.10f) return false;
+        float impactTime = std::max(distance, 0.0f) / speedToward;
+        if (!std::isfinite(impactTime) || impactTime > predictionHorizon) return false;
+
+        float hitX = p.x + v.x * impactTime;
+        float hitY = p.y + v.y * impactTime - 4.905f * impactTime * impactTime;
+        float wallMinX = wallPose.p.x - size.x * 0.5f, wallMaxX = wallPose.p.x + size.x * 0.5f;
+        float wallMinY = wallPose.p.y - size.y * 0.5f, wallMaxY = wallPose.p.y + size.y * 0.5f;
+        if (hitX + radius < wallMinX || hitX - radius > wallMaxX || hitY + radius < wallMinY || hitY - radius > wallMaxY) return false;
+        PxVec3 hit(std::clamp(hitX, wallMinX + 0.01f, wallMaxX - 0.01f),
+            std::clamp(hitY, wallMinY + 0.01f, wallMaxY - 0.01f), face);
+
+        Piece* target = nullptr;
+        float nearestDistanceSquared = std::numeric_limits<float>::max();
+        for (const auto& piece : pieces)
+        {
+            if (!CanFracture(*piece)) continue;
+            PxBounds3 bounds = piece->actor->getWorldBounds(1.01f);
+            float dx = std::max({ bounds.minimum.x - hit.x,0.0f,hit.x - bounds.maximum.x });
+            float dy = std::max({ bounds.minimum.y - hit.y,0.0f,hit.y - bounds.maximum.y });
+            float dz = std::max({ bounds.minimum.z - hit.z,0.0f,hit.z - bounds.maximum.z });
+            float distanceSquared = dx * dx + dy * dy + dz * dz;
+            if (distanceSquared < nearestDistanceSquared) { nearestDistanceSquared = distanceSquared; target = piece.get(); }
+        }
+        if (!target) return false;
+
+        PhysicsWorld::Impact predicted;
+        predicted.position = hit;
+        predicted.normal = surfaceNormal;
+        predicted.relativeVelocity = v;
+        predicted.impulseMagnitude = std::max(mass * speedToward, settings.breakingImpulse);
+        predicted.impulse = travelDirection * predicted.impulseMagnitude;
+        predicted.velocityChange = speedToward;
+        predicted.colliderVolume = std::clamp(volume, 0.001f, 4096.0f);
+        unsigned long long waitSteps = impactTime > activationLeadTime ?
+            static_cast<unsigned long long>(std::ceil((impactTime - activationLeadTime) * 60.0f)) : 0ull;
+        StartFracture(*target, predicted, world.GetSimulationRevision() + waitSteps, true);
+        lastFractureRevision = world.GetSimulationRevision();
+        return true;
+    }
+
+    // 对沿复杂轨迹运动的物体（例如弧形坡道滚球）立即预制碎裂数据，
+    // 但根据该刚体每一帧的真实位置和速度决定最终墙块替换时刻。
+    bool PrepareTrackedProjectile(const physx::PxRigidActor* actor, glm::vec3 expectedHit, float radius, float mass, float volume)
+    {
+        using namespace physx;
+        const auto* body = actor ? actor->is<PxRigidDynamic>() : nullptr;
+        if (!body || fractureJob || preparedPlan || commitPlan || !std::isfinite(radius) || !std::isfinite(mass) ||
+            !std::isfinite(volume) || radius <= 0.0f || mass <= 0.0f || volume <= 0.0f) return false;
+        PxVec3 center = body->getWorldBounds(1.01f).getCenter();
+        PxVec3 velocity = body->getLinearVelocity();
+        bool frontSide = center.z >= wallPose.p.z;
+        PxVec3 travelDirection = frontSide ? PxVec3(0, 0, -1) : PxVec3(0, 0, 1);
+        PxVec3 surfaceNormal = -travelDirection;
+        float face = wallPose.p.z + (frontSide ? size.z * 0.5f : -size.z * 0.5f);
+        float wallMinX = wallPose.p.x - size.x * 0.5f, wallMaxX = wallPose.p.x + size.x * 0.5f;
+        float wallMinY = wallPose.p.y - size.y * 0.5f, wallMaxY = wallPose.p.y + size.y * 0.5f;
+        PxVec3 hit(std::clamp(expectedHit.x, wallMinX + 0.01f, wallMaxX - 0.01f),
+            std::clamp(expectedHit.y, wallMinY + 0.01f, wallMaxY - 0.01f), face);
+
+        Piece* target = nullptr;
+        float nearestDistanceSquared = std::numeric_limits<float>::max();
+        for (const auto& piece : pieces)
+        {
+            if (!CanFracture(*piece)) continue;
+            PxBounds3 bounds = piece->actor->getWorldBounds(1.01f);
+            float dx = std::max({ bounds.minimum.x - hit.x,0.0f,hit.x - bounds.maximum.x });
+            float dy = std::max({ bounds.minimum.y - hit.y,0.0f,hit.y - bounds.maximum.y });
+            float dz = std::max({ bounds.minimum.z - hit.z,0.0f,hit.z - bounds.maximum.z });
+            float distanceSquared = dx * dx + dy * dy + dz * dz;
+            if (distanceSquared < nearestDistanceSquared) { nearestDistanceSquared = distanceSquared; target = piece.get(); }
+        }
+        if (!target) return false;
+
+        float speedToward = std::max(std::abs(velocity.z), 1.0f);
+        PhysicsWorld::Impact predicted;
+        predicted.position = hit;
+        predicted.normal = surfaceNormal;
+        predicted.relativeVelocity = velocity;
+        predicted.impulseMagnitude = std::max(mass * speedToward, settings.breakingImpulse);
+        predicted.impulse = travelDirection * predicted.impulseMagnitude;
+        predicted.velocityChange = speedToward;
+        predicted.colliderVolume = std::clamp(volume, 0.001f, 4096.0f);
+        StartFracture(*target, predicted, std::numeric_limits<unsigned long long>::max(), true, body);
+        lastFractureRevision = world.GetSimulationRevision();
+        return true;
     }
 
     void Draw(ModelRenderer& renderer, bool shadowPass) const
@@ -215,6 +366,7 @@ private:
     unsigned long long lastFractureRevision = 0;
     unsigned long long nextSmallFragmentCleanupRevision = 0;
     std::shared_ptr<AsyncFractureJob> fractureJob;
+    std::optional<FracturePlan> preparedPlan;
     std::optional<FracturePlan> commitPlan;
     std::vector<std::unique_ptr<Piece>> stagedPieces;
     mutable std::unique_ptr<Mesh> renderBatch;
@@ -228,6 +380,9 @@ private:
     std::size_t retainedCommitIndex = 0;
     bool retainedStaged = false;
     PendingFracture pending;
+    unsigned long long predictionCommitRevision = 0;
+    bool predictedFracture = false;
+    const physx::PxRigidDynamic* trackedPredictiveActor = nullptr;
     inline static std::uint64_t nextId = 0x4000000000000000ull;
     inline static std::uint64_t wallGeneration = 0;
     inline static const glm::vec3 size{ 16.0f,10.0f,1.0f };
@@ -242,7 +397,7 @@ private:
     static constexpr float supportHeight = 0.08f;
     static constexpr float supportTolerance = 0.035f;
     static constexpr float unsupportedKickSpeed = 0.18f;
-    static constexpr std::size_t piecesCommittedPerFrame = 8;
+    static constexpr std::size_t basePiecesPreparedPerFrame = 8;
 
     physx::PxRigidStatic* CreateInitialActor(const physx::PxTransform& pose, const glm::vec3& halfExtents)
     {
@@ -258,7 +413,8 @@ private:
         return actor;
     }
 
-    void StartFracture(Piece& target, const PhysicsWorld::Impact& impact)
+    void StartFracture(Piece& target, const PhysicsWorld::Impact& impact, unsigned long long commitRevision = 0,
+        bool predicted = false, const physx::PxRigidDynamic* trackedActor = nullptr)
     {
         using namespace physx;
         PxTransform pose = target.actor->getGlobalPose();
@@ -291,6 +447,9 @@ private:
         pending.radius = radius;
         pending.chainRadius = largeCollider ? radius * settings.chainRadius : radius;
         pending.largeCollider = largeCollider;
+        predictionCommitRevision = commitRevision > 0 ? commitRevision : world.GetSimulationRevision();
+        predictedFracture = predicted;
+        trackedPredictiveActor = trackedActor;
         auto job = std::make_shared<AsyncFractureJob>();
         fractureJob = job;
         std::thread([job, source = std::move(source), localHit, radius, coreRadius, coreSites, outerSites, guardSites, seed, fixed, cookingParams]() mutable
@@ -314,7 +473,16 @@ private:
         PxTransform pose = target.actor->getGlobalPose();
         PxVec3 inheritedLinear(0), inheritedAngular(0);
         if (auto* dynamic = target.actor->is<PxRigidDynamic>()) { inheritedLinear = dynamic->getLinearVelocity(); inheritedAngular = dynamic->getAngularVelocity(); }
-        std::size_t budget = piecesCommittedPerFrame;
+        std::size_t remainingPieces = (plan.retained.size() - retainedCommitIndex) + (plan.detached.size() - commitIndex);
+        unsigned long long revision = world.GetSimulationRevision();
+        unsigned long long remainingSteps = predictionCommitRevision > revision ? predictionCommitRevision - revision : 0;
+        std::size_t budget = basePiecesPreparedPerFrame;
+        if (predictedFracture)
+        {
+            if (remainingSteps <= 6) budget = remainingPieces;             // 约 0.10 秒内：确保全部准备完成。
+            else if (remainingSteps <= 18) budget = std::max<std::size_t>(24, (remainingPieces + remainingSteps - 1) / remainingSteps);
+            else if (remainingSteps <= 36) budget = std::max<std::size_t>(12, (remainingPieces + remainingSteps - 1) / remainingSteps);
+        }
         if (!retainedStaged)
         {
             while (budget > 0 && retainedCommitIndex < plan.retained.size())
@@ -337,6 +505,31 @@ private:
             --budget;
         }
         if (commitIndex < plan.detached.size()) return false;
+        // 预测任务可以提前完成网格、碰撞体和刚体的创建，但直到预计接触前才原子替换旧墙块。
+        if (trackedPredictiveActor)
+        {
+            PxU32 actorCount = world.GetScene().getNbActors(PxActorTypeFlag::eRIGID_DYNAMIC);
+            std::vector<PxActor*> actors(actorCount);
+            actorCount = world.GetScene().getActors(PxActorTypeFlag::eRIGID_DYNAMIC, actors.data(), actorCount);
+            const PxRigidDynamic* liveActor = nullptr;
+            for (PxU32 index = 0; index < actorCount; ++index)
+                if (actors[index] == trackedPredictiveActor) { liveActor = actors[index]->is<PxRigidDynamic>(); break; }
+            if (!liveActor)
+            {
+                stagedPieces.clear(); commitPlan.reset(); trackedPredictiveActor = nullptr; predictedFracture = false;
+                return false;
+            }
+            PxBounds3 movingBounds = liveActor->getWorldBounds(1.01f);
+            PxVec3 movingCenter = movingBounds.getCenter();
+            PxVec3 movingVelocity = liveActor->getLinearVelocity();
+            float distance = movingCenter.z >= wallPose.p.z ?
+                movingBounds.minimum.z - (wallPose.p.z + size.z * 0.5f) :
+                (wallPose.p.z - size.z * 0.5f) - movingBounds.maximum.z;
+            float speedToward = movingCenter.z >= wallPose.p.z ? -movingVelocity.z : movingVelocity.z;
+            bool imminent = distance <= 0.08f || (speedToward > 0.10f && distance / speedToward <= 0.03f);
+            if (!imminent) return false;
+        }
+        else if (world.GetSimulationRevision() < predictionCommitRevision) return false;
         pose = target.actor->getGlobalPose();
         if (auto* dynamic = target.actor->is<PxRigidDynamic>()) { inheritedLinear = dynamic->getLinearVelocity(); inheritedAngular = dynamic->getAngularVelocity(); }
         PxVec3 impactPosition = pose.transform(PxVec3(pending.localHit.x, pending.localHit.y, pending.localHit.z));
@@ -397,7 +590,7 @@ private:
         renderTopologyDirty = true;
         ReleaseChain(impactPosition, impactDirection, beforeRelease);
         ReleaseUnsupported(impactPosition, beforeRelease);
-        stagedPieces.clear(); commitPlan.reset();
+        stagedPieces.clear(); commitPlan.reset(); trackedPredictiveActor = nullptr; predictedFracture = false;
         lastFractureRevision = world.GetSimulationRevision();
         return true;
     }

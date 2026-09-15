@@ -125,11 +125,16 @@ public:
             testCount = std::clamp(testCount, 1, 500);
             if (ImGui::Button(T("墙体", "Wall"))) scene2Action = 0;
             ImGui::SameLine();
+            if (ImGui::Button(T("墙体滚球", "Wall ball"))) scene2Action = 4;
             if (ImGui::Button(T("平摊", "Flat"))) scene2Action = 2;
             ImGui::SameLine();
             if (ImGui::Button(T("金字塔", "Pyramid"))) scene2Action = 1;
             ImGui::SameLine();
             if (ImGui::Button(T("5000正方体", "5000 cubes"))) scene2Action = 3;
+            ImGui::SetNextItemWidth(150 * scale);
+            Number(T("滚球大小", "Ball size"), wallBallSize, 0.10f, 0.5f, 12.0f);
+            ImGui::SetNextItemWidth(150 * scale);
+            Number(T("滚球质量 (kg)", "Ball mass (kg)"), wallBallMass, 1.0f, 0.01f, 100000.0f);
             if (blastScene)
             {
                 auto fracture = blastScene->GetWallSettings();
@@ -151,6 +156,18 @@ public:
         {
             scene.Reset();
             if (scene2Action == 0) { if (buildWall) buildWall(); }
+            else if (scene2Action == 4)
+            {
+                if (buildWall) buildWall();
+                RigidBody* ball = scene.BuildWallRollingTest(wallBallSize, wallBallMass);
+                if (blastScene && ball)
+                {
+                    constexpr float pi = 3.14159265358979323846f;
+                    float radius = wallBallSize * 0.5f;
+                    float volume = 4.0f * pi * radius * radius * radius / 3.0f;
+                    blastScene->PrepareTrackedProjectile(ball->GetActor(), glm::vec3(0.0f, 0.35f + radius, -2.5f), radius, wallBallMass, volume);
+                }
+            }
             else if (scene2Action == 1) scene.BuildPyramidTest(testCount, clearDestructibles, spawnDestructible);
             else if (scene2Action == 2) scene.BuildFlatTest(testCount, clearDestructibles, spawnDestructible);
             else scene.BuildCubeStack5000(clearDestructibles);
@@ -270,6 +287,8 @@ private:
     std::uint64_t sceneVersion = 0, objectId = 0;
     bool chinese = true;
     int testCount = 8;
+    float wallBallSize = 6.0f;
+    float wallBallMass = 100.0f;
     const char* T(const char* cn, const char* en) const { return chinese ? cn : en; }
     static bool Number(const char* label, float& value, float speed, float low, float high)
     {

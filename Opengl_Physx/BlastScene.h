@@ -57,8 +57,19 @@ public:
     {
         auto started = std::chrono::steady_clock::now();
         frameUpdateMs = 0.0;
+        if (wall) wall->PredictMovingRigidBodies();
         for (const auto& object : objects) object->physics->CaptureVelocity();
         frameUpdateMs += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - started).count();
+    }
+
+    void PredictProjectile(glm::vec3 position, glm::vec3 velocity, float radius, float mass, float volume)
+    {
+        if (wall) wall->PredictProjectile(position, velocity, radius, mass, volume);
+    }
+
+    void PrepareTrackedProjectile(const physx::PxRigidActor* actor, glm::vec3 expectedHit, float radius, float mass, float volume)
+    {
+        if (wall) wall->PrepareTrackedProjectile(actor, expectedHit, radius, mass, volume);
     }
 
     void AfterPhysics(const std::function<void(const physx::PxRigidActor*)>& beforeRelease = {})

@@ -71,38 +71,41 @@ int main()
             scene->HandleInput(window, camera, mouseBlocked, [&](ModelType type, glm::vec3 position, glm::vec3 velocity, float scale, float mass)
                 {
                     blastScene->Spawn(type, position, velocity, scale, mass);
-                });
-            if (showGui) panel.Draw(*scene, displayedFps, [&]() {scene->ClearRigidSelection(); blastScene->Clear(); }, [&](ModelType type, glm::vec3 position, float scale, float mass) {blastScene->Spawn(type, position, glm::vec3(0), scale, mass); }, [&]() {blastScene->BuildWall(); }, blastScene.get(), debugOverlay.GetText());
-            blastScene->SetSceneIndex(scene->GetSceneIndex());
-            if (window.IsKeyDown(GLFW_KEY_ESCAPE)) window.RequestClose();
-            blastScene->BeforePhysics();
-            scene->Update(deltaTime);
-            blastScene->AfterPhysics([&](const physx::PxRigidActor* actor) {scene->ForgetActor(actor); });
-            int width = 0, height = 0;
-            window.GetFramebufferSize(width, height);
-            scene->Draw(camera, width, height, [&](ModelRenderer& renderer, bool shadowPass)
+                }, [&](glm::vec3 position, glm::vec3 velocity, float radius, float mass, float volume)
+                    {
+                        blastScene->PredictProjectile(position, velocity, radius, mass, volume);
+                    });
+                if (showGui) panel.Draw(*scene, displayedFps, [&]() {scene->ClearRigidSelection(); blastScene->Clear(); }, [&](ModelType type, glm::vec3 position, float scale, float mass) {blastScene->Spawn(type, position, glm::vec3(0), scale, mass); }, [&]() {blastScene->BuildWall(); }, blastScene.get(), debugOverlay.GetText());
+                blastScene->SetSceneIndex(scene->GetSceneIndex());
+                if (window.IsKeyDown(GLFW_KEY_ESCAPE)) window.RequestClose();
+                blastScene->BeforePhysics();
+                scene->Update(deltaTime);
+                blastScene->AfterPhysics([&](const physx::PxRigidActor* actor) {scene->ForgetActor(actor); });
+                int width = 0, height = 0;
+                window.GetFramebufferSize(width, height);
+                scene->Draw(camera, width, height, [&](ModelRenderer& renderer, bool shadowPass)
+                    {
+                        blastRenderer->Draw(renderer, *blastScene, shadowPass);
+                        blastScene->DrawRuntimeWall(renderer, shadowPass);
+                    });
+                debugOverlay.Draw();
+                gui.Render();
+                cpuFrameMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - cpuFrameStarted).count();
+                window.Present();
+                if (scene->GetRequestedMode() >= 0)
                 {
-                    blastRenderer->Draw(renderer, *blastScene, shadowPass);
-                    blastScene->DrawRuntimeWall(renderer, shadowPass);
-                });
-            debugOverlay.Draw();
-            gui.Render();
-            cpuFrameMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - cpuFrameStarted).count();
-            window.Present();
-            if (scene->GetRequestedMode() >= 0)
-            {
-                int activeScene = scene->GetSceneIndex();
-                bool useGpu = scene->GetRequestedMode() == 1;
-                scene->ClearRigidSelection();
-                blastScene.reset();
-                scene.reset();
-                scene = std::make_unique<Scene>(useGpu);
-                scene->SetSceneIndex(activeScene);
-                blastScene = std::make_unique<BlastScene>(blast, *blastLibrary, scene->GetPhysicsWorld());
-                connectBlastSelection();
-                blastScene->SetSceneIndex(activeScene);
-                lastTime = glfwGetTime();
-            }
+                    int activeScene = scene->GetSceneIndex();
+                    bool useGpu = scene->GetRequestedMode() == 1;
+                    scene->ClearRigidSelection();
+                    blastScene.reset();
+                    scene.reset();
+                    scene = std::make_unique<Scene>(useGpu);
+                    scene->SetSceneIndex(activeScene);
+                    blastScene = std::make_unique<BlastScene>(blast, *blastLibrary, scene->GetPhysicsWorld());
+                    connectBlastSelection();
+                    blastScene->SetSceneIndex(activeScene);
+                    lastTime = glfwGetTime();
+                }
         }
         scene->ClearRigidSelection();
         blastScene->Clear();

@@ -3,22 +3,34 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-// 所有模型均为动态刚体，平面用薄盒碰撞体提供质量和惯性。尺寸参数是模型缩放。
+// 支持动态刚体和用于场景结构的静态刚体；平面使用薄盒碰撞体。尺寸参数是模型缩放。
 class RigidBody
 {
 public:
-    RigidBody(PhysicsWorld& world, glm::vec3 position, glm::vec3 scale = glm::vec3(1.0f), float density = 10.0f) : RigidBody(world, ModelType::Box, position, scale, density) {}
+    RigidBody(PhysicsWorld& world, glm::vec3 position, glm::vec3 scale = glm::vec3(1.0f), float density = 10.0f,
+        bool isStatic = false, glm::vec3 rotationDegrees = glm::vec3(0.0f))
+        : RigidBody(world, ModelType::Box, position, scale, density, isStatic, rotationDegrees) {}
 
-    RigidBody(PhysicsWorld& world, ModelType type, glm::vec3 position, glm::vec3 scale = glm::vec3(1.0f), float density = 10.0f) : type(type), scale(scale)
+    RigidBody(PhysicsWorld& world, ModelType type, glm::vec3 position, glm::vec3 scale = glm::vec3(1.0f), float density = 10.0f,
+        bool isStatic = false, glm::vec3 rotationDegrees = glm::vec3(0.0f)) : type(type), scale(scale)
     {
         using namespace physx;
-        if (!PxVec3(position.x, position.y, position.z).isFinite() || !PxVec3(scale.x, scale.y, scale.z).isFinite() || scale.x <= 0 || scale.y <= 0 || scale.z <= 0 || !std::isfinite(density) || density <= 0)
-            throw std::invalid_argument("Invalid rigid body position, scale or density.");
+        if (!PxVec3(position.x, position.y, position.z).isFinite() || !PxVec3(scale.x, scale.y, scale.z).isFinite() ||
+            !PxVec3(rotationDegrees.x, rotationDegrees.y, rotationDegrees.z).isFinite() ||
+            scale.x <= 0 || scale.y <= 0 || scale.z <= 0 || !std::isfinite(density) || density <= 0)
+            throw std::invalid_argument("Invalid rigid body position, scale, rotation or density.");
         try
         {
-            PxTransform pose(PxVec3(position.x, position.y, position.z));
-            dynamic = world.GetPhysics().createRigidDynamic(pose);
-            actor = dynamic;
+            PxQuat rotation = PxQuat(glm::radians(rotationDegrees.z), PxVec3(0, 0, 1)) *
+                PxQuat(glm::radians(rotationDegrees.y), PxVec3(0, 1, 0)) *
+                PxQuat(glm::radians(rotationDegrees.x), PxVec3(1, 0, 0));
+            PxTransform pose(PxVec3(position.x, position.y, position.z), rotation);
+            if (isStatic) actor = world.GetPhysics().createRigidStatic(pose);
+            else
+            {
+                dynamic = world.GetPhysics().createRigidDynamic(pose);
+                actor = dynamic;
+            }
             if (!actor) throw std::runtime_error("Cannot create PhysX actor.");
             physicalMaterial = world.GetPhysics().createMaterial(0.6f, 0.5f, 0.15f);
             if (!physicalMaterial) throw std::runtime_error("Cannot create body material.");
@@ -44,11 +56,15 @@ public:
     };
     Properties GetProperties() const
     {
+        if (!dynamic)
+            return { 0.0f,physicalMaterial->getStaticFriction(),physicalMaterial->getDynamicFriction(),
+                physicalMaterial->getRestitution(),0.0f,0.0f };
         return { dynamic->getMass(),physicalMaterial->getStaticFriction(),physicalMaterial->getDynamicFriction(),
             physicalMaterial->getRestitution(),dynamic->getLinearDamping(),dynamic->getAngularDamping() };
     }
     void SetProperties(const Properties& p)
     {
+        if (!dynamic) throw std::logic_error("Static bodies do not have dynamic physical properties.");
         auto valid = [](float v, float low, float high) {return std::isfinite(v) && v >= low && v <= high; };
         if (!valid(p.mass, 0.01f, 100000.0f) || !valid(p.staticFriction, 0, 10) || !valid(p.dynamicFriction, 0, 10) ||
             !valid(p.restitution, 0, 1) || !valid(p.linearDamping, 0, 100) || !valid(p.angularDamping, 0, 100))
@@ -114,6 +130,3 @@ private:
     physx::PxRigidDynamic* dynamic = nullptr;
     physx::PxMaterial* physicalMaterial = nullptr;
 };
-
-
-

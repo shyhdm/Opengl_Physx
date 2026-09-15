@@ -12,6 +12,7 @@
 #include <vector>
 #include <algorithm>
 #include <bit>
+#include <cmath>
 #include <cstdint>
 #include <functional>
 #include <glm/gtc/matrix_inverse.hpp>
@@ -83,6 +84,12 @@ public:
         }
         bodies.push_back({ std::move(body),material,showCollisions,++nextObject });
     }
+
+    void AddStaticBox(glm::vec3 position, glm::vec3 scale, glm::vec3 rotationDegrees, const Material& material)
+    {
+        auto body = std::make_unique<RigidBody>(world, ModelType::Box, position, scale, 10.0f, true, rotationDegrees);
+        bodies.push_back({ std::move(body),material,showCollisions,++nextObject });
+    }
     void Shoot(const Camera& camera)
     {
         glm::vec3 forward = camera.GetForward();
@@ -102,7 +109,9 @@ public:
         softBodies.push_back({ std::move(body),DefaultMaterial(type),showCollisions,++nextObject });
     }
 
-    void HandleInput(Window& window, const Camera& camera, bool mouseBlocked = false, const std::function<void(ModelType, glm::vec3, glm::vec3, float, float)>& destructibleShot = {})
+    void HandleInput(Window& window, const Camera& camera, bool mouseBlocked = false,
+        const std::function<void(ModelType, glm::vec3, glm::vec3, float, float)>& destructibleShot = {},
+        const std::function<void(glm::vec3, glm::vec3, float, float, float)>& predictiveShot = {})
     {
         unsigned int revision = window.GetFocusRevision();
         bool leftDown = window.IsMouseButtonDown(GLFW_MOUSE_BUTTON_LEFT);
@@ -130,8 +139,15 @@ public:
                 glm::vec3 forward = camera.GetForward();
                 float radius = GetLaunchRadius();
                 glm::vec3 position = FindLaunchPosition(camera.position, forward, radius);
-                if (spawnType == 2 && destructibleShot) destructibleShot(selectedType, position, forward * launchSpeed, launchScale, launchMass);
+                glm::vec3 velocity = forward * launchSpeed;
+                if (spawnType == 2 && destructibleShot) destructibleShot(selectedType, position, velocity, launchScale, launchMass);
                 else Shoot(camera);
+                if (predictiveShot)
+                {
+                    constexpr float pi = 3.14159265358979323846f;
+                    float volume = 4.0f * pi * radius * radius * radius / 3.0f;
+                    predictiveShot(position, velocity, radius, launchMass, volume);
+                }
                 firing = true;
                 nextShot = now + std::clamp((radius * 2.0f + 0.25f) / std::max(launchSpeed, 1.0f), 0.15f, 0.2f);
             }
@@ -522,6 +538,93 @@ public:
         }
         paused = false;
         ++version;
+    }
+
+    // 场景 2：在可碎裂墙体背面生成一条宽弧形坡道，并从高端释放重球。
+    // 墙体位于 z=-2，球从更小的 Z 坐标处沿 +Z 方向滚动并撞击墙体背面。
+    RigidBody* BuildWallRollingTest(float ballScale = 6.0f, float ballMass = 100.0f)
+    {
+        if (!std::isfinite(ballScale)) ballScale = 6.0f;
+        if (!std::isfinite(ballMass)) ballMass = 100.0f;
+        ballScale = std::clamp(ballScale, 0.5f, 12.0f);
+        ballMass = std::clamp(ballMass, minimumLaunchMass, 100000.0f);
+        ClearSelection();
+        softBodies.clear();
+        bodies.clear();
+        world.ClearAccumulator();
+
+        Material rampMaterial;
+        rampMaterial.baseColor = glm::vec3(0.32f, 0.36f, 0.42f);
+        rampMaterial.specularStrength = 0.18f;
+        rampMaterial.shininess = 24.0f;
+
+        constexpr int segmentCount = 48;
+        constexpr float nearZ = -3.30f;
+        constexpr float farZ = -42.0f;
+        constexpr float baseHeight = 0.35f;
+        constexpr float rise = 32.0f;
+        constexpr float curvePower = 2.20f;
+        constexpr float rampWidth = 12.0f;
+        constexpr float rampThickness = 0.65f;
+
+        auto surfaceHeight = [=](float t)
+            {
+                return baseHeight + rise * std::pow(std::clamp(t, 0.0f, 1.0f), curvePower);
+            };
+
+        for (int segment = 0; segment < segmentCount; ++segment)
+        {
+            float t0 = static_cast<float>(segment) / static_cast<float>(segmentCount);
+            float t1 = static_cast<float>(segment + 1) / static_cast<float>(segmentCount);
+            float z0 = nearZ + (farZ - nearZ) * t0;
+            float z1 = nearZ + (farZ - nearZ) * t1;
+            float y0 = surfaceHeight(t0);
+            float y1 = surfaceHeight(t1);
+            float dz = z1 - z0;
+            float dy = y1 - y0;
+            // 局部 +Z 轴朝向墙体；局部 +Y 因而始终是坡道朝上的法线。
+            float angle = glm::degrees(std::atan2(dy, -dz));
+            float radians = glm::radians(angle);
+            glm::vec3 topNormal(0.0f, std::cos(radians), std::sin(radians));
+            glm::vec3 position(0.0f, (y0 + y1) * 0.5f, (z0 + z1) * 0.5f);
+            position -= topNormal * (rampThickness * 0.5f);
+            float length = std::sqrt(dz * dz + dy * dy) + 0.10f;
+            AddStaticBox(position, glm::vec3(rampWidth, rampThickness, length), glm::vec3(angle, 0.0f, 0.0f), rampMaterial);
+        }
+
+        // 高端挡板既贴合参考图，也避免重球从坡道背面滑落。
+        float highY = surfaceHeight(1.0f);
+        AddStaticBox(glm::vec3(0.0f, highY + 3.50f, farZ - 0.325f),
+            glm::vec3(rampWidth, 7.0f, 0.65f), glm::vec3(0.0f), rampMaterial);
+
+        float ballRadius = ballScale * 0.5f;
+        constexpr float ballT = 0.88f;
+        float ballSurfaceZ = nearZ + (farZ - nearZ) * ballT;
+        float ballSurfaceY = surfaceHeight(ballT);
+        float ballSlope = rise * curvePower * std::pow(ballT, curvePower - 1.0f) / (nearZ - farZ);
+        float ballAngle = std::atan(ballSlope);
+        glm::vec3 ballNormal(0.0f, std::cos(ballAngle), std::sin(ballAngle));
+        glm::vec3 ballPosition = glm::vec3(0.0f, ballSurfaceY, ballSurfaceZ) + ballNormal * (ballRadius + 0.18f);
+        Material ballMaterial;
+        ballMaterial.baseColor = glm::vec3(0.82f, 0.16f, 0.08f);
+        ballMaterial.specularStrength = 0.70f;
+        ballMaterial.shininess = 96.0f;
+        AddBody(ModelType::Sphere, ballPosition, glm::vec3(0.0f, 0.0f, 0.75f),
+            glm::vec3(ballScale), ballMaterial, ballMass);
+        RigidBody* ball = bodies.back().body.get();
+        if (ball)
+        {
+            auto properties = ball->GetProperties();
+            properties.staticFriction = 0.90f;
+            properties.dynamicFriction = 0.65f;
+            properties.restitution = 0.05f;
+            properties.angularDamping = 0.05f;
+            ball->SetProperties(properties);
+        }
+
+        paused = false;
+        ++version;
+        return ball;
     }
 
     void BuildTest(bool stacked, int count, bool singleColumn = false, const std::function<void()>& clearDestructibles = {}, const std::function<void(ModelType, glm::vec3, float, float)>& spawnDestructible = {})
