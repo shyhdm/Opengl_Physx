@@ -37,6 +37,11 @@ public:
         float fireBrightness = 14.750f;
         int raySteps = 128;
         int displayMode = 0;
+        float smokeColorDensity = 2.0f;
+        float smokeOpacity = 1.0f;
+        std::array<std::array<float, 3>, 3> smokeColors{ {
+            {{1.0f, 1.0f, 1.0f}}, {{0.414f, 0.414f, 0.414f}}, {{0.245f, 0.245f, 0.245f}}
+        } };
         float colormapMaxTemperature = 1.0f;
         std::array<float, 6> colormapPositions{ 0.0f, 0.05f, 0.15f, 0.818f, 0.819f, 1.0f };
         std::array<std::array<float, 4>, 6> colormapColors{ {
@@ -90,6 +95,38 @@ public:
     const Settings& GetSettings() const
     {
         return settings_;
+    }
+
+    bool IsSmoke() const { return smokeMode_; }
+    Settings DefaultSettings() const
+    {
+        Settings value;
+        if (smokeMode_)
+        {
+            value.radius = 1.6f;
+            value.temperature = value.fuel = value.burnRate = value.smokePerBurn = 0.0f;
+            value.upwardVelocity = 4.0f;
+            value.smoke = 4.0f;
+            value.smokeDissipation = 0.08f;
+            value.velocityDamping = 0.05f;
+            value.renderDensity = 6.0f;
+            value.fireBrightness = 0.8f;
+            value.colormapPositions = { 0.0f, 0.2f, 0.4f, 0.6f, 0.8f, 1.0f };
+            for (auto& color : value.colormapColors) color = { 0.5f, 0.5f, 0.5f, 1.0f };
+            value.colormapIntensities.fill(1.0f);
+        }
+        return value;
+    }
+    void SetSmoke(bool smoke)
+    {
+        if (smokeMode_ == smoke) return;
+        const int displayMode = settings_.displayMode;
+        if (smokeMode_) { smokeSettings_ = settings_; smokeSettingsSaved_ = true; }
+        else fireSettings_ = settings_;
+        smokeMode_ = smoke;
+        settings_ = smoke ? (smokeSettingsSaved_ ? smokeSettings_ : DefaultSettings()) : fireSettings_;
+        settings_.displayMode = displayMode;
+        Reset();
     }
 
     void SetSceneActive(bool active)
@@ -242,7 +279,9 @@ public:
         {
             NvFlowGridRenderData data{};
             loader.gridInterface.getRenderData(flowContext_.Context(), grid_, &data);
-            return voxelRenderer_.Draw(data, view, projection, width, height, depth, color);
+            return voxelRenderer_.Draw(data, view, projection, width, height, depth, color,
+                smokeMode_, settings_.displayMode == 0, settings_.smokeColors, settings_.smokeColorDensity,
+                settings_.smokeOpacity, settings_.renderDensity, settings_.fireBrightness, settings_.raySteps);
         }
         auto* snapshot = loader.gridParamsInterface.getParamsSnapshot(gridParams_, absoluteSimTime_, 0u);
         NvFlowGridParamsDesc params{};
@@ -318,10 +357,11 @@ private:
         simulateParams_.advection.ignitionTemp = settings_.ignitionTemperature;
         settings_.burnRate = std::isfinite(settings_.burnRate) ?
             std::clamp(settings_.burnRate, 0.0f, 20.0f) : Settings{}.burnRate;
-        simulateParams_.advection.burnPerTemp = settings_.burnRate;
+        simulateParams_.advection.burnPerTemp = smokeMode_ ? 0.0f : settings_.burnRate;
         settings_.temperatureBuoyancy = std::isfinite(settings_.temperatureBuoyancy) ?
             std::clamp(settings_.temperatureBuoyancy, 0.0f, 10.0f) : Settings{}.temperatureBuoyancy;
         simulateParams_.advection.buoyancyPerTemp = settings_.temperatureBuoyancy;
+        simulateParams_.advection.buoyancyPerSmoke = smokeMode_ ? 0.15f : 0.0f;
         settings_.vorticityStrength = std::isfinite(settings_.vorticityStrength) ?
             std::clamp(settings_.vorticityStrength, 0.0f, 5.0f) : Settings{}.vorticityStrength;
         simulateParams_.vorticity.forceScale = settings_.vorticityStrength;
@@ -331,12 +371,13 @@ private:
         settings_.smokeDissipation = std::isfinite(settings_.smokeDissipation) ?
             std::clamp(settings_.smokeDissipation, 0.0f, 5.0f) : Settings{}.smokeDissipation;
         simulateParams_.advection.smoke.fade = settings_.smokeDissipation;
+        simulateParams_.advection.smoke.damping = smokeMode_ ? 0.08f : 0.30f;
         settings_.smokePerBurn = std::isfinite(settings_.smokePerBurn) ?
             std::clamp(settings_.smokePerBurn, 0.0f, 10.0f) : Settings{}.smokePerBurn;
         simulateParams_.advection.smokePerBurn = settings_.smokePerBurn;
 
         renderParams_.rayMarch.colorScale = settings_.fireBrightness / 3.0f;
-        renderParams_.rayMarch.attenuation = 0.05f * settings_.renderDensity / 2.0f;
+        renderParams_.rayMarch.attenuation = (smokeMode_ ? 0.4f : 0.05f) * settings_.renderDensity / 2.0f;
         renderParams_.rayMarch.stepSizeScale = 0.75f * 128.0f / float(settings_.raySteps);
         settings_.colormapMaxTemperature = std::isfinite(settings_.colormapMaxTemperature) ?
             std::clamp(settings_.colormapMaxTemperature, 0.01f, 10.0f) : 1.0f;
@@ -359,7 +400,35 @@ private:
         offscreenParams_.colormap.xPointCount = settings_.colormapPositions.size();
         offscreenParams_.colormap.rgbaPoints = colormapRgba_.data();
         offscreenParams_.colormap.rgbaPointCount = colormapRgba_.size();
-        offscreenParams_.colormap.colorScale = 0.2f;
+        offscreenParams_.colormap.colorScale = smokeMode_ ? 2.5f : 0.2f;
+        offscreenParams_.debugVolume = NvFlowDebugVolumeParams_default;
+        if (smokeMode_)
+        {
+            auto safe = [](float v, float fallback, float low, float high) {return std::clamp(std::isfinite(v) ? v : fallback, low, high); };
+            settings_.smokeColorDensity = safe(settings_.smokeColorDensity, 2.0f, .01f, 10.0f);
+            settings_.smokeOpacity = safe(settings_.smokeOpacity, 1.0f, 0.0f, 5.0f);
+            for (auto& color : settings_.smokeColors) for (auto& v : color) v = safe(v, .5f, 0.0f, 1.0f);
+            for (size_t i = 0; i < 6; ++i)
+            {
+                float t = float(i) / 5.0f;
+                smokeColorPositions_[i] = t;
+                float blend = t < .5f ? t * 2.0f : (t - .5f) * 2.0f;
+                size_t a = t < .5f ? 0 : 1;
+                const auto& lo = settings_.smokeColors[a]; const auto& hi = settings_.smokeColors[a + 1];
+                colormapRgba_[i] = { lo[0] + (hi[0] - lo[0]) * blend,lo[1] + (hi[1] - lo[1]) * blend,lo[2] + (hi[2] - lo[2]) * blend,1 };
+            }
+            offscreenParams_.colormap.xPoints = smokeColorPositions_.data();
+            offscreenParams_.colormap.colorScale = 1.0f;
+            renderParams_.rayMarch.colormapXMax = settings_.smokeColorDensity;
+            renderParams_.rayMarch.colorScale = settings_.fireBrightness;
+            renderParams_.rayMarch.attenuation = .2f * settings_.renderDensity * settings_.smokeOpacity;
+            offscreenParams_.debugVolume.enabled = NV_FLOW_TRUE;
+            offscreenParams_.debugVolume.applyPreShadow = NV_FLOW_TRUE;
+            offscreenParams_.debugVolume.outputTemperatureScale = 0.0f;
+            offscreenParams_.debugVolume.outputTemperatureOffset = 1.0f;
+            offscreenParams_.debugVolume.outputScaleBySmoke = NV_FLOW_TRUE;
+        }
+
         simulateParams_.physicsCollisionEnabled = NV_FLOW_TRUE;
         simulateParams_.advection.gravity = { 0.0f, -50.0f, 0.0f };
         simulateParams_.densityCellSize = settings_.cellSize;
@@ -374,8 +443,8 @@ private:
         emitterParams_.radiusIsWorldSpace = NV_FLOW_TRUE;
         emitterParams_.velocity = { 0.0f, settings_.upwardVelocity, 0.0f };
         emitterParams_.velocityIsWorldSpace = NV_FLOW_TRUE;
-        emitterParams_.temperature = settings_.temperature;
-        emitterParams_.fuel = settings_.fuel;
+        emitterParams_.temperature = smokeMode_ ? 0.0f : settings_.temperature;
+        emitterParams_.fuel = smokeMode_ ? 0.0f : settings_.fuel;
         emitterParams_.burn = 0.0f;
         emitterParams_.smoke = settings_.smoke;
         emitterParams_.coupleRateVelocity = 2.0f;
@@ -407,6 +476,9 @@ private:
 
     FlowContext& flowContext_;
     FlowVoxelRenderer voxelRenderer_;
+    std::array<float, 6> smokeColorPositions_{};
+    bool smokeMode_ = false, smokeSettingsSaved_ = false;
+    Settings fireSettings_, smokeSettings_;
     FlowRigidColliders colliders_;
     Settings settings_{};
     std::array<NvFlowFloat4, 6> colormapRgba_{};

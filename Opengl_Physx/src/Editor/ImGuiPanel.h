@@ -102,6 +102,24 @@ public:
             }
         }
 
+        if (scene.GetSceneIndex() == 2 && ImGui::CollapsingHeader(T("测试", "Test"), ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            ImGui::BeginDisabled(!flowSimulation);
+            auto button = [&](const char* label, bool smoke)
+                {
+                    const bool selected = flowSimulation && flowSimulation->IsSmoke() == smoke;
+                    if (selected) ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
+                    if (ImGui::Button(label, ImVec2(72.0f * scale, 0)) && flowSimulation) flowSimulation->SetSmoke(smoke);
+                    if (selected) ImGui::PopStyleColor();
+                };
+            ImGui::PushID("FlowTestButtons");
+            button(T("火焰", "Fire"), false);
+            ImGui::SameLine();
+            button(T("烟雾", "Smoke"), true);
+            ImGui::PopID();
+            ImGui::EndDisabled();
+        }
+
         int sceneAction = -1;
         if (scene.GetSceneIndex() == 0 && ImGui::CollapsingHeader(T("测试", "Test"), ImGuiTreeNodeFlags_DefaultOpen))
         {
@@ -154,13 +172,20 @@ public:
         }
 
         if (scene.GetSceneIndex() == 2 && flowSimulation &&
-            ImGui::CollapsingHeader(T("Flow 火焰", "Flow Fire"), ImGuiTreeNodeFlags_DefaultOpen))
+            ImGui::CollapsingHeader(flowSimulation->IsSmoke() ? T("Flow 烟雾###FlowControls", "Flow Smoke###FlowControls") : T("Flow 火焰###FlowControls", "Flow Fire###FlowControls"), ImGuiTreeNodeFlags_DefaultOpen))
         {
             auto& fire = flowSimulation->GetSettings();
             const char* displayModes[] = { T("渲染", "Render"), T("体素", "Voxels") };
             ImGui::SetNextItemWidth(150.0f * scale);
             ImGui::Combo(T("显示模式", "Display mode"), &fire.displayMode, displayModes, 2);
             ImGui::Checkbox(T("持续发射", "Continuous emission"), &fire.emitting);
+            if (flowSimulation->IsSmoke())
+            {
+                auto position = scene.GetSmokeFloorPosition();
+                ImGui::SetNextItemWidth(210.0f * scale);
+                if (ImGui::DragFloat3(T("地板位置", "Floor position"), &position.x, 0.05f, -50.0f, 50.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp))
+                    scene.SetSmokeFloorPosition(position);
+            }
             ImGui::SetNextItemWidth(210.0f * scale);
             ImGui::DragFloat3(T("发射器位置", "Emitter position"), fire.position, 0.05f, -20.0f, 20.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
             ImGui::SetNextItemWidth(150.0f * scale);
@@ -168,12 +193,15 @@ public:
             ImGui::SetNextItemWidth(150.0f * scale);
             Number(T("上升速度", "Upward velocity"), fire.upwardVelocity, 0.05f, 0.0f, 30.0f);
             ImGui::SetNextItemWidth(150.0f * scale);
+            ImGui::BeginDisabled(flowSimulation->IsSmoke());
             Number(T("温度", "Temperature"), fire.temperature, 0.05f, 0.0f, 10.0f);
             ImGui::SetNextItemWidth(150.0f * scale);
             Number(T("燃料", "Fuel"), fire.fuel, 0.02f, 0.0f, 5.0f);
             ImGui::SetNextItemWidth(150.0f * scale);
+            ImGui::EndDisabled();
             Number(T("烟雾", "Smoke"), fire.smoke, 0.02f, 0.0f, 5.0f);
             ImGui::SetNextItemWidth(150.0f * scale);
+            ImGui::BeginDisabled(flowSimulation->IsSmoke());
             Number(T("冷却速度", "Cooling rate"), fire.coolingRate, 0.02f, 0.0f, 10.0f);
             ImGui::SetNextItemWidth(150.0f * scale);
             Number(T("点火温度", "Ignition temperature"), fire.ignitionTemperature, 0.01f, 0.0f, 5.0f);
@@ -182,24 +210,49 @@ public:
             ImGui::SetNextItemWidth(150.0f * scale);
             Number(T("温度浮力", "Temperature buoyancy"), fire.temperatureBuoyancy, 0.02f, 0.0f, 10.0f);
             ImGui::SetNextItemWidth(150.0f * scale);
+            ImGui::EndDisabled();
             Number(T("涡量强度", "Vorticity strength"), fire.vorticityStrength, 0.01f, 0.0f, 5.0f);
             ImGui::SetNextItemWidth(150.0f * scale);
             Number(T("速度阻尼", "Velocity damping"), fire.velocityDamping, 0.005f, 0.0f, 0.99f);
             ImGui::SetNextItemWidth(150.0f * scale);
             Number(T("烟雾消散", "Smoke dissipation"), fire.smokeDissipation, 0.01f, 0.0f, 5.0f);
             ImGui::SetNextItemWidth(150.0f * scale);
+            ImGui::BeginDisabled(flowSimulation->IsSmoke());
             Number(T("燃烧产烟", "Smoke per burn"), fire.smokePerBurn, 0.05f, 0.0f, 10.0f);
+            ImGui::EndDisabled();
             ImGui::SetNextItemWidth(150.0f * scale);
             Number(T("体素大小", "Cell size"), fire.cellSize, 0.01f, 0.08f, 1.0f);
             ImGui::SetNextItemWidth(150.0f * scale);
             Number(T("体积浓度", "Volume density"), fire.renderDensity, 0.05f, 0.1f, 10.0f);
             ImGui::SetNextItemWidth(150.0f * scale);
-            Number(T("火焰亮度", "Fire brightness"), fire.fireBrightness, 0.05f, 0.0f, 20.0f);
+            Number(flowSimulation->IsSmoke() ? T("烟雾亮度", "Smoke brightness") : T("火焰亮度", "Fire brightness"), fire.fireBrightness, 0.05f, 0.0f, 20.0f);
             ImGui::SetNextItemWidth(150.0f * scale);
             ImGui::DragInt(T("渲染步数", "Ray steps"), &fire.raySteps, 1.0f, 32, 256, "%d", ImGuiSliderFlags_AlwaysClamp);
 
             ImGui::Separator();
-            if (ImGui::CollapsingHeader(T("温度色表", "Temperature colors")))
+            if (flowSimulation->IsSmoke() && ImGui::CollapsingHeader(T("烟雾色表", "Smoke colors")))
+            {
+                ImGui::SetNextItemWidth(150.0f * scale);
+                Number(T("密度上限", "Density maximum"), fire.smokeColorDensity, 0.02f, 0.01f, 10.0f);
+                ImGui::SetNextItemWidth(150.0f * scale);
+                ImGui::BeginDisabled(fire.displayMode == 1);
+                Number(T("不透明度", "Opacity"), fire.smokeOpacity, 0.02f, 0.0f, 5.0f);
+                ImGui::EndDisabled();
+                const char* labels[] = { T("稀薄颜色", "Thin color"),T("中等颜色", "Medium color"),T("浓密颜色", "Dense color") };
+                for (int i = 0; i < 3; ++i)
+                {
+                    ImGui::SetNextItemWidth(150.0f * scale);
+                    ImGui::ColorEdit3(labels[i], fire.smokeColors[i].data(), ImGuiColorEditFlags_Float);
+                }
+                if (ImGui::Button(T("恢复烟雾色表", "Reset smoke colors")))
+                {
+                    const auto defaults = flowSimulation->DefaultSettings();
+                    fire.smokeColors = defaults.smokeColors;
+                    fire.smokeColorDensity = defaults.smokeColorDensity;
+                    fire.smokeOpacity = defaults.smokeOpacity;
+                }
+            }
+            if (!flowSimulation->IsSmoke() && ImGui::CollapsingHeader(T("温度色表", "Temperature colors")))
             {
                 ImGui::PushItemWidth(150.0f * scale);
                 Number(T("色表温度上限", "Color temperature max"), fire.colormapMaxTemperature, 0.01f, 0.01f, 10.0f);
@@ -227,14 +280,14 @@ public:
             }
             ImGui::Separator();
 
-            if (ImGui::Button(T("重置火焰", "Reset fire")))
+            if (ImGui::Button(flowSimulation->IsSmoke() ? T("重置烟雾", "Reset smoke") : T("重置火焰", "Reset fire")))
             {
                 flowSimulation->Reset();
             }
             ImGui::SameLine();
             if (ImGui::Button(T("恢复默认", "Defaults")))
             {
-                fire = FlowSimulation::Settings{};
+                fire = flowSimulation->DefaultSettings();
                 flowSimulation->Reset();
             }
             ImGui::Text(T("Flow 提交帧: %llu", "Flow submitted frame: %llu"),

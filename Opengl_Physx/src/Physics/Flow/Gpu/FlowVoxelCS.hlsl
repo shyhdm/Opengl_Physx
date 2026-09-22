@@ -8,6 +8,8 @@ struct FlowVoxelParams
     float4 cellSize;
     uint4 viewport;
     NvFlowSparseLevelParams level;
+    float4 smokeColors[3];
+    float4 smokeControls;
 };
 ConstantBuffer<FlowVoxelParams> params;
 StructuredBuffer<uint> table;
@@ -27,6 +29,24 @@ float3 fireColor(float heat)
     float3 low = lerp(float3(1,.035,.005),float3(1,.32,.015),smoothstep(.05,.4,heat));
     float3 high = lerp(float3(1,.92,.32),float3(1,1,.92),smoothstep(.7,1,heat));
     return lerp(low,high,smoothstep(.35,.78,heat));
+}
+float smokeAt(int3 cell)
+{
+    int4 real=NvFlowGlobalVirtualToReal(table,params.level,int4(cell,int(params.viewport.z)));
+    return real.w!=0?max(density.Load(int4(real.xyz,0)).w,0):0;
+}
+float smoothDensity(float3 position)
+{
+    float3 q=position/params.cellSize.xyz-.5;
+    int3 cell=int3(floor(q));float3 f=frac(q);
+    float a=lerp(lerp(smokeAt(cell),smokeAt(cell+int3(1,0,0)),f.x),lerp(smokeAt(cell+int3(0,1,0)),smokeAt(cell+int3(1,1,0)),f.x),f.y);
+    float b=lerp(lerp(smokeAt(cell+int3(0,0,1)),smokeAt(cell+int3(1,0,1)),f.x),lerp(smokeAt(cell+int3(0,1,1)),smokeAt(cell+int3(1,1,1)),f.x),f.y);
+    return lerp(a,b,f.z);
+}
+float3 smokeColor(float amount)
+{
+    float t=saturate(amount/params.smokeControls.x)*2;
+    return t<1?lerp(params.smokeColors[0].xyz,params.smokeColors[1].xyz,t):lerp(params.smokeColors[1].xyz,params.smokeColors[2].xyz,t-1);
 }
 [numthreads(8,8,1)]
 void main(uint3 dispatchThreadID : SV_DispatchThreadID)
@@ -48,6 +68,23 @@ void main(uint3 dispatchThreadID : SV_DispatchThreadID)
     exit=min(exit,max(dot(worldPoint(uv,sceneDepth[pixel])-origin,direction),0));
     if(exit<=entry) return;
     float3 spacing=params.cellSize.xyz;
+    if(params.viewport.w==2)
+    {
+        float distance=exit-entry;
+        float stepSize=max(min(spacing.x,min(spacing.y,spacing.z))*.75,distance/params.smokeControls.w);
+        float transmission=1;float3 accumulated=0;
+        for(float t=entry;t<exit && transmission>.01;t+=stepSize)
+        {
+            float ds=min(stepSize,exit-t);
+            float amount=smoothDensity(origin+direction*(t+ds*.5));
+            float alpha=1-exp(-amount*params.smokeControls.y*ds);
+            accumulated+=transmission*alpha*smokeColor(amount)*params.smokeControls.z;
+            transmission*=1-alpha;
+        }
+        result[pixel]=float4(accumulated+transmission*background.xyz,background.w);
+        return;
+    }
+
     int3 cell=int3(floor((origin+direction*(entry+min(spacing.x,min(spacing.y,spacing.z))*1e-4))/spacing));
     int3 advance=int3(sign(direction));
     float3 interval=abs(spacing/safeDirection);
@@ -66,6 +103,7 @@ void main(uint3 dispatchThreadID : SV_DispatchThreadID)
         {
             float heat=1-exp(-max(value.x,0)*.35);
             float3 color=lerp(float3(.22,.22,.22),fireColor(heat),smoothstep(0,.25,heat));
+            if(params.viewport.w==1) color=smokeColor(value.w)*params.smokeControls.z;
             float lighting=.55+.45*max(dot(normal,normalize(float3(.4,.8,.6))),0);
             result[pixel]=float4(color*lighting,1);
             return;

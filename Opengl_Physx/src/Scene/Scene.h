@@ -44,6 +44,10 @@ public:
         ClearSelection();
         softBodies.clear();
         bodies.clear();
+        smokeFloorEnabled = false;
+        smokeFloorId = 0;
+        smokeFloorPositionInitialized = false;
+        smokeFloorPosition = glm::vec3(0, 3.32f, 0);
         paused = false;
         if (sceneIndex == 1)
         {
@@ -96,6 +100,48 @@ public:
     {
         auto body = std::make_unique<RigidBody>(world, ModelType::Box, position, scale, 10.0f, true, rotationDegrees);
         bodies.push_back({ std::move(body),material,showCollisions,++nextObject });
+    }
+    glm::vec3 GetSmokeFloorPosition() const { return smokeFloorPosition; }
+    void SetSmokeFloorPosition(glm::vec3 position)
+    {
+        if (!std::isfinite(position.x) || !std::isfinite(position.y) || !std::isfinite(position.z)) return;
+        smokeFloorPosition = position;
+        smokeFloorPositionInitialized = true;
+        for (auto& object : bodies)
+            if (object.id == smokeFloorId)
+            {
+                auto* actor = const_cast<physx::PxRigidActor*>(object.body->GetActor());
+                auto pose = actor->getGlobalPose();
+                pose.p = physx::PxVec3(position.x, position.y, position.z);
+                actor->setGlobalPose(pose);
+                rigidBatchRevision = std::numeric_limits<unsigned long long>::max();
+                break;
+            }
+    }
+    void SetSmokeFloor(bool enabled, glm::vec3 emitterPosition)
+    {
+        enabled = enabled && sceneIndex == 2;
+        if (smokeFloorEnabled == enabled) return;
+        auto found = std::find_if(bodies.begin(), bodies.end(), [&](const auto& object) { return object.id == smokeFloorId; });
+        if (found != bodies.end())
+        {
+            if (GetSelectedBody() == found->body.get()) ClearSelection();
+            bodies.erase(found);
+        }
+        smokeFloorId = 0;
+        if (enabled)
+        {
+            Material material;
+            material.baseColor = glm::vec3(0.45f, 0.24f, 0.10f);
+            if (!smokeFloorPositionInitialized)
+            {
+                smokeFloorPosition = emitterPosition + glm::vec3(0, 3.0f, 0);
+                smokeFloorPositionInitialized = true;
+            }
+            AddStaticBox(smokeFloorPosition, glm::vec3(6.0f, 0.3f, 6.0f), glm::vec3(0), material);
+            smokeFloorId = bodies.back().id;
+        }
+        smokeFloorEnabled = enabled;
     }
     void Shoot(const Camera& camera)
     {
@@ -1003,6 +1049,10 @@ private:
     bool softSelfCollision = false;
     double frameSimulationMs = 0, frameSyncMs = 0, frameUploadMs = 0, frameShadowMs = 0, frameMainDrawMs = 0, frameDrawMs = 0;
     int requestedMode = -1;
+    glm::vec3 smokeFloorPosition = glm::vec3(0, 3.32f, 0);
+    bool smokeFloorPositionInitialized = false;
+    bool smokeFloorEnabled = false;
+    std::uint64_t smokeFloorId = 0;
     int sceneIndex = 0;
     int spawnType = 0;
     static constexpr float minimumLaunchMass = 0.01f;

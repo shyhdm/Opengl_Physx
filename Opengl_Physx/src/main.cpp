@@ -91,6 +91,9 @@ int main()
                 if (flowSimulation)
                 {
                     flowSimulation->SetSceneActive(scene->GetSceneIndex() == 2);
+                    const auto& flowSettings = flowSimulation->GetSettings();
+                    scene->SetSmokeFloor(flowSimulation->IsSceneActive() && flowSimulation->IsSmoke(),
+                        glm::vec3(flowSettings.position[0], flowSettings.position[1], flowSettings.position[2]));
                     if (flowSimulation->IsSceneActive() && !scene->IsPaused())
                         flowSimulation->SyncRigidBodies(scene->GetPhysicsWorld().GetScene(), scene->GetSoftFlowColliders());
                     flowSimulation->Update(scene->IsPaused() ? 0.0f : deltaTime);

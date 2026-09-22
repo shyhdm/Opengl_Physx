@@ -3,6 +3,9 @@
 #include <nvflow/../../shared/NvFlowMath.h>
 #include "Gpu/FlowVoxelCS_vulkan.hlsl.h"
 #include <vector>
+#include <array>
+#include <algorithm>
+#include <cmath>
 #include <cstring>
 
 class FlowVoxelRenderer
@@ -21,7 +24,9 @@ public:
 
     NvFlowTextureTransient* Draw(const NvFlowGridRenderData& data,
         const NvFlowFloat4x4& view, const NvFlowFloat4x4& projection,
-        NvFlowUint width, NvFlowUint height, NvFlowTextureTransient* depth, NvFlowTextureTransient* color)
+        NvFlowUint width, NvFlowUint height, NvFlowTextureTransient* depth, NvFlowTextureTransient* color,
+        bool smokeMode, bool smoothSmoke, const std::array<std::array<float, 3>, 3>& smokeColors,
+        float densityMax, float opacity, float volumeDensity, float brightness, int raySteps)
     {
         if (!data.densityTexture || !data.sparseBuffer || !data.sparseParams.layerCount || !data.sparseParams.levelCount)
             return color;
@@ -54,6 +59,11 @@ public:
             layer.blockSizeWorld.y / float(level.blockDimLessOne.y + 1),layer.blockSizeWorld.z / float(level.blockDimLessOne.z + 1),0 };
         params.viewport = { width,height,static_cast<NvFlowUint>(layer.layerAndLevel),0 };
         params.level = level;
+        params.viewport.w = smokeMode ? (smoothSmoke ? 2u : 1u) : 0u;
+        auto safe = [](float v, float fallback, float low, float high) {return std::clamp(std::isfinite(v) ? v : fallback, low, high); };
+        for (size_t i = 0; i < 3; ++i) params.smokeColors[i] = { safe(smokeColors[i][0],.5f,0,1),safe(smokeColors[i][1],.5f,0,1),safe(smokeColors[i][2],.5f,0,1),0 };
+        params.smokeControls = { safe(densityMax,2,.01f,10),safe(opacity,1,0,5) * safe(volumeDensity,6,.1f,10) * .2f,
+            safe(brightness,.8f,0,20),float(std::clamp(raySteps,32,256)) };
         const auto completed = api.getLastFrameCompleted(context);
         size_t index = 0;
         while (index<constants_.size() && constants_[index].frame>completed) ++index;
@@ -95,6 +105,8 @@ private:
         NvFlowFloat4 minimum, maximum, cellSize;
         NvFlowUint4 viewport;
         NvFlowSparseLevelParams level;
+        NvFlowFloat4 smokeColors[3];
+        NvFlowFloat4 smokeControls;
     };
     struct Constants { NvFlowBuffer* buffer; NvFlowUint64 frame; };
     FlowContext& flow_;
