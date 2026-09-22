@@ -334,6 +334,13 @@ public:
         Reset();
     }
     bool SoftBodiesAvailable() const { return world.GetCuda() != nullptr; }
+    std::vector<physx::PxRigidActor*> GetSoftFlowColliders()
+    {
+        std::vector<physx::PxRigidActor*> result;
+        result.reserve(softBodies.size());
+        for (auto& object : softBodies) result.push_back(object.body->GetFlowCollider());
+        return result;
+    }
     std::size_t GetSoftBodyCount() const { return softBodies.size(); }
     Material* GetSelectedMaterial() { return GetSelection().material; }
     void DeleteSelected()

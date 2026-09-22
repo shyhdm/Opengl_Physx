@@ -63,6 +63,9 @@ public:
         return loader_.deviceInterface.getContext(deviceQueue_);
     }
 
+    NvFlowDevice* Device() const { return device_; }
+    NvFlowPhysicalDeviceDesc PhysicalDevice() const { return physicalDevice_; }
+
 private:
     static void LoaderError(const char* message, void*)
     {
@@ -134,6 +137,8 @@ private:
             );
         }
 
+        if (!loader_.deviceInterface.enumerateDevices(deviceManager_, deviceIndex, &physicalDevice_))
+            throw std::runtime_error("Flow Vulkan physical device unavailable");
         NvFlowDeviceDesc deviceDesc{};
         deviceDesc.deviceIndex = deviceIndex;
         deviceDesc.enableExternalUsage = NV_FLOW_TRUE;
@@ -198,6 +203,7 @@ private:
         loader_.module_nvflowext = nullptr;
     }
 
+    NvFlowPhysicalDeviceDesc physicalDevice_{};
     NvFlowLoader loader_{};
     NvFlowContextInterface contextInterface_{};
     NvFlowDeviceManager* deviceManager_ = nullptr;

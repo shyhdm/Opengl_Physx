@@ -30,8 +30,8 @@ public:
         ImGui::Text("FPS: %.0f", fps);
         ImGui::SameLine();
         if (ImGui::Button(T("复制调试信息", "Copy debug info")) && debugText) ImGui::SetClipboardText(debugText);
-        const char* scenesCN[] = { "场景 1","场景 2","场景 3 - Flow 火焰" };
-        const char* scenesEN[] = { "Scene 1","Scene 2","Scene 3 - Flow Fire" };
+        const char* scenesCN[] = { "场景 1","场景 2","场景 3" };
+        const char* scenesEN[] = { "Scene 1","Scene 2","Scene 3" };
         int activeScene = scene.GetSceneIndex();
         ImGui::SetNextItemWidth(210.0f * scale);
         if (ImGui::Combo(T("场景", "Scene"), &activeScene, chinese ? scenesCN : scenesEN, 3))
@@ -157,6 +157,9 @@ public:
             ImGui::CollapsingHeader(T("Flow 火焰", "Flow Fire"), ImGuiTreeNodeFlags_DefaultOpen))
         {
             auto& fire = flowSimulation->GetSettings();
+            const char* displayModes[] = { T("渲染", "Render"), T("体素", "Voxels") };
+            ImGui::SetNextItemWidth(150.0f * scale);
+            ImGui::Combo(T("显示模式", "Display mode"), &fire.displayMode, displayModes, 2);
             ImGui::Checkbox(T("持续发射", "Continuous emission"), &fire.emitting);
             ImGui::SetNextItemWidth(210.0f * scale);
             ImGui::DragFloat3(T("发射器位置", "Emitter position"), fire.position, 0.05f, -20.0f, 20.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
@@ -171,6 +174,22 @@ public:
             ImGui::SetNextItemWidth(150.0f * scale);
             Number(T("烟雾", "Smoke"), fire.smoke, 0.02f, 0.0f, 5.0f);
             ImGui::SetNextItemWidth(150.0f * scale);
+            Number(T("冷却速度", "Cooling rate"), fire.coolingRate, 0.02f, 0.0f, 10.0f);
+            ImGui::SetNextItemWidth(150.0f * scale);
+            Number(T("点火温度", "Ignition temperature"), fire.ignitionTemperature, 0.01f, 0.0f, 5.0f);
+            ImGui::SetNextItemWidth(150.0f * scale);
+            Number(T("燃烧速率", "Burn rate"), fire.burnRate, 0.05f, 0.0f, 20.0f);
+            ImGui::SetNextItemWidth(150.0f * scale);
+            Number(T("温度浮力", "Temperature buoyancy"), fire.temperatureBuoyancy, 0.02f, 0.0f, 10.0f);
+            ImGui::SetNextItemWidth(150.0f * scale);
+            Number(T("涡量强度", "Vorticity strength"), fire.vorticityStrength, 0.01f, 0.0f, 5.0f);
+            ImGui::SetNextItemWidth(150.0f * scale);
+            Number(T("速度阻尼", "Velocity damping"), fire.velocityDamping, 0.005f, 0.0f, 0.99f);
+            ImGui::SetNextItemWidth(150.0f * scale);
+            Number(T("烟雾消散", "Smoke dissipation"), fire.smokeDissipation, 0.01f, 0.0f, 5.0f);
+            ImGui::SetNextItemWidth(150.0f * scale);
+            Number(T("燃烧产烟", "Smoke per burn"), fire.smokePerBurn, 0.05f, 0.0f, 10.0f);
+            ImGui::SetNextItemWidth(150.0f * scale);
             Number(T("体素大小", "Cell size"), fire.cellSize, 0.01f, 0.08f, 1.0f);
             ImGui::SetNextItemWidth(150.0f * scale);
             Number(T("体积浓度", "Volume density"), fire.renderDensity, 0.05f, 0.1f, 10.0f);
@@ -178,6 +197,35 @@ public:
             Number(T("火焰亮度", "Fire brightness"), fire.fireBrightness, 0.05f, 0.0f, 20.0f);
             ImGui::SetNextItemWidth(150.0f * scale);
             ImGui::DragInt(T("渲染步数", "Ray steps"), &fire.raySteps, 1.0f, 32, 256, "%d", ImGuiSliderFlags_AlwaysClamp);
+
+            ImGui::Separator();
+            if (ImGui::CollapsingHeader(T("温度色表", "Temperature colors")))
+            {
+                ImGui::PushItemWidth(150.0f * scale);
+                Number(T("色表温度上限", "Color temperature max"), fire.colormapMaxTemperature, 0.01f, 0.01f, 10.0f);
+                for (int i = 0; i < 6; ++i)
+                {
+                    ImGui::PushID(i);
+                    ImGui::Text(T("节点 %d", "Point %d"), i + 1);
+                    const float minimum = i ? fire.colormapPositions[i - 1] + 0.001f : 0.0f;
+                    const float maximum = i < 5 ? fire.colormapPositions[i + 1] - 0.001f : 1.0f;
+                    Number(T("温度位置", "Temperature position"), fire.colormapPositions[i], 0.005f, minimum, maximum);
+                    ImGui::ColorEdit4(T("颜色", "Color"), fire.colormapColors[i].data(),
+                        ImGuiColorEditFlags_Float | ImGuiColorEditFlags_AlphaBar);
+                    Number(T("发光强度", "Emission strength"), fire.colormapIntensities[i], 0.05f, 0.0f, 100.0f);
+                    ImGui::PopID();
+                }
+                if (ImGui::Button(T("恢复色表", "Reset colors")))
+                {
+                    const FlowSimulation::Settings defaults;
+                    fire.colormapMaxTemperature = defaults.colormapMaxTemperature;
+                    fire.colormapPositions = defaults.colormapPositions;
+                    fire.colormapColors = defaults.colormapColors;
+                    fire.colormapIntensities = defaults.colormapIntensities;
+                }
+                ImGui::PopItemWidth();
+            }
+            ImGui::Separator();
 
             if (ImGui::Button(T("重置火焰", "Reset fire")))
             {

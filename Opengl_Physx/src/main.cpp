@@ -10,7 +10,7 @@
 #include "DebugOverlay.h"
 #include "FlowContext.h"
 #include "FlowSimulation.h"
-#include "FlowVolumeRenderer.h"
+#include "FlowGLInterop.h"
 #include <exception>
 #include <stdexcept>
 #include <memory>
@@ -23,8 +23,8 @@ int main()
         BlastContext blast;
         Window window(1280, 720, "Flow");
         GL::Load();
-        FlowVolumeRenderer flowVolumeRenderer;
         FlowContext flow;
+        FlowGLInterop nativeRenderer(flow);
         std::unique_ptr<FlowSimulation> flowSimulation;
         Camera camera;
         camera.position = glm::vec3(7.0f, 5.0f, 10.0f);
@@ -84,16 +84,17 @@ int main()
                     });
                 if (showGui) panel.Draw(*scene, displayedFps, [&]() {scene->ClearRigidSelection(); blastScene->Clear(); }, [&](ModelType type, glm::vec3 position, float scale, float mass) {blastScene->Spawn(type, position, glm::vec3(0), scale, mass); }, [&]() {blastScene->BuildWall(); }, blastScene.get(), debugOverlay.GetText(), flowSimulation.get());
                 blastScene->SetSceneIndex(scene->GetSceneIndex());
-                if (flowSimulation)
-                {
-                    flowSimulation->SetSceneActive(scene->GetSceneIndex() == 2);
-                    flowSimulation->Update(deltaTime);
-                    flowVolumeRenderer.Update(flowSimulation->LatestReadback());
-                }
                 if (window.IsKeyDown(GLFW_KEY_ESCAPE)) window.RequestClose();
                 blastScene->BeforePhysics();
                 scene->Update(deltaTime);
                 blastScene->AfterPhysics([&](const physx::PxRigidActor* actor) {scene->ForgetActor(actor); });
+                if (flowSimulation)
+                {
+                    flowSimulation->SetSceneActive(scene->GetSceneIndex() == 2);
+                    if (flowSimulation->IsSceneActive() && !scene->IsPaused())
+                        flowSimulation->SyncRigidBodies(scene->GetPhysicsWorld().GetScene(), scene->GetSoftFlowColliders());
+                    flowSimulation->Update(scene->IsPaused() ? 0.0f : deltaTime);
+                }
                 int width = 0, height = 0;
                 window.GetFramebufferSize(width, height);
                 scene->Draw(camera, width, height, [&](ModelRenderer& renderer, bool shadowPass)
@@ -103,12 +104,7 @@ int main()
                     });
                 if (scene->GetSceneIndex() == 2 && flowSimulation)
                 {
-                    flowVolumeRenderer.Draw(
-                        camera,
-                        width,
-                        height,
-                        flowSimulation->GetSettings()
-                    );
+                    nativeRenderer.Draw(camera, width, height, flowSimulation.get());
                 }
                 debugOverlay.Draw();
                 gui.Render();

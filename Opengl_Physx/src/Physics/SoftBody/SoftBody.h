@@ -54,6 +54,7 @@ public:
             revision = world.GetSimulationRevision();
             cpuRevision = revision;
             birthRevision = revision;
+            flowCenterOffset = GetBounds().getCenter() - PxVec3(position.x, position.y, position.z);
         }
         catch (...)
         {
@@ -67,6 +68,21 @@ public:
     SoftBody(const SoftBody&) = delete;
     SoftBody& operator=(const SoftBody&) = delete;
     ModelType GetModelType() const { return type; }
+    physx::PxRigidActor* GetFlowCollider()
+    {
+        using namespace physx;
+        auto p = GetBounds().getCenter() - flowCenterOffset;
+        if (!flowCollider)
+        {
+            auto* proxy = world.GetPhysics().createRigidStatic(PxTransform(PxVec3(p.x, p.y, p.z)));
+            if (!proxy) throw std::runtime_error("Cannot create soft-body Flow proxy.");
+            try { world.GetCollisions().Attach(*proxy, type, glm::vec3(bodyScale), world.GetMaterial()); }
+            catch (...) { proxy->release(); throw; }
+            flowCollider = proxy;
+        }
+        flowCollider->setGlobalPose(PxTransform(PxVec3(p.x, p.y, p.z)));
+        return flowCollider;
+    }
     const Mesh& GetMesh() const { return *mesh; }
     const std::vector<Vertex>& GetRenderVertices() const { return vertices; }
     const std::vector<unsigned int>& GetRenderIndices() const { return indices; }
@@ -251,6 +267,8 @@ private:
     physx::PxCudaContextManager* cuda = nullptr;
     float bodyScale = 1.0f;
     float baseStiffness = 0.2f;
+    physx::PxVec3 flowCenterOffset = physx::PxVec3(0);
+    physx::PxRigidStatic* flowCollider = nullptr;
     physx::PxDeformableVolume* actor = nullptr;
     physx::PxDeformableVolumeMaterial* material = nullptr;
     physx::PxVec4* positions = nullptr;
@@ -275,6 +293,7 @@ private:
     void Release()
     {
         StopDrag();
+        if (flowCollider) { flowCollider->release(); flowCollider = nullptr; }
         gpu.reset();
         mesh.reset();
         if (actor) { actor->release(); actor = nullptr; }

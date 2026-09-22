@@ -46,13 +46,13 @@
 			{
 				"command" : 2,
 				"file" : 0,
-				"line" : 74,
+				"line" : 85,
 				"parent" : 0
 			},
 			{
 				"command" : 3,
 				"file" : 0,
-				"line" : 80,
+				"line" : 91,
 				"parent" : 0
 			},
 			{
@@ -115,6 +115,50 @@
 				{
 					"backtrace" : 7,
 					"path" : "D:/Dev/.cpp/Opengl_Physx/Opengl_Physx"
+				},
+				{
+					"backtrace" : 7,
+					"path" : "D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src"
+				},
+				{
+					"backtrace" : 7,
+					"path" : "D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Platform"
+				},
+				{
+					"backtrace" : 7,
+					"path" : "D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Scene"
+				},
+				{
+					"backtrace" : 7,
+					"path" : "D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Data"
+				},
+				{
+					"backtrace" : 7,
+					"path" : "D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Editor"
+				},
+				{
+					"backtrace" : 7,
+					"path" : "D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Graphics"
+				},
+				{
+					"backtrace" : 7,
+					"path" : "D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/Blast"
+				},
+				{
+					"backtrace" : 7,
+					"path" : "D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/Flow"
+				},
+				{
+					"backtrace" : 7,
+					"path" : "D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/PhysicsWorld"
+				},
+				{
+					"backtrace" : 7,
+					"path" : "D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/RigidBody"
+				},
+				{
+					"backtrace" : 7,
+					"path" : "D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/SoftBody"
 				},
 				{
 					"backtrace" : 7,
@@ -453,7 +497,11 @@
 				42,
 				43,
 				44,
-				45
+				45,
+				46,
+				47,
+				48,
+				49
 			]
 		}
 	],
@@ -462,7 +510,7 @@
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "main.cpp",
+			"path" : "src/main.cpp",
 			"sourceGroupIndex" : 0
 		},
 		{
@@ -503,197 +551,217 @@
 		},
 		{
 			"backtrace" : 8,
-			"path" : "BlastAsset.h",
+			"path" : "src/Data/ModelData.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 8,
-			"path" : "BlastChunkRenderer.h",
+			"path" : "src/Data/ModelLibrary.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 8,
-			"path" : "BlastCollisionLibrary.h",
+			"path" : "src/Editor/DebugOverlay.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 8,
-			"path" : "BlastContext.h",
+			"path" : "src/Editor/ImGuiLayer.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 8,
-			"path" : "BlastLibrary.h",
+			"path" : "src/Editor/ImGuiPanel.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 8,
-			"path" : "BlastMesh.h",
+			"path" : "src/Editor/MousePicker.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 8,
-			"path" : "BlastPhysics.h",
+			"path" : "src/Graphics/CollisionDebugRenderer.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 8,
-			"path" : "BlastRuntime.h",
+			"path" : "src/Graphics/Material.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 8,
-			"path" : "BlastScene.h",
+			"path" : "src/Graphics/Mesh.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 8,
-			"path" : "BlastVoronoi.h",
+			"path" : "src/Graphics/ModelRenderer.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 8,
-			"path" : "Camera.h",
+			"path" : "src/Graphics/OutlineEffect.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 8,
-			"path" : "CollisionDebugRenderer.h",
+			"path" : "src/Graphics/Shader.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 8,
-			"path" : "CollisionLibrary.h",
+			"path" : "src/Graphics/ShadowMap.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 8,
-			"path" : "DebugOverlay.h",
+			"path" : "src/Graphics/Texture.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 8,
-			"path" : "FlowContext.h",
+			"path" : "src/Physics/Blast/BlastAsset.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 8,
-			"path" : "FlowSimulation.h",
+			"path" : "src/Physics/Blast/BlastChunkRenderer.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 8,
-			"path" : "FlowVolumeRenderer.h",
+			"path" : "src/Physics/Blast/BlastCollisionLibrary.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 8,
-			"path" : "ImGuiLayer.h",
+			"path" : "src/Physics/Blast/BlastContext.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 8,
-			"path" : "ImGuiPanel.h",
+			"path" : "src/Physics/Blast/BlastLibrary.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 8,
-			"path" : "Material.h",
+			"path" : "src/Physics/Blast/BlastMesh.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 8,
-			"path" : "Mesh.h",
+			"path" : "src/Physics/Blast/BlastPhysics.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 8,
-			"path" : "ModelData.h",
+			"path" : "src/Physics/Blast/BlastRuntime.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 8,
-			"path" : "ModelLibrary.h",
+			"path" : "src/Physics/Blast/BlastScene.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 8,
-			"path" : "ModelRenderer.h",
+			"path" : "src/Physics/Blast/BlastVoronoi.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 8,
-			"path" : "MousePicker.h",
+			"path" : "src/Physics/Blast/RuntimeFractureWall.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 8,
-			"path" : "OpenGL.h",
+			"path" : "src/Physics/Flow/FlowContext.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 8,
-			"path" : "OutlineEffect.h",
+			"path" : "src/Physics/Flow/FlowGLInterop.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 8,
-			"path" : "PhysicsWorld.h",
+			"path" : "src/Physics/Flow/FlowRigidColliders.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 8,
-			"path" : "RigidBody.h",
+			"path" : "src/Physics/Flow/FlowSimulation.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 8,
-			"path" : "RuntimeFractureWall.h",
+			"path" : "src/Physics/Flow/FlowVolumeRenderer.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 8,
-			"path" : "Scene.h",
+			"path" : "src/Physics/Flow/FlowVoxelRenderer.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 8,
-			"path" : "Shader.h",
+			"path" : "src/Physics/Flow/Gpu/FlowVoxelCS_vulkan.hlsl.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 8,
-			"path" : "ShadowMap.h",
+			"path" : "src/Physics/PhysicsWorld/PhysicsWorld.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 8,
-			"path" : "SoftBody.h",
+			"path" : "src/Physics/RigidBody/CollisionLibrary.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 8,
-			"path" : "SoftGpuBuffer.h",
+			"path" : "src/Physics/RigidBody/RigidBody.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 8,
-			"path" : "SoftMeshLibrary.h",
+			"path" : "src/Physics/SoftBody/SoftBody.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 8,
-			"path" : "Texture.h",
+			"path" : "src/Physics/SoftBody/SoftGpuBuffer.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 8,
-			"path" : "Transform.h",
+			"path" : "src/Physics/SoftBody/SoftMeshLibrary.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 8,
-			"path" : "Window.h",
+			"path" : "src/Platform/OpenGL.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 8,
+			"path" : "src/Platform/Window.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 8,
+			"path" : "src/Scene/Camera.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 8,
+			"path" : "src/Scene/Scene.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 8,
+			"path" : "src/Scene/Transform.h",
 			"sourceGroupIndex" : 1
 		}
 	],
