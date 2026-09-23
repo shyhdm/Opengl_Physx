@@ -1,7 +1,8 @@
 uniform mat4 view,projection,inverseProjection;
 uniform float spacing;
 uniform vec2 resolution;
-uniform sampler2D waterDepth,sceneDepth;
+uniform sampler2D waterDepth,sceneDepth,sceneColor;
+uniform vec3 backgroundColor;
 #ifdef VERTEX_SHADER
 layout(location=0) in vec4 positionLife;
 layout(location=1) in vec4 velocityType;
@@ -36,6 +37,22 @@ void main(){
     float alpha=(1-exp(-chord*24/max(spacing,.001)))*fade*edge;
     alpha*=exp(-submersion/max(spacing*4,.001))*smoothstep(0,radius,solid-depth);
     if(alpha<.002)discard;
+    if(type<.5){
+        vec3 n=normalize(vec3(local,sqrt(max(0,1-rr))));
+        vec3 incident=normalize(center),refracted=refract(incident,n,1/1.333);
+        vec2 offset=(refracted.xy-incident.xy)*vec2(projection[0][0],projection[1][1])*chord/max(depth,.001)*.5;
+        vec2 q=clamp(uv+offset,.5/resolution,1-.5/resolution);
+        vec4 target=inverseProjection*vec4(q*2-1,texture(sceneDepth,q).r*2-1,1);
+        float targetZ=-target.z/target.w;
+        if(targetZ<=depth)q=uv;
+        vec3 transmitted=texture(sceneColor,q).rgb*exp(-chord*vec3(.624,.156,.078));
+        float fresnel=.02037+.97963*pow(1-clamp(dot(-incident,n),0,1),5);
+        vec3 light=normalize(mat3(view)*normalize(vec3(-.4,.8,.3)));
+        float highlight=pow(max(0,dot(n,normalize(light-incident))),100)*.5;
+        float coverage=clamp(fade*edge*smoothstep(0,radius,solid-depth),0,1);
+        coverage*=exp(-submersion/max(spacing*4,.001));
+        color=vec4((mix(transmitted,backgroundColor,fresnel)+vec3(highlight))*coverage,coverage);return;
+    }
     vec3 tint=mix(vec3(.96,.98,1),vec3(.55,.78,.85),1-exp(-submersion/max(spacing*3,.001)));
     color=vec4(tint*alpha,alpha);
 }

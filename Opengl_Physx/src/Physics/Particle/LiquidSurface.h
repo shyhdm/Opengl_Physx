@@ -49,7 +49,7 @@ public:
     ~LiquidSurface() { GL::DeleteFramebuffers(3, fbos_); glDeleteTextures(8, textures_); GL::DeleteVertexArrays(1, &particleVao_); GL::DeleteVertexArrays(1, &screenVao_); }
     LiquidSurface(const LiquidSurface&) = delete;
     LiquidSurface& operator=(const LiquidSurface&) = delete;
-    void Invalidate() { whitewater_.Invalidate(); }
+    void Invalidate() { whitewater_.Invalidate(); lighting_.Invalidate(); }
     void Draw(GLuint positions, unsigned count, float spacing, const Camera& camera, int width, int height, unsigned long long revision = 0, float gravityScale = 1, glm::vec3 boundsLow = glm::vec3(-10, 0, -10), glm::vec3 boundsHigh = glm::vec3(10, 15, 10))
     {
         if (!count || width <= 0 || height <= 0)return;
@@ -71,10 +71,13 @@ public:
         GL::BindFramebuffer(0x8D40, fbos_[1]); Attach(textures_[6]);
         glClearColor(10000000.f, 0, 0, 0); glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         instanced_(GL_TRIANGLE_STRIP, 0, 4, count);
-        shader_.UsePass("THICKNESS"); Common(projection, view, radius, width, height); Bind(0, textures_[1], "sceneDepth");
+        const int thicknessWidth = (width + 1) / 2, thicknessHeight = (height + 1) / 2;
+        glViewport(0, 0, thicknessWidth, thicknessHeight);
+        shader_.UsePass("THICKNESS"); Common(projection, view, radius, thicknessWidth, thicknessHeight); Bind(0, textures_[1], "sceneDepth");
         GL::BindFramebuffer(0x8D40, fbos_[2]); Attach(textures_[4]); glClearColor(0, 0, 0, 0); glClear(GL_COLOR_BUFFER_BIT);
         glDisable(GL_DEPTH_TEST); glDepthMask(GL_FALSE); glEnable(GL_BLEND); blendEquation_(0x8006, 0x8006); blendFunc_(GL_ONE, GL_ONE, GL_ONE, GL_ONE);
         instanced_(GL_TRIANGLE_STRIP, 0, 4, count); glDisable(GL_BLEND);
+        glViewport(0, 0, width, height);
         GL::BindVertexArray(screenVao_);
         Attach(textures_[2]); shader_.UsePass("PACK"); Common(projection, view, radius, width, height);
         Bind(0, textures_[6], "waterDepth"); Bind(1, textures_[4], "waterThickness"); glDrawArrays(GL_TRIANGLES, 0, 3);
@@ -87,7 +90,7 @@ public:
         Bind(0, textures_[2], "waterDepth"); glDrawArrays(GL_TRIANGLES, 0, 3);
         Attach(textures_[6]); shader_.UsePass("VIEW_DEPTH"); Common(projection, view, radius, width, height);
         Bind(0, textures_[2], "waterDepth"); glDrawArrays(GL_TRIANGLES, 0, 3);
-        const GLuint background = lighting_.Render(particleVao_, screenVao_, count, radius, projection, view, textures_[0], textures_[1], width, height, boundsLow, boundsHigh);
+        const GLuint background = lighting_.Render(particleVao_, screenVao_, count, radius, projection, view, textures_[0], textures_[1], width, height, boundsLow, boundsHigh, revision);
         GL::BindFramebuffer(0x8CA8, fbos_[2]); GL::FramebufferTexture2D(0x8CA8, 0x8CE0, GL_TEXTURE_2D, background, 0);
         GL::BindFramebuffer(0x8CA9, state.drawFbo); blit_(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
         glViewport(0, 0, width, height); GL::BindFramebuffer(0x8D40, state.drawFbo); glEnable(GL_DEPTH_TEST); glDepthMask(GL_TRUE); glDepthFunc(GL_LESS);
@@ -96,7 +99,9 @@ public:
         shader_.SetVector3("boundsLow", boundsLow); shader_.SetVector3("boundsHigh", boundsHigh);
         Bind(0, textures_[2], "waterDepth"); Bind(1, background, "sceneColor"); Bind(2, textures_[1], "sceneDepth"); Bind(3, textures_[7], "surfaceNormals");
         GL::BindVertexArray(screenVao_); glDrawArrays(GL_TRIANGLES, 0, 3);
-        whitewater_.Draw(positions, count, spacing, revision, view, projection, textures_[6], textures_[1], state.drawFbo, width, height, gravityScale);
+        GL::ActiveTexture(0x84C0); glBindTexture(GL_TEXTURE_2D, textures_[0]);
+        glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, width, height);
+        whitewater_.Draw(positions, count, spacing, revision, view, projection, textures_[6], textures_[1], state.drawFbo, width, height, gravityScale, textures_[0], glm::vec3(state.clearColor[0], state.clearColor[1], state.clearColor[2]));
     }
 private:
     RenderParameters renderParameters_;
@@ -148,7 +153,7 @@ private:
             bool depth = i == 1 || i == 5;
             const bool scalar = i == 4 || i == 6;
             const GLint format = depth ? 0x81A6 : (i == 0 ? GL_RGBA8 : (scalar ? 0x822E : 0x8814));
-            glTexImage2D(GL_TEXTURE_2D, 0, format, w, h, 0, depth ? GL_DEPTH_COMPONENT : (scalar ? 0x1903 : GL_RGBA), GL_FLOAT, nullptr);
+            glTexImage2D(GL_TEXTURE_2D, 0, format, i == 4 ? (w + 1) / 2 : w, i == 4 ? (h + 1) / 2 : h, 0, depth ? GL_DEPTH_COMPONENT : (scalar ? 0x1903 : GL_RGBA), GL_FLOAT, nullptr);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, depth ? GL_NEAREST : GL_LINEAR); glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, depth ? GL_NEAREST : GL_LINEAR);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, 0x812F); glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, 0x812F);
         }

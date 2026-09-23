@@ -1,3 +1,7 @@
+#if defined(FRAGMENT_SHADER) && defined(PASS_DEPTH)
+#extension GL_ARB_conservative_depth : require
+layout(depth_greater) out float gl_FragDepth;
+#endif
 uniform mat4 projection,inverseProjection,view,inverseView;
 uniform vec2 resolution;
 uniform float radius;
@@ -52,12 +56,12 @@ void main(){
     front=max(front,nearT);if(back<=front)discard;
     vec4 opaque=inverseProjection*vec4(uv*2-1,texture(sceneDepth,uv).r*2-1,1);
     float sceneT=length(opaque.xyz/opaque.w);
+    if(front>=sceneT)discard;
 #ifdef PASS_DEPTH
     vec4 clip=projection*vec4(ray*front,1);
     gl_FragDepth=max(gl_FragCoord.z,clamp(clip.z/clip.w*.5+.5,0,1));
     result=vec4(front,0,0,1);
 #else
-    if(front>=sceneT)discard;
     float segment=max(0,min(back,sceneT)-front);
     float radial=clamp(1-discriminant/(radius*radius),0,1);
     float weight=(exp(-2*radial)-exp(-2.0))/(1-exp(-2.0));
@@ -81,13 +85,18 @@ vec3 colorForThickness(float thickness){
     float start=max(colorTransition.x,0),end=max(colorTransition.y,start+.001);
     return mix(waterThinColor,waterColor,smoothstep(start,end,max(thickness,0)));
 }
+bool nearClipped(float rawDepth){
+    float nearZ=projection[3][2]/(projection[2][2]-1);
+    vec2 rayXY=(uv*2-1)/vec2(projection[0][0],projection[1][1]);
+    return rawDepth<=nearZ*sqrt(1+dot(rayXY,rayXY))*1.002;
+}
 float sceneDistance(vec2 q){vec4 v=inverseProjection*vec4(q*2-1,texture(sceneDepth,q).r*2-1,1);return length(v.xyz/v.w);}
 #ifdef PASS_PACK
 void main(){float d=texture(waterDepth,uv).r,t=texture(waterThickness,uv).r*thicknessStrength;result=vec4(d,t,t,d);}
 #elif defined(PASS_SMOOTH)
 void main(){
     vec4 original=texture(waterDepth,uv);
-    if(original.a>10000 || smoothRadius<=0){result=original;return;}
+    if(original.a>10000 || smoothRadius<=0 || nearClipped(original.a)){result=original;return;}
     float radiusFloat=resolution.x*projection[0][0]/(2*original.a)*(radius*smoothRadius);
     int taps=int(ceil(radiusFloat));if(taps<=1)taps=2;taps=min(32,taps);
     float fractional=max(0,float(taps)-radiusFloat);
@@ -96,6 +105,7 @@ void main(){
     for(int x=-taps;x<=taps;++x){
         vec2 q=clamp(uv+axis*float(x)/resolution,.5/resolution,1-.5/resolution);
         vec4 value=texture(waterDepth,q);
+        if(value.a<=0 || value.a>=10000 || value.r<=0 || value.r>=10000)continue;
         float difference=original.a-value.a;
         float weight=exp(-float(x*x)/(2*sigma*sigma))*exp(-difference*difference*depthRejection);
         sum+=value*weight;weights+=weight;
@@ -103,36 +113,85 @@ void main(){
     result=vec4(sum.rg/max(weights,1e-20),original.ba);
 }
 #elif defined(PASS_NORMALS)
-vec3 positionAt(vec2 q){q=clamp(q,.5/resolution,1-.5/resolution);return viewPosition(q,texture(waterDepth,q).r);}
+bool neighbor(vec2 q,float d,out vec3 p){
+    if(any(lessThan(q,.5/resolution))||any(greaterThan(q,1-.5/resolution)))return false;
+    float v=texture(waterDepth,q).r;
+    if(v<=0||v>=10000||abs(v-d)>max(radius*4,.01))return false;
+    p=viewPosition(q,v);return true;
+}
 void main(){
-    float d=texture(waterDepth,uv).r;if(d>10000){result=vec4(0);return;}
-    vec2 pixel=1/resolution;vec3 p=positionAt(uv);
-    vec3 dx=positionAt(uv+vec2(pixel.x,0))-p,dx2=p-positionAt(uv-vec2(pixel.x,0));
-    vec3 dy=positionAt(uv+vec2(0,pixel.y))-p,dy2=p-positionAt(uv-vec2(0,pixel.y));
-    if(abs(dx2.z)<abs(dx.z))dx=dx2;if(abs(dy2.z)<abs(dy.z))dy=dy2;
-    vec3 crossNormal=cross(dx,dy);
-    vec3 n=dot(crossNormal,crossNormal)>1e-20?normalize(crossNormal):-viewRay(uv);
+    vec4 data=texture(waterDepth,uv);float d=data.r;if(d<=0||d>=10000||nearClipped(data.a)){result=vec4(0);return;}
+    vec2 pixel=1/resolution;vec3 p=viewPosition(uv,d),a,b;
+    vec3 dx=viewPosition(uv+vec2(pixel.x,0),d)-p;
+    vec3 dy=viewPosition(uv+vec2(0,pixel.y),d)-p;
+    bool plus=neighbor(uv+vec2(pixel.x,0),d,a),minus=neighbor(uv-vec2(pixel.x,0),d,b);
+    if(plus||minus)dx=plus&&(!minus||abs(a.z-p.z)<abs(p.z-b.z))?a-p:p-b;
+    plus=neighbor(uv+vec2(0,pixel.y),d,a);minus=neighbor(uv-vec2(0,pixel.y),d,b);
+    if(plus||minus)dy=plus&&(!minus||abs(a.z-p.z)<abs(p.z-b.z))?a-p:p-b;
+    vec3 c=cross(dx,dy),n=dot(c,c)>1e-20?normalize(c):-viewRay(uv);
     if(dot(n,-p)<0)n=-n;
     result=vec4(mat3(inverseView)*n,1);
 }
 #elif defined(PASS_VIEW_DEPTH)
 void main(){float d=texture(waterDepth,uv).r;result=vec4(d>10000?0:-viewPosition(uv,d).z,0,0,0);}
 #else
-vec3 environment(vec3 origin,vec3 direction){
-    if(direction.y<-.00001 && origin.y>0){
-        vec3 floorPoint=origin+direction*(-origin.y/direction.y);
-        if(max(abs(floorPoint.x),abs(floorPoint.z))<30){
-            vec4 cameraPoint=view*vec4(floorPoint,1),clip=projection*cameraPoint;
-            if(clip.w>0){
-                vec2 q=clip.xy/clip.w*.5+.5;
-                if(all(greaterThan(q,vec2(0)))&&all(lessThan(q,vec2(1)))){
-                    float actual=sceneDistance(q);
-                    if(abs(actual-length(cameraPoint.xyz))<max(.03,actual*.003))return texture(sceneColor,q).rgb;
-                }
+float depthToZ(float depth){return projection[3][2]/(depth*2-1+projection[2][2]);}
+float sceneZ(vec2 q){return depthToZ(texture(sceneDepth,q).r);}
+bool projectPoint(vec3 p,out vec2 q){
+    vec4 clip=projection*vec4(p,1);
+    if(clip.w<=0||clip.z < -clip.w || clip.z>clip.w)return false;
+    q=clip.xy/clip.w*.5+.5;
+    return all(greaterThan(q,.5/resolution))&&all(lessThan(q,1-.5/resolution));
+}
+vec3 reflectedScene(vec3 start,vec3 direction){
+    float lengthLimit=clamp(-start.z*2,8,60),previous=0;
+    float bias=max(.005,radius*.1);
+    for(int i=1;i<=16;++i){
+        float t=lengthLimit*pow(float(i)/16,2);
+        vec3 p=start+direction*(t+bias);vec2 q;
+        if(!projectPoint(p,q))break;
+        float opaqueDepth=texture(sceneDepth,q).r;
+        if(opaqueDepth<1 && -p.z>=depthToZ(opaqueDepth)){
+            float lo=previous,hi=t;
+            for(int j=0;j<4;++j){
+                float mid=(lo+hi)*.5;vec2 sampleUv;
+                vec3 sampleP=start+direction*(mid+bias);
+                if(projectPoint(sampleP,sampleUv)&&-sampleP.z>=sceneZ(sampleUv))hi=mid;else lo=mid;
             }
+            p=start+direction*(hi+bias);
+            if(projectPoint(p,q)&&abs(-p.z-sceneZ(q))<max(.025,radius*.5)){
+                float edge=min(min(q.x,q.y),min(1-q.x,1-q.y));
+                return mix(sceneBackgroundColor,texture(sceneColor,q).rgb,smoothstep(0,.04,edge));
+            }
+            return sceneBackgroundColor;
         }
+        previous=t;
     }
     return sceneBackgroundColor;
+}
+bool clearRefraction(vec2 q,float expectedZ){
+    ivec2 size=textureSize(sceneDepth,0),base=ivec2(floor(q*vec2(size)-.5));
+    for(int y=0;y<2;++y)for(int x=0;x<2;++x){
+        float d=texelFetch(sceneDepth,clamp(base+ivec2(x,y),ivec2(0),size-1),0).r;
+        if(depthToZ(d)<=expectedZ+max(.002,radius*.02))return false;
+    }
+    return true;
+}
+vec3 refractedScene(vec3 start,vec3 end){
+    vec2 target;
+    if(!projectPoint(end,target))return texture(sceneColor,uv).rgb;
+    vec2 delta=target-uv;
+    float pixelDistance=length(delta*resolution);
+    if(pixelDistance<.5)return texture(sceneColor,uv).rgb;
+    delta*=min(1.0,16.0/pixelDistance);target=uv+delta;
+    float fraction=min(1.0,16.0/pixelDistance);
+    int steps=clamp(int(ceil(min(pixelDistance,16.0))),1,16);
+    for(int i=1;i<=steps;++i){
+        float t=float(i)/float(steps);
+        float expectedZ=1/mix(1/(-start.z),1/(-end.z),t*fraction);
+        if(!clearRefraction(mix(uv,target,t),expectedZ))return texture(sceneColor,uv).rgb;
+    }
+    return texture(sceneColor,target).rgb;
 }
 float reflectance(vec3 incoming,vec3 normal){
     float cosine=clamp(-dot(incoming,normal),0,1),ratio=1/1.33;
@@ -142,22 +201,6 @@ float reflectance(vec3 incoming,vec3 normal){
     float perpendicular=(cosine-1.33*transmitted)/max(cosine+1.33*transmitted,1e-6);
     float parallel=(1.33*cosine-transmitted)/max(1.33*cosine+transmitted,1e-6);
     return (perpendicular*perpendicular+parallel*parallel)*.5;
-}
-vec3 edgeNormal(vec3 normal,vec3 world){
-    vec3 halfSize=(boundsHigh-boundsLow)*.5,p=world-(boundsHigh+boundsLow)*.5;
-    vec3 o=halfSize-abs(p);
-    if(any(lessThan(o,vec3(0))))return normal;
-    vec3 face=o.x<o.y&&o.x<o.z?vec3(sign(p.x),0,0):(o.y<o.z?vec3(0,sign(p.y),0):vec3(0,0,sign(p.z)));
-    float weight=(1-smoothstep(0,.01,max(0,min(o.x,o.z))))*clamp(abs(o.x-o.z)*6,0,1);
-    vec3 edge=normalize(mix(normal,face,weight));
-    return normalize(normal+edge*6*max(0,dot(normal,edge)));
-}
-bool visibleRefraction(vec2 q,float depth){
-    ivec2 size=textureSize(sceneDepth,0),base=ivec2(floor(q*vec2(size)-.5));
-    for(int y=0;y<2;++y)for(int x=0;x<2;++x){
-        vec2 p=(vec2(clamp(base+ivec2(x,y),ivec2(0),size-1))+.5)/vec2(size);
-        if(sceneDistance(p)<=depth)return false;
-    }return true;
 }
 void main(){
     vec4 data=texture(waterDepth,uv);
@@ -173,29 +216,14 @@ void main(){
     vec3 incoming=mat3(inverseView)*ray;
     vec3 n=texture(surfaceNormals,uv).xyz;
     if(dot(n,n)<1e-10)n=-incoming;else n=normalize(n);
-    n=edgeNormal(n,world);if(dot(n,incoming)>0)n=-n;
+    if(dot(n,incoming)>0)n=-n;
     float reflectedWeight=clamp(reflectance(incoming,n)*reflectionStrength,0,1);
     vec3 transmittedDirection=refract(incoming,n,1/1.33);
-    vec3 exitPoint=world+transmittedDirection*data.g*refractionStrength;
-    if(exitPoint.y<.0001 && transmittedDirection.y<-.0001)
-        exitPoint=world+transmittedDirection*max(0,(.0001-world.y)/transmittedDirection.y);
-    vec3 reflected=environment(world,reflect(incoming,n));
-    vec3 transmitted=environment(exitPoint,incoming);
-    vec4 projectedExit=projection*view*vec4(exitPoint,1);
-    if(projectedExit.w>0){
-        vec2 refractedUV=projectedExit.xy/projectedExit.w*.5+.5;
-        if(all(greaterThan(refractedUV,vec2(0)))&&all(lessThan(refractedUV,vec2(1)))){
-            float floorDepth=1e20;
-            if(incoming.y<-.00001 && exitPoint.y>0){
-                vec3 floorPoint=exitPoint+incoming*(-exitPoint.y/incoming.y);
-                floorDepth=length((view*vec4(floorPoint,1)).xyz);
-            }
-            bool visible=visibleRefraction(refractedUV,data.r);
-            if(visible && sceneDistance(refractedUV)<floorDepth-.03)
-                transmitted=texture(sceneColor,refractedUV).rgb;
-            else if(!visible)transmitted=texture(sceneColor,uv).rgb;
-        }
-    }
+    vec3 viewNormal=mat3(view)*n;
+    vec3 reflected=sceneBackgroundColor;
+    if(reflectedWeight>.001)reflected=reflectedScene(position,reflect(ray,viewNormal));
+    vec3 exitPoint=position+mat3(view)*transmittedDirection*max(data.g,0)*refractionStrength;
+    vec3 transmitted=refractedScene(position,exitPoint);
     vec3 absorption=exp(-max(data.g,0)*vec3(.624,.156,.078)*absorptionStrength);
     transmitted=transmitted*absorption+colorForThickness(data.g)*(1-absorption);
     result=vec4(mix(transmitted,reflected,reflectedWeight),1);

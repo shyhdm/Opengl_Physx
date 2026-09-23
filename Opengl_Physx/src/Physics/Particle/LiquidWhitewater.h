@@ -16,12 +16,14 @@ public:
     }
     ~LiquidWhitewater() { Release(); }
     void Invalidate() { clear_ = true; lastRevision_ = std::numeric_limits<unsigned long long>::max(); }
-    void Draw(GLuint source, unsigned count, float spacing, unsigned long long revision, const glm::mat4& view, const glm::mat4& projection, GLuint water, GLuint scene, GLuint destination, int width, int height, float gravityScale = 1) {
+    void Draw(GLuint source, unsigned count, float spacing, unsigned long long revision, const glm::mat4& view, const glm::mat4& projection, GLuint water, GLuint scene, GLuint destination, int width, int height, float gravityScale = 1, GLuint background = 0, glm::vec3 backgroundColor = glm::vec3(.1f, .16f, .24f)) {
         Simulate(source, count, spacing, revision, gravityScale);
         GL::BindFramebuffer(0x8D40, destination); glViewport(0, 0, width, height); glDisable(GL_DEPTH_TEST); glDepthMask(GL_FALSE);
         shader_.Use(); shader_.SetMatrix4("view", view); shader_.SetMatrix4("projection", projection); shader_.SetMatrix4("inverseProjection", glm::inverse(projection)); shader_.SetVector2("resolution", glm::vec2(width, height)); shader_.SetFloat("spacing", spacing);
         GL::ActiveTexture(0x84C2); glBindTexture(GL_TEXTURE_2D, water); shader_.SetInt("waterDepth", 2);
         GL::ActiveTexture(0x84C3); glBindTexture(GL_TEXTURE_2D, scene); shader_.SetInt("sceneDepth", 3);
+        GL::ActiveTexture(0x84C4); glBindTexture(GL_TEXTURE_2D, background); shader_.SetInt("sceneColor", 4);
+        shader_.SetVector3("backgroundColor", backgroundColor);
         GL::BindVertexArray(vao_); GL::BindBuffer(GL::ArrayBuffer, buffers_[3]);
         for (unsigned i = 0; i < 3; ++i) { GL::VertexAttribPointer(i, 4, GL_FLOAT, GL_FALSE, 48, reinterpret_cast<const void*>(size_t(i) * 16)); GL::EnableVertexAttribArray(i); divisor_(i, 1); }
         glEnable(GL_BLEND); glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA); instanced_(GL_TRIANGLE_STRIP, 0, 4, PoolCapacity); glDisable(GL_BLEND);

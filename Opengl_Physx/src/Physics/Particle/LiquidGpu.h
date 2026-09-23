@@ -187,7 +187,7 @@ public:
             catch (...) { unmap_(1, &resource_, nullptr); throw; }Check(unmap_(1, &resource_, nullptr)); revision_ = world_.GetSimulationRevision();
         }
         renderTimer_.Begin();
-        if (displayMode_ == 0 && count_) { if (!surface_)surface_ = std::make_unique<LiquidSurface>(); surface_->SetRenderParameters(renderParameters_); surface_->Draw(vbo_, count_, simulationSpacing_, camera, width, height, world_.GetSimulationRevision(), parameters_.gravityScale, glm::min(position - size * .5f, containerPosition_ - containerSize_ * .5f), glm::max(position + size * .5f, containerPosition_ + containerSize_ * .5f)); }
+        if (displayMode_ == 0 && count_) { if (!surface_)surface_ = std::make_unique<LiquidSurface>(); surface_->SetRenderParameters(renderParameters_); surface_->Draw(vbo_, count_, simulationSpacing_, camera, width, height, world_.GetSimulationRevision(), parameters_.gravityScale, containerPosition_ - containerSize_ * .5f, containerPosition_ + containerSize_ * .5f); }
         shader_.Use(); shader_.SetMatrix4("view", camera.GetViewMatrix()); shader_.SetMatrix4("projection", camera.GetProjectionMatrix(float(width) / height));
         shader_.SetFloat("radius", renderRadius_); shader_.SetFloat("viewportHeight", float(height)); shader_.SetFloat("region", 0);
         const bool pointSize = glIsEnabled(0x8642) != 0; glEnable(0x8642); GL::BindVertexArray(vao_); if (displayMode_ == 1)glDrawArrays(GL_POINTS, 0, count_); if (!pointSize)glDisable(0x8642);

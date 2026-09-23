@@ -2,6 +2,7 @@
 #include "Shader.h"
 #include <glm/gtc/matrix_transform.hpp>
 #include <array>
+#include <limits>
 class LiquidLighting {
 public:
     LiquidLighting() :shader_("Assets/Shaders/liquid_lighting.glsl", { "DEPTH","THICKNESS","SMOOTH","PHOTONS","RECEIVERS" }) {
@@ -12,21 +13,29 @@ public:
     LiquidLighting& operator=(const LiquidLighting&) = delete;
     GLuint Environment()const { return environment_; }
     GLuint Noise()const { return noise_; }
+    void Invalidate() { cached_ = false; }
     void Prepare(int w, int h) { Allocate(w, h); }
-    GLuint Render(GLuint particleVao, GLuint screenVao, unsigned count, float radius, const glm::mat4& projection, const glm::mat4& view, GLuint sceneColor, GLuint sceneDepth, int w, int h, glm::vec3 low, glm::vec3 high) {
+    GLuint Render(GLuint particleVao, GLuint screenVao, unsigned count, float radius, const glm::mat4& projection, const glm::mat4& view, GLuint sceneColor, GLuint sceneDepth, int w, int h, glm::vec3 low, glm::vec3 high, unsigned long long revision = std::numeric_limits<unsigned long long>::max()) {
         Allocate(w, h);
         const glm::vec3 center = (low + high) * .5f, light = glm::normalize(glm::vec3(-.4f, .8f, .3f));
         const float span = std::max(glm::length(high - low) * .65f, 4.f);
         auto lightView = glm::lookAt(center + light * span * 2.f, center, glm::vec3(0, 1, 0));
         auto lightProjection = glm::ortho(-span, span, -span, span, .1f, span * 4);
         auto common = [&](const char* pass) {shader_.UsePass(pass); shader_.SetMatrix4("lightView", lightView); shader_.SetMatrix4("lightProjection", lightProjection); shader_.SetMatrix4("inverseLightView", glm::inverse(lightView)); shader_.SetMatrix4("inverseLightProjection", glm::inverse(lightProjection)); shader_.SetMatrix4("inverseView", glm::inverse(view)); shader_.SetMatrix4("inverseProjection", glm::inverse(projection)); shader_.SetVector3("regionCenter", center); shader_.SetFloat("span", span); shader_.SetFloat("radius", radius); };
-        GL::BindFramebuffer(0x8D40, fbo_[0]); Attach(tex_[0]); glViewport(0, 0, 512, 512); glEnable(GL_DEPTH_TEST); glDepthMask(GL_TRUE); glDepthFunc(GL_LESS); glDisable(GL_BLEND); glClearColor(0, 0, 0, 0); glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        GL::BindVertexArray(particleVao); common("DEPTH"); instanced_(GL_TRIANGLE_STRIP, 0, 4, count);
-        GL::BindFramebuffer(0x8D40, fbo_[1]); Attach(tex_[3]); glViewport(0, 0, 128, 128); glDisable(GL_DEPTH_TEST); glDepthMask(GL_FALSE); glClear(GL_COLOR_BUFFER_BIT); glEnable(GL_BLEND); glBlendFunc(GL_ONE, GL_ONE);
-        common("THICKNESS"); instanced_(GL_TRIANGLE_STRIP, 0, 4, count); glDisable(GL_BLEND);
-        glViewport(0, 0, 512, 512); GL::BindVertexArray(screenVao);
-        for (int i = 0; i < 4; ++i) { Attach(tex_[i % 2 ? 0 : 1]); common("SMOOTH"); Bind(0, tex_[i % 2 ? 1 : 0], "lightDepth"); shader_.SetVector2("axis", i % 2 ? glm::vec2(0, 1) : glm::vec2(1, 0)); glDrawArrays(GL_TRIANGLES, 0, 3); }
-        Attach(tex_[4]); glClear(GL_COLOR_BUFFER_BIT); glEnable(GL_BLEND); glBlendFunc(GL_ONE, GL_ONE); common("PHOTONS"); Bind(0, tex_[0], "lightDepth"); Bind(1, tex_[3], "lightThickness"); instanced_(GL_TRIANGLE_STRIP, 0, 4, 512 * 512); glDisable(GL_BLEND);
+        const bool cacheable = revision != std::numeric_limits<unsigned long long>::max();
+        const bool rebuild = !cacheable || !cached_ || revision != cachedRevision_ || count != cachedCount_ || radius != cachedRadius_ || low != cachedLow_ || high != cachedHigh_;
+        if (rebuild) {
+            GL::BindFramebuffer(0x8D40, fbo_[0]); Attach(tex_[0]); glViewport(0, 0, 512, 512); glEnable(GL_DEPTH_TEST); glDepthMask(GL_TRUE); glDepthFunc(GL_LESS); glDisable(GL_BLEND); glClearColor(0, 0, 0, 0); glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            GL::BindVertexArray(particleVao); common("DEPTH"); instanced_(GL_TRIANGLE_STRIP, 0, 4, count);
+            GL::BindFramebuffer(0x8D40, fbo_[1]); Attach(tex_[3]); glViewport(0, 0, 128, 128); glDisable(GL_DEPTH_TEST); glDepthMask(GL_FALSE); glClear(GL_COLOR_BUFFER_BIT); glEnable(GL_BLEND); glBlendFunc(GL_ONE, GL_ONE);
+            common("THICKNESS"); instanced_(GL_TRIANGLE_STRIP, 0, 4, count); glDisable(GL_BLEND);
+            glViewport(0, 0, 512, 512); GL::BindVertexArray(screenVao);
+            for (int i = 0; i < 4; ++i) { Attach(tex_[i % 2 ? 0 : 1]); common("SMOOTH"); Bind(0, tex_[i % 2 ? 1 : 0], "lightDepth"); shader_.SetVector2("axis", i % 2 ? glm::vec2(0, 1) : glm::vec2(1, 0)); glDrawArrays(GL_TRIANGLES, 0, 3); }
+            Attach(tex_[4]); glClear(GL_COLOR_BUFFER_BIT); glEnable(GL_BLEND); glBlendFunc(GL_ONE, GL_ONE); common("PHOTONS"); Bind(0, tex_[0], "lightDepth"); Bind(1, tex_[3], "lightThickness"); instanced_(GL_TRIANGLE_STRIP, 0, 4, 512 * 512); glDisable(GL_BLEND);
+            cached_ = cacheable; cachedRevision_ = revision; cachedCount_ = count; cachedRadius_ = radius; cachedLow_ = low; cachedHigh_ = high;
+        }
+        GL::BindFramebuffer(0x8D40, fbo_[1]); GL::BindVertexArray(screenVao);
+        glDisable(GL_DEPTH_TEST); glDepthMask(GL_FALSE); glDisable(GL_BLEND);
         Attach(tex_[5]); glViewport(0, 0, w, h); common("RECEIVERS"); Bind(0, sceneColor, "sceneColor"); Bind(1, sceneDepth, "sceneDepth"); Bind(2, tex_[0], "lightDepth"); Bind(3, tex_[3], "lightThickness"); Bind(4, tex_[4], "causticMap"); glDrawArrays(GL_TRIANGLES, 0, 3);
         return tex_[5];
     }
@@ -55,6 +64,7 @@ private:
         }
         if (w != width_ || h != height_) { glBindTexture(GL_TEXTURE_2D, tex_[5]); glTexImage2D(GL_TEXTURE_2D, 0, 0x881A, w, h, 0, GL_RGBA, GL_FLOAT, nullptr); glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, 0x812F); glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, 0x812F); width_ = w; height_ = h; }
     }
+    bool cached_ = false; unsigned long long cachedRevision_ = 0; unsigned cachedCount_ = 0; float cachedRadius_ = 0; glm::vec3 cachedLow_{ 0 }, cachedHigh_{ 0 };
     Shader shader_; GLuint fbo_[2]{}, tex_[6]{}, environment_ = 0, noise_ = 0; bool ready_ = false; int width_ = 0, height_ = 0;
     void(APIENTRY* instanced_)(GLenum, GLint, GLsizei, GLsizei) = nullptr;
 };
