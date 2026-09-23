@@ -45,6 +45,7 @@ public:
     {
         ClearSelection();
         liquid.reset();
+        liquidPhysicsStepMs = 0;
         softBodies.clear();
         bodies.clear();
         smokeFloorEnabled = false;
@@ -244,6 +245,7 @@ public:
         {
             world.Update(deltaTime, [this](float step) {if (selectedSoft) selectedSoft->UpdateDrag(step); });
             frameSimulationMs = world.GetLastSimulationMs(); frameSteps = world.GetLastSteps();
+            if (liquid && frameSteps) liquidPhysicsStepMs = frameSimulationMs / frameSteps;
         }
         SyncSoftBodies();
         bodies.erase(std::remove_if(bodies.begin(), bodies.end(), [this](const auto& body)
@@ -265,7 +267,7 @@ public:
         auto drawStarted = std::chrono::steady_clock::now();
         auto shadowStarted = drawStarted;
         renderer.BeginShadowPass();
-        renderer.DrawShadow(models.Get(ModelType::Plane), ground.GetMatrix());
+        if (showGround) renderer.DrawShadow(models.Get(ModelType::Plane), ground.GetMatrix());
         for (const auto& batch : rigidRenderBatches) renderer.DrawShadow(*batch.mesh, glm::mat4(1.0f));
         for (const auto& batch : softRenderBatches) renderer.DrawShadow(*batch.mesh, glm::mat4(1));
         if (externalDraw) externalDraw(renderer, true);
@@ -277,7 +279,7 @@ public:
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         renderer.BeginDraw(camera, width, height);
-        renderer.DrawMesh(models.Get(ModelType::Plane), ground.GetMatrix(), groundMaterial);
+        if (showGround) renderer.DrawMesh(models.Get(ModelType::Plane), ground.GetMatrix(), groundMaterial);
         for (const auto& batch : rigidRenderBatches) renderer.DrawMesh(*batch.mesh, glm::mat4(1.0f), batch.material);
         for (const auto& batch : softRenderBatches) renderer.DrawMesh(*batch.mesh, glm::mat4(1), batch.material);
         if (externalDraw) externalDraw(renderer, false);
@@ -394,6 +396,8 @@ public:
         if (usesParticleSolver != (value == 3)) RequestGpu(UsesGpu());
     }
     LiquidGpu* GetLiquid() { return liquid.get(); }
+    const LiquidGpu* GetLiquid() const { return liquid.get(); }
+    double GetLiquidPhysicsStepMs() const { return liquid && !paused ? liquidPhysicsStepMs : 0; }
     bool SoftBodiesAvailable() const { return world.GetCuda() != nullptr; }
     std::vector<physx::PxRigidActor*> GetSoftFlowColliders()
     {
@@ -423,6 +427,8 @@ public:
         if (static_cast<int>(type) < 0 || type >= ModelType::Count) throw std::invalid_argument("Invalid model type.");
         selectedType = type;
     }
+    bool GetShowGround() const { return showGround; }
+    void SetShowGround(bool value) { showGround = value; }
     bool GetShowCollisions() const { return showCollisions; }
 
     void SetShowCollisions(bool value)
@@ -1063,6 +1069,7 @@ private:
     SoftBody* selectedSoft = nullptr;
     unsigned int softIterations = 8, softResolution = 4, frameSteps = 0;
     bool softSelfCollision = false;
+    double liquidPhysicsStepMs = 0;
     double frameSimulationMs = 0, frameSyncMs = 0, frameUploadMs = 0, frameShadowMs = 0, frameMainDrawMs = 0, frameDrawMs = 0;
     int requestedMode = -1;
     glm::vec3 smokeFloorPosition = glm::vec3(0, 3.32f, 0);
@@ -1073,9 +1080,10 @@ private:
     int spawnType = 0;
     static constexpr float minimumLaunchMass = 0.01f;
     static constexpr float testDestructibleMass = 1.0f;
-    float launchSpeed = 20.0f, launchScale = 1.0f, testScale = 1.0f, launchMass = 1.0f;
+    float launchSpeed = 20.0f, launchScale = 1.0f, testScale = 1.0f, launchMass = 10.0f;
     MousePicker picker; // 后声明，先释放关节，再销毁bodies。
     bool paused = false;
+    bool showGround = true;
     bool showCollisions = false;
     bool firing = false;
     double nextShot = 0;

@@ -3,6 +3,7 @@
 #include "Shader.h"
 #include "Camera.h"
 #include "LiquidSurface.h"
+#include "LiquidGpuTimer.h"
 #include <memory>
 #include <extensions/PxParticleExt.h>
 #include <extensions/PxCudaHelpersExt.h>
@@ -13,7 +14,7 @@
 class LiquidGpu
 {
 public:
-    static constexpr unsigned MaxParticles = 1048576;
+    static constexpr unsigned MaxParticles = 1000000;
     struct Parameters
     {
         float viscosity = .05f, damping = .05f, surfaceTension = .77f, cohesion = 5.06f;
@@ -62,19 +63,28 @@ public:
     int DisplayMode() const { return displayMode_; }
     void SetDisplayMode(int mode) { if (mode == 0 || mode == 1) { if (displayMode_ != mode && surface_)surface_->Invalidate(); displayMode_ = mode; } }
     unsigned int Count() const { return count_; }
+    double GetRenderGpuMs() const { return renderTimer_.Milliseconds(); }
+    bool HasRenderTiming() const { return renderTimer_.HasResult(); }
     unsigned int RequestedCount() const
     {
         if (!std::isfinite(spacing) || spacing < .08f || spacing>.5f) return 0;
         uint64_t count = 1;
-        for (int i = 0; i < 3; ++i) { if (!std::isfinite(size[i]) || size[i] < spacing || size[i]>20 || !std::isfinite(position[i]))return 0; count *= static_cast<unsigned int>(std::floor(size[i] / spacing)); }
+        for (int i = 0; i < 3; ++i) {
+            if (!std::isfinite(size[i]) || size[i] < spacing || !std::isfinite(position[i]))return 0;
+            const float axisCount = std::floor(size[i] / spacing);
+            if (!std::isfinite(axisCount) || axisCount < 1 || axisCount > MaxParticles / count)return 0;
+            count *= static_cast<unsigned int>(axisCount);
+        }
         return count <= MaxParticles ? static_cast<unsigned int>(count) : 0;
     }
+    bool GetShowDebugBounds() const { return showDebugBounds_; }
+    void SetShowDebugBounds(bool value) { showDebugBounds_ = value; }
     glm::vec3 ContainerPosition() const { return containerPosition_; }
     glm::vec3 ContainerSize() const { return containerSize_; }
     void SetContainer(glm::vec3 center, glm::vec3 innerSize)
     {
         using namespace physx;
-        for (int i = 0; i < 3; ++i) if (!std::isfinite(center[i]) || !std::isfinite(innerSize[i]) || innerSize[i] < 1.0f || innerSize[i]>30.0f) return;
+        for (int i = 0; i < 3; ++i) if (!std::isfinite(center[i]) || !std::isfinite(innerSize[i]) || innerSize[i] < 1.0f) return;
         const float thickness = .25f;
         if (!container_)
         {
@@ -176,16 +186,20 @@ public:
             try { CUdeviceptr dst = 0; size_t bytes = 0; Check(pointer_(&dst, &bytes, resource_)); if (bytes < 2 * count_ * sizeof(physx::PxVec4))throw std::runtime_error("Liquid GL buffer too small"); Check(cuda_.getCudaContext()->memcpyDtoDAsync(dst, reinterpret_cast<CUdeviceptr>(particles_->getPositionInvMasses()), count_ * sizeof(physx::PxVec4), nullptr)); Check(cuda_.getCudaContext()->memcpyDtoDAsync(dst + count_ * sizeof(physx::PxVec4), reinterpret_cast<CUdeviceptr>(particles_->getVelocities()), count_ * sizeof(physx::PxVec4), nullptr)); }
             catch (...) { unmap_(1, &resource_, nullptr); throw; }Check(unmap_(1, &resource_, nullptr)); revision_ = world_.GetSimulationRevision();
         }
+        renderTimer_.Begin();
         if (displayMode_ == 0 && count_) { if (!surface_)surface_ = std::make_unique<LiquidSurface>(); surface_->SetRenderParameters(renderParameters_); surface_->Draw(vbo_, count_, simulationSpacing_, camera, width, height, world_.GetSimulationRevision(), parameters_.gravityScale, glm::min(position - size * .5f, containerPosition_ - containerSize_ * .5f), glm::max(position + size * .5f, containerPosition_ + containerSize_ * .5f)); }
         shader_.Use(); shader_.SetMatrix4("view", camera.GetViewMatrix()); shader_.SetMatrix4("projection", camera.GetProjectionMatrix(float(width) / height));
         shader_.SetFloat("radius", renderRadius_); shader_.SetFloat("viewportHeight", float(height)); shader_.SetFloat("region", 0);
         const bool pointSize = glIsEnabled(0x8642) != 0; glEnable(0x8642); GL::BindVertexArray(vao_); if (displayMode_ == 1)glDrawArrays(GL_POINTS, 0, count_); if (!pointSize)glDisable(0x8642);
-        std::array<physx::PxVec4, 24> lines{}; const int edges[24] = { 0,1,0,2,0,4,1,3,1,5,2,3,2,6,3,7,4,5,4,6,5,7,6,7 };
-        for (int i = 0; i < 24; ++i) { int c = edges[i]; auto p = position + size * glm::vec3(c & 1 ? .5f : -.5f, c & 2 ? .5f : -.5f, c & 4 ? .5f : -.5f); lines[i] = physx::PxVec4(p.x, p.y, p.z, 1); }
-        GL::BindBuffer(GL::ArrayBuffer, boxVbo_); GL::BufferData(GL::ArrayBuffer, sizeof(lines), lines.data(), 0x88E8);
-        shader_.SetFloat("region", 1); GL::BindVertexArray(boxVao_); glDrawArrays(GL_LINES, 0, 24);
-        for (int i = 0; i < 24; ++i) { int c = edges[i]; auto p = containerPosition_ + containerSize_ * glm::vec3(c & 1 ? .5f : -.5f, c & 2 ? .5f : -.5f, c & 4 ? .5f : -.5f); lines[i] = physx::PxVec4(p.x, p.y, p.z, 1); }
-        GL::BufferData(GL::ArrayBuffer, sizeof(lines), lines.data(), 0x88E8); shader_.SetFloat("region", 2); glDrawArrays(GL_LINES, 0, 24);
+        renderTimer_.End();
+        if (showDebugBounds_) {
+            std::array<physx::PxVec4, 24> lines{}; const int edges[24] = { 0,1,0,2,0,4,1,3,1,5,2,3,2,6,3,7,4,5,4,6,5,7,6,7 };
+            for (int i = 0; i < 24; ++i) { int c = edges[i]; auto p = position + size * glm::vec3(c & 1 ? .5f : -.5f, c & 2 ? .5f : -.5f, c & 4 ? .5f : -.5f); lines[i] = physx::PxVec4(p.x, p.y, p.z, 1); }
+            GL::BindBuffer(GL::ArrayBuffer, boxVbo_); GL::BufferData(GL::ArrayBuffer, sizeof(lines), lines.data(), 0x88E8);
+            shader_.SetFloat("region", 1); GL::BindVertexArray(boxVao_); glDrawArrays(GL_LINES, 0, 24);
+            for (int i = 0; i < 24; ++i) { int c = edges[i]; auto p = containerPosition_ + containerSize_ * glm::vec3(c & 1 ? .5f : -.5f, c & 2 ? .5f : -.5f, c & 4 ? .5f : -.5f); lines[i] = physx::PxVec4(p.x, p.y, p.z, 1); }
+            GL::BufferData(GL::ArrayBuffer, sizeof(lines), lines.data(), 0x88E8); shader_.SetFloat("region", 2); glDrawArrays(GL_LINES, 0, 24);
+        }
         GL::BindVertexArray(0); GL::BindBuffer(GL::ArrayBuffer, 0);
     }
 private:
@@ -201,6 +215,8 @@ private:
     LiquidSurface::RenderParameters renderParameters_;
     std::unique_ptr<LiquidSurface> surface_;
     Parameters parameters_;
+    LiquidGpuTimer renderTimer_;
+    bool showDebugBounds_ = true;
     glm::vec3 containerPosition_{ 0,4,0 }, containerSize_{ 10,8,10 };
     physx::PxRigidStatic* container_ = nullptr;
     PhysicsWorld& world_; physx::PxCudaContextManager& cuda_; Shader shader_;

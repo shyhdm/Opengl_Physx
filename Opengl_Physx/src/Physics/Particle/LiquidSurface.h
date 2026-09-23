@@ -10,9 +10,9 @@ class LiquidSurface
 {
 public:
     struct RenderParameters {
-        glm::vec3 color{ 8.f / 255.f,46.f / 255.f,56.f / 255.f };
-        glm::vec3 thinColor{ 8.f / 255.f,46.f / 255.f,56.f / 255.f };
-        glm::vec2 colorRange{ 0.f,1.5f };
+        glm::vec3 color{ 5.f / 255.f,9.f / 255.f,49.f / 255.f };
+        glm::vec3 thinColor{ 9.f / 255.f,42.f / 255.f,70.f / 255.f };
+        glm::vec2 colorRange{ 0.f,.001f };
         float absorption = 1.61f, reflection = 1.f, refraction = .24f, thickness = .8f;
         float particleScale = .71f, smoothRadius = .65f, smoothSharpness = .43f, depthRejection = 3.7f;
         int smoothIterations = 3;
@@ -92,6 +92,7 @@ public:
         GL::BindFramebuffer(0x8CA9, state.drawFbo); blit_(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
         glViewport(0, 0, width, height); GL::BindFramebuffer(0x8D40, state.drawFbo); glEnable(GL_DEPTH_TEST); glDepthMask(GL_TRUE); glDepthFunc(GL_LESS);
         shader_.UsePass("COMPOSITE"); Common(projection, view, radius, width, height);
+        shader_.SetVector3("sceneBackgroundColor", glm::vec3(state.clearColor[0], state.clearColor[1], state.clearColor[2]));
         shader_.SetVector3("boundsLow", boundsLow); shader_.SetVector3("boundsHigh", boundsHigh);
         Bind(0, textures_[2], "waterDepth"); Bind(1, background, "sceneColor"); Bind(2, textures_[1], "sceneDepth"); Bind(3, textures_[7], "surfaceNormals");
         GL::BindVertexArray(screenVao_); glDrawArrays(GL_TRIANGLES, 0, 3);

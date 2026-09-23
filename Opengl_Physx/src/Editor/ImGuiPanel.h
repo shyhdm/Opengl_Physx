@@ -13,14 +13,17 @@ public:
 
     void Draw(Scene& scene, float fps, const std::function<void()>& clearDestructibles = {}, const std::function<void(ModelType, glm::vec3, float, float)>& spawnDestructible = {}, const std::function<void()>& buildWall = {}, BlastScene* blastScene = nullptr, const char* debugText = nullptr, FlowSimulation* flowSimulation = nullptr)
     {
-        const auto display = ImGui::GetIO().DisplaySize;
         float scale = ImGui::GetStyle().FontScaleDpi;
         const ImGuiViewport* viewport = ImGui::GetMainViewport();
-        float topOffset = 24.0f * scale;
-        ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x, viewport->Pos.y + topOffset), ImGuiCond_Always);
-        float width = std::min(340.0f * scale, std::max(1.0f, display.x));
-        ImGui::SetNextWindowSizeConstraints(ImVec2(width, 0), ImVec2(width, std::max(1.0f, display.y - topOffset)));
-        if (!ImGui::Begin(T("调试###Status", "Debug###Status"), nullptr, ImGuiWindowFlags_AlwaysAutoResize |
+        const float topOffset = 40.0f * scale;
+        const float availableWidth = std::max(1.0f, viewport->WorkSize.x);
+        const float availableHeight = std::max(1.0f, viewport->WorkSize.y - topOffset);
+        ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x, viewport->WorkPos.y + topOffset), ImGuiCond_Once);
+        ImGui::SetNextWindowSize(ImVec2(std::min(340.0f * scale, availableWidth), availableHeight), ImGuiCond_Once);
+        ImGui::SetNextWindowSizeConstraints(
+            ImVec2(std::min(260.0f * scale, availableWidth), std::min(120.0f * scale, availableHeight)),
+            ImVec2(availableWidth, availableHeight));
+        if (!ImGui::Begin(T("调试###Status", "Debug###Status"), nullptr,
             ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoNav))
         {
             ImGui::End();
@@ -89,6 +92,8 @@ public:
                 ImGui::EndDisabled();
                 ImGui::EndTable();
             }
+            bool showGround = scene.GetShowGround();
+            if (ImGui::Checkbox(T("地面", "Ground"), &showGround)) scene.SetShowGround(showGround);
             if (ImGui::TreeNode(T("发射", "Launch")))
             {
                 float speed = scene.GetLaunchSpeed(), size = scene.GetLaunchScale(), mass = scene.GetLaunchMass();
@@ -125,20 +130,32 @@ public:
             if (auto* liquid = scene.GetLiquid())
             {
                 ImGui::SetNextItemWidth(210.0f * scale);
+                bool showBounds = liquid->GetShowDebugBounds();
+                if (ImGui::Checkbox(T("水体调试框", "Liquid debug bounds"), &showBounds)) liquid->SetShowDebugBounds(showBounds);
+                ImGui::SetNextItemWidth(210.0f * scale);
                 int liquidDisplay = liquid->DisplayMode();
                 const char* liquidModes[] = { T("渲染", "Render"),T("粒子", "Particles") };
                 if (ImGui::Combo(T("显示模式", "Display mode"), &liquidDisplay, liquidModes, 2))liquid->SetDisplayMode(liquidDisplay);
                 ImGui::SetNextItemWidth(210.0f * scale);
-                ImGui::DragFloat3(T("区域位置", "Region position"), &liquid->position.x, .05f, -20, 20, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+                auto editBoxVector = [](const char* label, glm::vec3& value, float minimum, bool sizeValue) {
+                    const auto previous = value;
+                    bool changed = ImGui::DragFloat3(label, &value.x, .05f, 0, 0, "%.2f");
+                    if (changed)for (int i = 0; i < 3; ++i) {
+                        if (!std::isfinite(value[i]))value[i] = previous[i];
+                        else if (sizeValue && value[i] < minimum)value[i] = minimum;
+                    }
+                    return changed;
+                    };
+                editBoxVector(T("区域位置", "Region position"), liquid->position, 0, false);
                 ImGui::SetNextItemWidth(210.0f * scale);
-                ImGui::DragFloat3(T("区域尺寸", "Region size"), &liquid->size.x, .05f, .5f, 20, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+                editBoxVector(T("区域尺寸", "Region size"), liquid->size, .5f, true);
                 ImGui::SetNextItemWidth(150.0f * scale);
                 Number(T("粒子间距", "Particle spacing"), liquid->spacing, .01f, .08f, .5f);
                 auto containerPosition = liquid->ContainerPosition(), containerSize = liquid->ContainerSize();
                 ImGui::SetNextItemWidth(210.0f * scale);
-                bool containerChanged = ImGui::DragFloat3(T("碰撞盒位置", "Container position"), &containerPosition.x, .05f, -20, 20, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+                bool containerChanged = editBoxVector(T("碰撞盒位置", "Container position"), containerPosition, 0, false);
                 ImGui::SetNextItemWidth(210.0f * scale);
-                containerChanged |= ImGui::DragFloat3(T("碰撞盒内尺寸", "Container inner size"), &containerSize.x, .05f, 1, 30, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+                containerChanged |= editBoxVector(T("碰撞盒内尺寸", "Container inner size"), containerSize, 1, true);
                 if (containerChanged)liquid->SetContainer(containerPosition, containerSize);
                 auto parameters = liquid->GetParameters();
                 bool parametersChanged = false;

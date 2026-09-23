@@ -2,6 +2,7 @@ uniform mat4 projection,inverseProjection,view,inverseView;
 uniform vec2 resolution;
 uniform float radius;
 uniform vec3 waterColor,waterThinColor;
+uniform vec3 sceneBackgroundColor;
 uniform vec2 colorTransition;
 uniform float absorptionStrength,reflectionStrength,refractionStrength,thicknessStrength,smoothRadius,smoothSharpness,depthRejection;
 const float emptyDepth=10000000.0;
@@ -117,13 +118,6 @@ void main(){
 #elif defined(PASS_VIEW_DEPTH)
 void main(){float d=texture(waterDepth,uv).r;result=vec4(d>10000?0:-viewPosition(uv,d).z,0,0,0);}
 #else
-vec3 sky(vec3 direction){
-    vec3 ground=vec3(.35,.3,.35)*.53;
-    float gradient=pow(smoothstep(0,.4,direction.y),.35);
-    float horizon=smoothstep(-.01,0,direction.y);
-    float sun=pow(max(0,dot(direction,normalize(vec3(-.4,.8,.3)))),1500)*16;
-    return mix(ground,mix(vec3(1),vec3(.08,.37,.73),gradient),horizon)+sun*step(1,horizon);
-}
 vec3 environment(vec3 origin,vec3 direction){
     if(direction.y<-.00001 && origin.y>0){
         vec3 floorPoint=origin+direction*(-origin.y/direction.y);
@@ -136,11 +130,9 @@ vec3 environment(vec3 origin,vec3 direction){
                     if(abs(actual-length(cameraPoint.xyz))<max(.03,actual*.003))return texture(sceneColor,q).rgb;
                 }
             }
-            float tile=mod(floor(floorPoint.x)+floor(floorPoint.z),2);
-            return mix(vec3(.18,.20,.23),vec3(.65,.68,.72),tile);
         }
     }
-    return sky(direction);
+    return sceneBackgroundColor;
 }
 float reflectance(vec3 incoming,vec3 normal){
     float cosine=clamp(-dot(incoming,normal),0,1),ratio=1/1.33;

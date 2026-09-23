@@ -505,7 +505,8 @@
 				50,
 				51,
 				52,
-				53
+				53,
+				54
 			]
 		}
 	],
@@ -716,6 +717,11 @@
 		{
 			"backtrace" : 8,
 			"path" : "src/Physics/Particle/LiquidGpu.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 8,
+			"path" : "src/Physics/Particle/LiquidGpuTimer.h",
 			"sourceGroupIndex" : 1
 		},
 		{
