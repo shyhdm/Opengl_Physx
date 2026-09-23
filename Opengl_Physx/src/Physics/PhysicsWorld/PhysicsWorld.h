@@ -11,6 +11,7 @@
 #include <mutex>
 #include <stdexcept>
 #include <vector>
+#include <fstream>
 #include "CollisionLibrary.h"
 
 class PhysicsWorld
@@ -27,7 +28,7 @@ public:
         float colliderVolume = 0.0f;
     };
 
-    explicit PhysicsWorld(bool useGpu = true)
+    explicit PhysicsWorld(bool useGpu = true, bool particleSolver = false)
     {
         using namespace physx;
         try
@@ -50,13 +51,12 @@ public:
             description.filterShader = Filter;
             description.simulationEventCallback = &contacts;
             description.flags |= PxSceneFlag::eENABLE_CCD;
-            description.solverType = PxSolverType::eTGS;
+            description.solverType = particleSolver ? PxSolverType::ePGS : PxSolverType::eTGS;
             if (cuda)
             {
                 description.cudaContextManager = cuda;
                 description.flags |= PxSceneFlag::eENABLE_GPU_DYNAMICS | PxSceneFlag::eENABLE_PCM;
                 description.broadPhaseType = PxBroadPhaseType::eGPU;
-                description.flags |= PxSceneFlag::eENABLE_EXTERNAL_FORCES_EVERY_ITERATION_TGS;
             }
             scene = physics->createScene(description);
             if (!scene) throw std::runtime_error("Cannot create PhysX scene.");
@@ -84,6 +84,7 @@ public:
             auto started = std::chrono::steady_clock::now();
             scene->simulate(static_cast<float>(step));
             scene->fetchResults(true);
+            if (cuda && scene->getNbPBDParticleSystems()) scene->fetchResultsParticleSystem();
             lastSimulationMs += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - started).count();
             ++lastSteps; ++simulationRevision; accumulator -= step;
         }
@@ -94,6 +95,7 @@ public:
         contacts.Clear();
         scene->simulate(static_cast<float>(step));
         scene->fetchResults(true);
+        if (cuda && scene->getNbPBDParticleSystems()) scene->fetchResultsParticleSystem();
         ++simulationRevision; accumulator = 0;
     }
 
@@ -263,7 +265,12 @@ private:
     };
 
     physx::PxDefaultAllocator allocator;
-    physx::PxDefaultErrorCallback errors;
+    class LoggedErrors : public physx::PxDefaultErrorCallback {
+        void reportError(physx::PxErrorCode::Enum code, const char* message, const char* file, int line) override {
+            std::ofstream("liquid_debug.log", std::ios::app) << "PhysX code=" << int(code) << " message=" << (message ? message : "") << " file=" << (file ? file : "") << ":" << line << "\n";
+            physx::PxDefaultErrorCallback::reportError(code, message, file, line);
+        }
+    } errors;
     ContactCollector contacts;
     physx::PxFoundation* foundation = nullptr;
     physx::PxPhysics* physics = nullptr;

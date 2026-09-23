@@ -30,11 +30,11 @@ public:
         ImGui::Text("FPS: %.0f", fps);
         ImGui::SameLine();
         if (ImGui::Button(T("复制调试信息", "Copy debug info")) && debugText) ImGui::SetClipboardText(debugText);
-        const char* scenesCN[] = { "场景 1","场景 2","场景 3" };
-        const char* scenesEN[] = { "Scene 1","Scene 2","Scene 3" };
+        const char* scenesCN[] = { "场景 1","场景 2","场景 3","场景 4" };
+        const char* scenesEN[] = { "Scene 1","Scene 2","Scene 3","Scene 4" };
         int activeScene = scene.GetSceneIndex();
         ImGui::SetNextItemWidth(210.0f * scale);
-        if (ImGui::Combo(T("场景", "Scene"), &activeScene, chinese ? scenesCN : scenesEN, 3))
+        if (ImGui::Combo(T("场景", "Scene"), &activeScene, chinese ? scenesCN : scenesEN, 4))
         {
             if (clearDestructibles) clearDestructibles();
             scene.SetSceneIndex(activeScene);
@@ -118,6 +118,78 @@ public:
             button(T("烟雾", "Smoke"), true);
             ImGui::PopID();
             ImGui::EndDisabled();
+        }
+
+        if (scene.GetSceneIndex() == 3 && ImGui::CollapsingHeader(T("GPU 粒子液体", "GPU particle liquid"), ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            if (auto* liquid = scene.GetLiquid())
+            {
+                ImGui::SetNextItemWidth(210.0f * scale);
+                int liquidDisplay = liquid->DisplayMode();
+                const char* liquidModes[] = { T("渲染", "Render"),T("粒子", "Particles") };
+                if (ImGui::Combo(T("显示模式", "Display mode"), &liquidDisplay, liquidModes, 2))liquid->SetDisplayMode(liquidDisplay);
+                ImGui::SetNextItemWidth(210.0f * scale);
+                ImGui::DragFloat3(T("区域位置", "Region position"), &liquid->position.x, .05f, -20, 20, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+                ImGui::SetNextItemWidth(210.0f * scale);
+                ImGui::DragFloat3(T("区域尺寸", "Region size"), &liquid->size.x, .05f, .5f, 20, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+                ImGui::SetNextItemWidth(150.0f * scale);
+                Number(T("粒子间距", "Particle spacing"), liquid->spacing, .01f, .08f, .5f);
+                auto containerPosition = liquid->ContainerPosition(), containerSize = liquid->ContainerSize();
+                ImGui::SetNextItemWidth(210.0f * scale);
+                bool containerChanged = ImGui::DragFloat3(T("碰撞盒位置", "Container position"), &containerPosition.x, .05f, -20, 20, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+                ImGui::SetNextItemWidth(210.0f * scale);
+                containerChanged |= ImGui::DragFloat3(T("碰撞盒内尺寸", "Container inner size"), &containerSize.x, .05f, 1, 30, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+                if (containerChanged)liquid->SetContainer(containerPosition, containerSize);
+                auto parameters = liquid->GetParameters();
+                bool parametersChanged = false;
+                ImGui::PushItemWidth(150.0f * scale);
+                parametersChanged |= Number(T("黏度", "Viscosity"), parameters.viscosity, .01f, 0, 100);
+                parametersChanged |= Number(T("速度阻尼", "Velocity damping"), parameters.damping, .01f, 0, 10);
+                parametersChanged |= Number(T("表面张力", "Surface tension"), parameters.surfaceTension, .01f, 0, 10);
+                parametersChanged |= Number(T("内聚力", "Cohesion"), parameters.cohesion, .01f, 0, 10);
+                parametersChanged |= Number(T("涡量强度", "Vorticity"), parameters.vorticity, .01f, 0, 10);
+                parametersChanged |= Number(T("摩擦", "Friction"), parameters.friction, .01f, 0, 2);
+                parametersChanged |= Number(T("黏附", "Adhesion"), parameters.adhesion, .01f, 0, 10);
+                parametersChanged |= Number(T("重力倍率", "Gravity scale"), parameters.gravityScale, .01f, -2, 5);
+                ImGui::PopItemWidth();
+                if (parametersChanged)liquid->SetParameters(parameters);
+                if (ImGui::Button(T("恢复液体参数", "Reset liquid parameters")))liquid->SetParameters(LiquidGpu::Parameters{});
+                const auto count = liquid->RequestedCount();
+                ImGui::Text(T("粒子: %u / 待生成: %u", "Particles: %u / Requested: %u"), liquid->Count(), count);
+                if (ImGui::CollapsingHeader(T("水面调试", "Surface diagnostics"))) {
+                    if (const auto* d = liquid->SurfaceDebug()) {
+                        ImGui::Text(T("顶点: %u / %u", "Vertices: %u / %u"), d->vertices, d->maxVertices);
+                        ImGui::Text(T("三角形: %u / %u", "Triangles: %u / %u"), d->triangles, d->maxTriangles);
+                        ImGui::Text(T("子网格容量: %u", "Subgrid capacity: %u"), d->subgrids);
+                        ImGui::Text(T("空网格次数: %u", "Empty results: %u"), d->emptyFrames);
+                        ImGui::Text("Revision: %llu  Processed: %s", d->revision, d->processed ? "yes" : "no");
+                        ImGui::Text("GL before/after: 0x%X / 0x%X", d->glBefore, d->glAfter);
+                        ImGui::BeginDisabled(liquid->DisplayMode() != 0);
+                        if (ImGui::Button(T("记录当前异常", "Capture diagnostic snapshot")))liquid->CaptureSurfaceDebug();
+                        ImGui::EndDisabled();
+                        ImGui::TextWrapped(T("记录时会读取 GPU 数据，可能短暂停顿。日志：运行目录 liquid_debug.log", "Capture reads GPU data and may briefly stall. Log: liquid_debug.log in working directory."));
+                        if (d->snapshot) {
+                            ImGui::Text(T("原始粒子重建三角形: %u", "Raw reconstruction triangles: %u"), d->rawTriangles);
+                            ImGui::Text(T("无效粒子 / 顶点: %u / %u", "Invalid particles / vertices: %u / %u"), d->invalidParticles, d->invalidVertices);
+                            ImGui::Text("P min %.2f %.2f %.2f", d->particleMin.x, d->particleMin.y, d->particleMin.z);
+                            ImGui::Text("P max %.2f %.2f %.2f", d->particleMax.x, d->particleMax.y, d->particleMax.z);
+                            ImGui::Text("V min %.2f %.2f %.2f", d->vertexMin.x, d->vertexMin.y, d->vertexMin.z);
+                            ImGui::Text("V max %.2f %.2f %.2f", d->vertexMax.x, d->vertexMax.y, d->vertexMax.z);
+                            ImGui::TextUnformatted(d->logOk ? T("日志已写入", "Log saved") : T("日志写入失败", "Log write failed"));
+                        }
+                    }
+                    else ImGui::TextUnformatted(T("切换到渲染模式后显示", "Available after surface rendering"));
+                }
+                if (!count) ImGui::TextUnformatted(T("请缩小区域或增大间距（最多 262144 粒）", "Reduce size or increase spacing (maximum 262144 particles)"));
+                ImGui::BeginDisabled(!count);
+                if (ImGui::Button(T("生成 / 重置", "Generate / Reset"))) liquid->Reset();
+                ImGui::EndDisabled();
+            }
+            else
+            {
+                ImGui::TextUnformatted(T("液体模拟需要 GPU 计算", "Liquid simulation requires GPU compute"));
+                if (ImGui::Button(T("启用 GPU", "Enable GPU"))) scene.RequestGpu(true);
+            }
         }
 
         int sceneAction = -1;

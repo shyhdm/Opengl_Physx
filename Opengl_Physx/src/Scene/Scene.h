@@ -7,6 +7,7 @@
 #include "OutlineEffect.h"
 #include "CollisionDebugRenderer.h"
 #include "SoftBody.h"
+#include "../Physics/Particle/LiquidGpu.h"
 #include <memory>
 #include <array>
 #include <vector>
@@ -21,8 +22,9 @@
 class Scene
 {
 public:
-    explicit Scene(bool useGpu = true) : world(useGpu)
+    explicit Scene(bool useGpu = true, int initialScene = 0) : world(useGpu, initialScene == 3)
     {
+        sceneIndex = initialScene;
         // 可见平面位于 y=0，与现有静态地面碰撞体顶面重合。
         ground.position = glm::vec3(0.0f);
         groundMaterial.baseColor = glm::vec3(1.0f);
@@ -42,6 +44,7 @@ public:
     void Reset()
     {
         ClearSelection();
+        liquid.reset();
         softBodies.clear();
         bodies.clear();
         smokeFloorEnabled = false;
@@ -54,6 +57,14 @@ public:
             ground.scale = glm::vec3(60.0f, 1.0f, 60.0f);
             groundMaterial.textureTiling = glm::vec2(30.0f);
             SetGroundHalfExtent(30.0f);
+            return;
+        }
+        if (sceneIndex == 3)
+        {
+            ground.scale = glm::vec3(30.0f, 1.0f, 30.0f);
+            groundMaterial.textureTiling = glm::vec2(15.0f);
+            SetGroundHalfExtent(15.0f);
+            if (world.GetCuda()) liquid = std::make_unique<LiquidGpu>(world);
             return;
         }
         if (sceneIndex == 2)
@@ -270,6 +281,7 @@ public:
         for (const auto& batch : rigidRenderBatches) renderer.DrawMesh(*batch.mesh, glm::mat4(1.0f), batch.material);
         for (const auto& batch : softRenderBatches) renderer.DrawMesh(*batch.mesh, glm::mat4(1), batch.material);
         if (externalDraw) externalDraw(renderer, false);
+        if (liquid) liquid->Draw(camera, width, height);
         std::vector<const physx::PxRigidActor*> visibleCollisions;
         for (const auto& object : bodies) if (object.showMesh) visibleCollisions.push_back(object.body->GetActor());
         if (externalCollisions) externalCollisions(visibleCollisions, showCollisions);
@@ -374,11 +386,14 @@ public:
     int GetSceneIndex() const { return sceneIndex; }
     void SetSceneIndex(int value)
     {
-        if (value < 0 || value > 2) throw std::invalid_argument("Invalid scene index.");
+        if (value < 0 || value > 3) throw std::invalid_argument("Invalid scene index.");
         if (sceneIndex == value) return;
         sceneIndex = value;
         Reset();
+        const bool usesParticleSolver = world.GetScene().getSolverType() == physx::PxSolverType::ePGS;
+        if (usesParticleSolver != (value == 3)) RequestGpu(UsesGpu());
     }
+    LiquidGpu* GetLiquid() { return liquid.get(); }
     bool SoftBodiesAvailable() const { return world.GetCuda() != nullptr; }
     std::vector<physx::PxRigidActor*> GetSoftFlowColliders()
     {
@@ -1028,6 +1043,7 @@ private:
     inline static std::uint64_t nextObject = 0, nextVersion = 0;
     std::uint64_t version = 0;
     PhysicsWorld world;
+    std::unique_ptr<LiquidGpu> liquid;
     SoftMeshLibrary softModels{ world.GetPhysics() };
     ModelLibrary models;
     std::array<ModelData, static_cast<std::size_t>(ModelType::Count)> rigidRenderSources;

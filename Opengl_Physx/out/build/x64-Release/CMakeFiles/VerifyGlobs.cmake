@@ -36,6 +36,8 @@ set(OLD_GLOB
   "D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/Flow/FlowVolumeRenderer.h"
   "D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/Flow/FlowVoxelRenderer.h"
   "D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/Flow/Gpu/FlowVoxelCS_vulkan.hlsl.h"
+  "D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/Particle/LiquidGpu.h"
+  "D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/Particle/LiquidSurface.h"
   "D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/PhysicsWorld/PhysicsWorld.h"
   "D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/RigidBody/CollisionLibrary.h"
   "D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/RigidBody/RigidBody.h"

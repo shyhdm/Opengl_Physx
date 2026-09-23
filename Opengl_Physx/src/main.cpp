@@ -124,8 +124,7 @@ int main()
                     scene->ClearRigidSelection();
                     blastScene.reset();
                     scene.reset();
-                    scene = std::make_unique<Scene>(useGpu);
-                    scene->SetSceneIndex(activeScene);
+                    scene = std::make_unique<Scene>(useGpu, activeScene);
                     blastScene = std::make_unique<BlastScene>(blast, *blastLibrary, scene->GetPhysicsWorld());
                     connectBlastSelection();
                     blastScene->SetSceneIndex(activeScene);
