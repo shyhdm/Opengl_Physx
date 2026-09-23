@@ -57,6 +57,8 @@ public:
     ~LiquidGpu() { Release(); }
     LiquidGpu(const LiquidGpu&) = delete;
     LiquidGpu& operator=(const LiquidGpu&) = delete;
+    const LiquidSurface::RenderParameters& GetRenderParameters() const { return renderParameters_; }
+    void SetRenderParameters(LiquidSurface::RenderParameters value) { renderParameters_ = LiquidSurface::ClampRenderParameters(value); if (surface_)surface_->SetRenderParameters(renderParameters_); }
     int DisplayMode() const { return displayMode_; }
     void SetDisplayMode(int mode) { if (mode == 0 || mode == 1) { if (displayMode_ != mode && surface_)surface_->Invalidate(); displayMode_ = mode; } }
     unsigned int Count() const { return count_; }
@@ -174,7 +176,7 @@ public:
             try { CUdeviceptr dst = 0; size_t bytes = 0; Check(pointer_(&dst, &bytes, resource_)); if (bytes < 2 * count_ * sizeof(physx::PxVec4))throw std::runtime_error("Liquid GL buffer too small"); Check(cuda_.getCudaContext()->memcpyDtoDAsync(dst, reinterpret_cast<CUdeviceptr>(particles_->getPositionInvMasses()), count_ * sizeof(physx::PxVec4), nullptr)); Check(cuda_.getCudaContext()->memcpyDtoDAsync(dst + count_ * sizeof(physx::PxVec4), reinterpret_cast<CUdeviceptr>(particles_->getVelocities()), count_ * sizeof(physx::PxVec4), nullptr)); }
             catch (...) { unmap_(1, &resource_, nullptr); throw; }Check(unmap_(1, &resource_, nullptr)); revision_ = world_.GetSimulationRevision();
         }
-        if (displayMode_ == 0 && count_) { if (!surface_)surface_ = std::make_unique<LiquidSurface>(); surface_->Draw(vbo_, count_, simulationSpacing_, camera, width, height, world_.GetSimulationRevision(), parameters_.gravityScale, glm::min(position - size * .5f, containerPosition_ - containerSize_ * .5f), glm::max(position + size * .5f, containerPosition_ + containerSize_ * .5f)); }
+        if (displayMode_ == 0 && count_) { if (!surface_)surface_ = std::make_unique<LiquidSurface>(); surface_->SetRenderParameters(renderParameters_); surface_->Draw(vbo_, count_, simulationSpacing_, camera, width, height, world_.GetSimulationRevision(), parameters_.gravityScale, glm::min(position - size * .5f, containerPosition_ - containerSize_ * .5f), glm::max(position + size * .5f, containerPosition_ + containerSize_ * .5f)); }
         shader_.Use(); shader_.SetMatrix4("view", camera.GetViewMatrix()); shader_.SetMatrix4("projection", camera.GetProjectionMatrix(float(width) / height));
         shader_.SetFloat("radius", renderRadius_); shader_.SetFloat("viewportHeight", float(height)); shader_.SetFloat("region", 0);
         const bool pointSize = glIsEnabled(0x8642) != 0; glEnable(0x8642); GL::BindVertexArray(vao_); if (displayMode_ == 1)glDrawArrays(GL_POINTS, 0, count_); if (!pointSize)glDisable(0x8642);
@@ -196,6 +198,7 @@ private:
     void Release() { ClearParticles(); if (container_) { container_->release(); container_ = nullptr; }GL::DeleteBuffers(1, &vbo_); GL::DeleteBuffers(1, &boxVbo_); GL::DeleteVertexArrays(1, &vao_); GL::DeleteVertexArrays(1, &boxVao_); if (driver_) { FreeLibrary(driver_); driver_ = nullptr; } }
     unsigned int phase_ = 0; float simulationSpacing_ = 0;
     int displayMode_ = 0;
+    LiquidSurface::RenderParameters renderParameters_;
     std::unique_ptr<LiquidSurface> surface_;
     Parameters parameters_;
     glm::vec3 containerPosition_{ 0,4,0 }, containerSize_{ 10,8,10 };
