@@ -1,0 +1,109 @@
+#version 430 core
+layout(local_size_x=128) in;
+layout(std430,binding=0) readonly buffer Fluid{vec4 source[];};
+layout(std430,binding=1) buffer Heads{int head[];};
+layout(std430,binding=2) buffer Links{int next[];};
+layout(std430,binding=3) buffer Normals{vec4 normal[];};
+struct Diffuse{vec4 position;vec4 velocity;vec4 info;};
+layout(std430,binding=4) buffer Pool{Diffuse diffuse[];};
+layout(std430,binding=5) buffer Free{uint freeSlot[];};
+layout(std430,binding=6) buffer Counters{uint counter[8];};
+uniform uint particleCount,poolCapacity,hashSize,tick;
+const int pass=KERNEL_STAGE;
+uniform float spacing,deltaTime,gravityScale;
+uint hash(uint x){x^=x>>16;x*=0x7feb352du;x^=x>>15;x*=0x846ca68bu;return x^(x>>16);}
+float random(uint x){return float(hash(x)&0xffffffu)/16777216.0;}
+uint bucket(ivec3 c){return hash(uint(c.x)*73856093u^uint(c.y)*19349663u^uint(c.z)*83492791u)&(hashSize-1u);}
+float phi(float value,float low,float high){return clamp((value-low)/(high-low),0,1);}
+uint ordered(float f){uint u=floatBitsToUint(f);return (u&0x80000000u)!=0u?~u:u^0x80000000u;}
+float decoded(uint u){return uintBitsToFloat((u&0x80000000u)!=0u?u^0x80000000u:~u);}
+float kernel(float r,float h){float q=2*r/h;if(q>=2)return 0;if(q<1)return 1-1.5*q*q+.75*q*q*q;return .25*pow(2-q,3);}
+void neighborhood(vec3 p,out uint count,out vec3 flow){
+    float h=2*spacing;ivec3 base=ivec3(floor(p/h));count=0u;flow=vec3(0);float sum=0;
+    for(int z=-1;z<=1;++z)for(int y=-1;y<=1;++y)for(int x=-1;x<=1;++x){
+        ivec3 cell=base+ivec3(x,y,z);int j=head[bucket(cell)];uint scanned=0u;
+        while(j>=0 && scanned++<512u){
+            vec3 q=source[j].xyz;
+            if(all(equal(ivec3(floor(q/h)),cell))){float r=length(p-q);if(r<h){float w=kernel(r,h);flow+=source[particleCount+uint(j)].xyz*w;sum+=w;++count;}}
+            j=next[j];
+        }
+    }
+    if(sum>0)flow/=sum;
+}
+void main(){
+    uint id=gl_GlobalInvocationID.x;
+    if(pass==6){if(id==0u){counter[0]=0u;counter[1]=0u;}return;}
+    if(pass==0){
+        if(id<hashSize)head[id]=-1;
+        if(id==0u){counter[0]=0u;counter[1]=0u;counter[2]=ordered(3.4e38);counter[3]=ordered(3.4e38);counter[4]=ordered(3.4e38);counter[5]=ordered(-3.4e38);counter[6]=ordered(-3.4e38);counter[7]=ordered(-3.4e38);}
+        return;
+    }
+    if(pass==1){
+        if(id>=particleCount)return;vec3 p=source[id].xyz;
+        if(any(isnan(p))||any(isinf(p))||any(greaterThan(abs(p),vec3(1e6)))){next[id]=-1;return;}
+        next[id]=atomicExchange(head[bucket(ivec3(floor(p/(2*spacing))))],int(id));
+        for(int a=0;a<3;++a){atomicMin(counter[2+a],ordered(p[a]));atomicMax(counter[5+a],ordered(p[a]));}return;
+    }
+    if(pass==2){
+        if(id>=particleCount)return;
+        vec3 p=source[id].xyz,n=vec3(0);float h=2*spacing;uint count=0u;ivec3 base=ivec3(floor(p/h));
+        for(int z=-1;z<=1;++z)for(int y=-1;y<=1;++y)for(int x=-1;x<=1;++x){
+            ivec3 cell=base+ivec3(x,y,z);int j=head[bucket(cell)];uint scanned=0u;
+            while(j>=0 && scanned++<512u){vec3 q=source[j].xyz,d=p-q;float r=length(d);
+                if(all(equal(ivec3(floor(q/h)),cell)) && r<h){++count;if(r>1e-6)n+=d/r*pow(1-r/h,2);}
+                j=next[j];
+            }
+        }
+        normal[id]=vec4(length(n)>.05?normalize(n):vec3(0),float(count));return;
+    }
+    if(pass==3){
+        if(id>=poolCapacity)return;Diffuse d=diffuse[id];
+        if(d.position.w>0){
+            vec3 p=d.position.xyz;bool escaped=false;
+            for(int a=0;a<3;++a)escaped=escaped||p[a]<decoded(counter[2+a])-max(8.0,spacing*40)||p[a]>decoded(counter[5+a])+max(8.0,spacing*40);
+            if(escaped||any(isnan(p))||any(isinf(p)))d.position.w=0;
+            else{
+                uint count;vec3 flow;neighborhood(p,count,flow);vec3 gravity=vec3(0,-9.81*gravityScale,0);
+                if(count<6u){d.velocity.xyz+=gravity*deltaTime;d.position.xyz+=d.velocity.xyz*deltaTime;d.velocity.w=0;}
+                else if(count<=20u){d.position.xyz+=flow*deltaTime;d.position.w-=deltaTime;d.velocity.w=1;}
+                else{d.velocity.xyz+=-gravity*.8*deltaTime+.8*(flow-d.velocity.xyz);d.position.xyz+=d.velocity.xyz*deltaTime;d.velocity.w=2;}
+                d.info.y+=deltaTime;
+            }
+        }
+        if(d.position.w<=0){d.position.w=0;freeSlot[atomicAdd(counter[0],1u)]=id;}
+        diffuse[id]=d;return;
+    }
+    if(pass==4){
+        if(id>=particleCount)return;
+        vec3 p=source[id].xyz,v=source[particleCount+id].xyz,n=normal[id].xyz;
+        float mass=1/max(source[id].w,1e-6),energy=.5*mass*dot(v,v);
+        float ik=phi(energy,2*mass,24.5*mass);if(ik<=0)return;
+        float h=2*spacing,ta=0,wc=0;ivec3 base=ivec3(floor(p/h));
+        for(int z=-1;z<=1;++z)for(int y=-1;y<=1;++y)for(int x=-1;x<=1;++x){
+            ivec3 cell=base+ivec3(x,y,z);int j=head[bucket(cell)];uint scanned=0u;
+            while(j>=0 && scanned++<512u){vec3 q=source[j].xyz,dx=p-q;float r=length(dx);
+                if(all(equal(ivec3(floor(q/h)),cell)) && r>1e-6 && r<h){
+                    float w=1-r/h;vec3 dv=v-source[particleCount+uint(j)].xyz;float speed=length(dv);
+                    if(speed>1e-6)ta+=speed*(1-dot(dv/speed,dx/r))*w;
+                    vec3 nj=normal[j].xyz;if(dot(-dx/r,n)<0 && dot(nj,nj)>.5)wc+=(1-dot(n,nj))*w;
+                }j=next[j];
+            }
+        }
+        if(dot(normalize(v),n)<.6)wc=0;
+        float ita=phi(ta,5,20),iwc=phi(wc,2,8);
+        float expected=ik*(200*ita+300*iwc)*deltaTime;
+        uint seed=hash(id+tick*747796405u);uint amount=uint(floor(expected));if(random(seed)<fract(expected))++amount;
+        if(amount==0u)return;
+        vec3 axis=normalize(v),e1=normalize(cross(axis,abs(axis.y)<.9?vec3(0,1,0):vec3(1,0,0))),e2=cross(axis,e1);
+        for(uint i=0u;i<amount;++i){
+            uint index=atomicAdd(counter[1],1u);if(index>=counter[0])break;
+            uint slot=freeSlot[index];uint s=hash(seed+i*277803737u);
+            float r=.5*spacing*sqrt(random(s+1u)),theta=6.2831853*random(s+2u);
+            vec3 offset=r*(cos(theta)*e1+sin(theta)*e2);
+            float lifetime=mix(.7,2.5,clamp(ik*max(ita,iwc),0,1));
+            Diffuse d;d.position=vec4(p+offset+deltaTime*v*random(s+3u),lifetime);
+            d.velocity=vec4(v+offset,1);d.info=vec4(lifetime,0,random(s+4u),0);diffuse[slot]=d;
+        }return;
+    }
+    if(pass==5 && id<poolCapacity){diffuse[id].position=vec4(0);diffuse[id].velocity=vec4(0);diffuse[id].info=vec4(0);}
+}

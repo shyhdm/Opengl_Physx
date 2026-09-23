@@ -156,31 +156,7 @@ public:
                 if (ImGui::Button(T("恢复液体参数", "Reset liquid parameters")))liquid->SetParameters(LiquidGpu::Parameters{});
                 const auto count = liquid->RequestedCount();
                 ImGui::Text(T("粒子: %u / 待生成: %u", "Particles: %u / Requested: %u"), liquid->Count(), count);
-                if (ImGui::CollapsingHeader(T("水面调试", "Surface diagnostics"))) {
-                    if (const auto* d = liquid->SurfaceDebug()) {
-                        ImGui::Text(T("顶点: %u / %u", "Vertices: %u / %u"), d->vertices, d->maxVertices);
-                        ImGui::Text(T("三角形: %u / %u", "Triangles: %u / %u"), d->triangles, d->maxTriangles);
-                        ImGui::Text(T("子网格容量: %u", "Subgrid capacity: %u"), d->subgrids);
-                        ImGui::Text(T("空网格次数: %u", "Empty results: %u"), d->emptyFrames);
-                        ImGui::Text("Revision: %llu  Processed: %s", d->revision, d->processed ? "yes" : "no");
-                        ImGui::Text("GL before/after: 0x%X / 0x%X", d->glBefore, d->glAfter);
-                        ImGui::BeginDisabled(liquid->DisplayMode() != 0);
-                        if (ImGui::Button(T("记录当前异常", "Capture diagnostic snapshot")))liquid->CaptureSurfaceDebug();
-                        ImGui::EndDisabled();
-                        ImGui::TextWrapped(T("记录时会读取 GPU 数据，可能短暂停顿。日志：运行目录 liquid_debug.log", "Capture reads GPU data and may briefly stall. Log: liquid_debug.log in working directory."));
-                        if (d->snapshot) {
-                            ImGui::Text(T("原始粒子重建三角形: %u", "Raw reconstruction triangles: %u"), d->rawTriangles);
-                            ImGui::Text(T("无效粒子 / 顶点: %u / %u", "Invalid particles / vertices: %u / %u"), d->invalidParticles, d->invalidVertices);
-                            ImGui::Text("P min %.2f %.2f %.2f", d->particleMin.x, d->particleMin.y, d->particleMin.z);
-                            ImGui::Text("P max %.2f %.2f %.2f", d->particleMax.x, d->particleMax.y, d->particleMax.z);
-                            ImGui::Text("V min %.2f %.2f %.2f", d->vertexMin.x, d->vertexMin.y, d->vertexMin.z);
-                            ImGui::Text("V max %.2f %.2f %.2f", d->vertexMax.x, d->vertexMax.y, d->vertexMax.z);
-                            ImGui::TextUnformatted(d->logOk ? T("日志已写入", "Log saved") : T("日志写入失败", "Log write failed"));
-                        }
-                    }
-                    else ImGui::TextUnformatted(T("切换到渲染模式后显示", "Available after surface rendering"));
-                }
-                if (!count) ImGui::TextUnformatted(T("请缩小区域或增大间距（最多 262144 粒）", "Reduce size or increase spacing (maximum 262144 particles)"));
+                if (!count) ImGui::Text(T("请缩小区域或增大间距（最多 %u 粒）", "Reduce size or increase spacing (maximum %u particles)"), LiquidGpu::MaxParticles);
                 ImGui::BeginDisabled(!count);
                 if (ImGui::Button(T("生成 / 重置", "Generate / Reset"))) liquid->Reset();
                 ImGui::EndDisabled();

@@ -503,7 +503,9 @@
 				48,
 				49,
 				50,
-				51
+				51,
+				52,
+				53
 			]
 		}
 	],
@@ -718,7 +720,17 @@
 		},
 		{
 			"backtrace" : 8,
+			"path" : "src/Physics/Particle/LiquidLighting.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 8,
 			"path" : "src/Physics/Particle/LiquidSurface.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 8,
+			"path" : "src/Physics/Particle/LiquidWhitewater.h",
 			"sourceGroupIndex" : 1
 		},
 		{

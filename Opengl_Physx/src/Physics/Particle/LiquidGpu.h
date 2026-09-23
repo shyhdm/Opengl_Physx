@@ -13,22 +13,23 @@
 class LiquidGpu
 {
 public:
+    static constexpr unsigned MaxParticles = 1048576;
     struct Parameters
     {
-        float viscosity = 13.05f, damping = .05f, surfaceTension = .007f, cohesion = 5.31f;
-        float vorticity = 1.0f, friction = .05f, adhesion = .16f, gravityScale = 1.0f;
+        float viscosity = .05f, damping = .05f, surfaceTension = .77f, cohesion = 5.06f;
+        float vorticity = 1.0f, friction = .05f, adhesion = .07f, gravityScale = 1.0f;
     };
     const Parameters& GetParameters() const { return parameters_; }
     void SetParameters(Parameters value)
     {
         auto bounded = [](float v, float low, float high, float fallback) {return std::isfinite(v) ? glm::clamp(v, low, high) : fallback; };
-        value.viscosity = bounded(value.viscosity, 0, 100, 13.05f);
+        value.viscosity = bounded(value.viscosity, 0, 100, .05f);
         value.damping = bounded(value.damping, 0, 10, .05f);
-        value.surfaceTension = bounded(value.surfaceTension, 0, 10, .007f);
-        value.cohesion = bounded(value.cohesion, 0, 10, 5.31f);
+        value.surfaceTension = bounded(value.surfaceTension, 0, 10, .77f);
+        value.cohesion = bounded(value.cohesion, 0, 10, 5.06f);
         value.vorticity = bounded(value.vorticity, 0, 10, 1.0f);
         value.friction = bounded(value.friction, 0, 2, .05f);
-        value.adhesion = bounded(value.adhesion, 0, 10, .16f);
+        value.adhesion = bounded(value.adhesion, 0, 10, .07f);
         value.gravityScale = bounded(value.gravityScale, -2, 5, 1);
         parameters_ = value;
         if (!material_)return;
@@ -38,8 +39,8 @@ public:
         material_->setAdhesion(value.adhesion); material_->setAdhesionRadiusScale(2.0f); material_->setGravityScale(value.gravityScale);
         if (system_) { const float rest = system_->getRestOffset(); system_->setContactOffset(rest + (value.adhesion > 0 ? std::max(.01f, rest) : .01f)); }
     }
-    glm::vec3 position{ 0,4,0 }, size{ 4,3,4 };
-    float spacing = .1f;
+    glm::vec3 position{ 0,5.55f,0 }, size{ 8.40f,4.50f,9.30f };
+    float spacing = .2f;
     explicit LiquidGpu(PhysicsWorld& world) :world_(world), cuda_(*world.GetCuda()), shader_("Assets/Shaders/liquid_particles.glsl")
     {
         try {
@@ -57,17 +58,14 @@ public:
     LiquidGpu(const LiquidGpu&) = delete;
     LiquidGpu& operator=(const LiquidGpu&) = delete;
     int DisplayMode() const { return displayMode_; }
-    void SetDisplayMode(int mode) { if (mode == 0 || mode == 1) { displayMode_ = mode; if (surface_)surface_->SetEnabled(mode == 0); } }
-    const LiquidSurface::DebugInfo* SurfaceDebug() const { return surface_ ? &surface_->Debug() : nullptr; }
-    void CaptureSurfaceDebug() { if (surface_)surface_->RequestSnapshot(); }
-    unsigned SurfaceTriangles() const { return surface_ ? surface_->Triangles() : 0; }
+    void SetDisplayMode(int mode) { if (mode == 0 || mode == 1) { if (displayMode_ != mode && surface_)surface_->Invalidate(); displayMode_ = mode; } }
     unsigned int Count() const { return count_; }
     unsigned int RequestedCount() const
     {
         if (!std::isfinite(spacing) || spacing < .08f || spacing>.5f) return 0;
         uint64_t count = 1;
         for (int i = 0; i < 3; ++i) { if (!std::isfinite(size[i]) || size[i] < spacing || size[i]>20 || !std::isfinite(position[i]))return 0; count *= static_cast<unsigned int>(std::floor(size[i] / spacing)); }
-        return count <= 262144 ? static_cast<unsigned int>(count) : 0;
+        return count <= MaxParticles ? static_cast<unsigned int>(count) : 0;
     }
     glm::vec3 ContainerPosition() const { return containerPosition_; }
     glm::vec3 ContainerSize() const { return containerSize_; }
@@ -134,7 +132,7 @@ public:
             if (!positions || !velocities || !phases)throw std::runtime_error("Liquid initialization allocation failed");
             const glm::ivec3 dims(glm::floor(size / spacing));
             const glm::vec3 first = position - .5f * glm::vec3(dims - glm::ivec3(1)) * spacing;
-            unsigned int n = 0; const float mass = 1000.0f * spacing * spacing * spacing;
+            unsigned int n = 0; const float mass = 10.0f * spacing * spacing * spacing;
             for (int z = 0; z < dims.z; ++z)for (int y = 0; y < dims.y; ++y)for (int x = 0; x < dims.x; ++x) { auto p = first + glm::vec3(x, y, z) * spacing; positions[n] = PxVec4(p.x, p.y, p.z, 1.0f / mass); velocities[n] = PxVec4(0.0f); phases[n++] = phase_; }
             ExtGpu::PxParticleBufferDesc desc; desc.maxParticles = desc.numActiveParticles = count; desc.positions = positions; desc.velocities = velocities; desc.phases = phases;
             if (reuse)
@@ -155,7 +153,7 @@ public:
                 particles_ = ExtGpu::PxCreateAndPopulateParticleBuffer(desc, &cuda_);
                 if (!particles_)throw std::runtime_error("Cannot create liquid particle buffer");
                 system_->addParticleBuffer(particles_);
-                GL::BindBuffer(GL::ArrayBuffer, vbo_); GL::BufferData(GL::ArrayBuffer, count * sizeof(PxVec4), nullptr, 0x88E8); GL::BindBuffer(GL::ArrayBuffer, 0);
+                GL::BindBuffer(GL::ArrayBuffer, vbo_); GL::BufferData(GL::ArrayBuffer, 2 * count * sizeof(PxVec4), nullptr, 0x88E8); GL::BindBuffer(GL::ArrayBuffer, 0);
                 { PxScopedCudaLock lock(cuda_); Check(reg_(&resource_, vbo_, 2)); }
             }
             if (surface_)surface_->Invalidate();
@@ -171,12 +169,12 @@ public:
     void Draw(const Camera& camera, int width, int height)
     {
         if (width <= 0 || height <= 0)return;
-        if (displayMode_ == 0 && count_) { if (!surface_) { surface_ = std::make_unique<LiquidSurface>(cuda_, particles_->getMaxParticles(), simulationSpacing_); system_->setParticleSystemCallback(surface_.get()); }surface_->Draw(*particles_, world_.GetSimulationRevision(), camera, width, height); }
-        if (displayMode_ == 1 && count_ && revision_ != world_.GetSimulationRevision()) {
+        if (count_ && revision_ != world_.GetSimulationRevision()) {
             physx::PxScopedCudaLock lock(cuda_); Check(map_(1, &resource_, nullptr));
-            try { CUdeviceptr dst = 0; size_t bytes = 0; Check(pointer_(&dst, &bytes, resource_)); if (bytes < count_ * sizeof(physx::PxVec4))throw std::runtime_error("Liquid GL buffer too small"); Check(cuda_.getCudaContext()->memcpyDtoDAsync(dst, reinterpret_cast<CUdeviceptr>(particles_->getPositionInvMasses()), count_ * sizeof(physx::PxVec4), nullptr)); }
+            try { CUdeviceptr dst = 0; size_t bytes = 0; Check(pointer_(&dst, &bytes, resource_)); if (bytes < 2 * count_ * sizeof(physx::PxVec4))throw std::runtime_error("Liquid GL buffer too small"); Check(cuda_.getCudaContext()->memcpyDtoDAsync(dst, reinterpret_cast<CUdeviceptr>(particles_->getPositionInvMasses()), count_ * sizeof(physx::PxVec4), nullptr)); Check(cuda_.getCudaContext()->memcpyDtoDAsync(dst + count_ * sizeof(physx::PxVec4), reinterpret_cast<CUdeviceptr>(particles_->getVelocities()), count_ * sizeof(physx::PxVec4), nullptr)); }
             catch (...) { unmap_(1, &resource_, nullptr); throw; }Check(unmap_(1, &resource_, nullptr)); revision_ = world_.GetSimulationRevision();
         }
+        if (displayMode_ == 0 && count_) { if (!surface_)surface_ = std::make_unique<LiquidSurface>(); surface_->Draw(vbo_, count_, simulationSpacing_, camera, width, height, world_.GetSimulationRevision(), parameters_.gravityScale, glm::min(position - size * .5f, containerPosition_ - containerSize_ * .5f), glm::max(position + size * .5f, containerPosition_ + containerSize_ * .5f)); }
         shader_.Use(); shader_.SetMatrix4("view", camera.GetViewMatrix()); shader_.SetMatrix4("projection", camera.GetProjectionMatrix(float(width) / height));
         shader_.SetFloat("radius", renderRadius_); shader_.SetFloat("viewportHeight", float(height)); shader_.SetFloat("region", 0);
         const bool pointSize = glIsEnabled(0x8642) != 0; glEnable(0x8642); GL::BindVertexArray(vao_); if (displayMode_ == 1)glDrawArrays(GL_POINTS, 0, count_); if (!pointSize)glDisable(0x8642);
@@ -194,7 +192,7 @@ private:
     template<class T>T Load(const char* name) { auto f = reinterpret_cast<T>(GetProcAddress(driver_, name)); if (!f)throw std::runtime_error("CUDA interop unavailable"); return f; }
     static void Check(int code) { if (code)throw std::runtime_error("CUDA liquid transfer failed"); }
     static void Configure(GLuint vao, GLuint buffer) { GL::BindVertexArray(vao); GL::BindBuffer(GL::ArrayBuffer, buffer); GL::VertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(physx::PxVec4), nullptr); GL::EnableVertexAttribArray(0); GL::BindVertexArray(0); GL::BindBuffer(GL::ArrayBuffer, 0); }
-    void ClearParticles() { if (system_)system_->setParticleSystemCallback(nullptr); surface_.reset(); if (resource_) { glFinish(); physx::PxScopedCudaLock lock(cuda_); cuda_.getCudaContext()->streamSynchronize(nullptr); }if (resource_) { physx::PxScopedCudaLock lock(cuda_); unregister_(resource_); resource_ = nullptr; }if (particles_) { if (system_)system_->removeParticleBuffer(particles_); particles_->release(); particles_ = nullptr; }if (system_) { system_->release(); system_ = nullptr; }if (material_) { material_->release(); material_ = nullptr; }count_ = 0; }
+    void ClearParticles() { if (resource_) { glFinish(); physx::PxScopedCudaLock lock(cuda_); cuda_.getCudaContext()->streamSynchronize(nullptr); }if (resource_) { physx::PxScopedCudaLock lock(cuda_); unregister_(resource_); resource_ = nullptr; }if (particles_) { if (system_)system_->removeParticleBuffer(particles_); particles_->release(); particles_ = nullptr; }if (system_) { system_->release(); system_ = nullptr; }if (material_) { material_->release(); material_ = nullptr; }count_ = 0; }
     void Release() { ClearParticles(); if (container_) { container_->release(); container_ = nullptr; }GL::DeleteBuffers(1, &vbo_); GL::DeleteBuffers(1, &boxVbo_); GL::DeleteVertexArrays(1, &vao_); GL::DeleteVertexArrays(1, &boxVao_); if (driver_) { FreeLibrary(driver_); driver_ = nullptr; } }
     unsigned int phase_ = 0; float simulationSpacing_ = 0;
     int displayMode_ = 0;
