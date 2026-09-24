@@ -3,6 +3,7 @@
 #include <extensions/PxCudaHelpersExt.h>
 #include <cudamanager/PxCudaContext.h>
 #include <stdexcept>
+#include <vector>
 #include "LiquidParticleCleanupPtx.h"
 
 // Call only between completed simulation steps, after fetchResultsParticleSystem().
@@ -16,6 +17,7 @@ public:
         physx::PxScopedCudaLock lock(cuda_);
         auto* context = cuda_.getCudaContext();
         context->streamSynchronize(nullptr);
+        if (ids_) context->memFree(ids_);
         if (scratch_) context->memFree(scratch_);
         if (counter_) context->memFree(counter_);
         if (module_) context->moduleUnload(module_);
@@ -27,6 +29,17 @@ public:
     {
         physx::PxScopedCudaLock lock(cuda_);
         Ensure(count);
+    }
+
+    CUdeviceptr Ids() const { return ids_; }
+    void AssignIds(unsigned offset, unsigned count, unsigned first) {
+        physx::PxScopedCudaLock lock(cuda_);
+        if (offset > capacity_ || count > capacity_ - offset) throw std::runtime_error("Sand ID capacity exceeded");
+        auto* context = cuda_.getCudaContext();
+        if (!ids_) Check(context->memAlloc(&ids_, size_t(capacity_) * sizeof(unsigned)));
+        std::vector<unsigned> values(count);
+        for (unsigned i = 0; i < count; ++i) values[i] = first + i;
+        if (count) Check(context->memcpyHtoD(ids_ + size_t(offset) * sizeof(unsigned), values.data(), size_t(count) * sizeof(unsigned)));
     }
 
     unsigned RemoveBelow(physx::PxParticleBuffer& particles, float killHeight)
@@ -46,9 +59,10 @@ public:
             CUdeviceptr outPositions = scratch_;
             CUdeviceptr outVelocities = scratch_ + size_t(capacity_) * sizeof(PxVec4);
             CUdeviceptr outPhases = scratch_ + size_t(capacity_) * 2 * sizeof(PxVec4);
+            CUdeviceptr outIds = outPhases + size_t(capacity_) * sizeof(PxU32);
             unsigned inputCount = count;
             void* args[] = { &positions, &velocities, &phases, &outPositions,
-                &outVelocities, &outPhases, &counter_, &inputCount, &killHeight };
+                &outVelocities, &outPhases, &counter_, &inputCount, &killHeight, &ids_, &outIds };
             Check(context->launchKernel(kernel_, (count + 255) / 256, 1, 1,
                 256, 1, 1, 0, nullptr, args, nullptr, __FILE__, __LINE__));
             Check(context->streamSynchronize(nullptr));
@@ -61,6 +75,7 @@ public:
                 Check(context->memcpyDtoDAsync(positions, outPositions, size_t(kept) * sizeof(PxVec4), nullptr));
                 Check(context->memcpyDtoDAsync(velocities, outVelocities, size_t(kept) * sizeof(PxVec4), nullptr));
                 Check(context->memcpyDtoDAsync(phases, outPhases, size_t(kept) * sizeof(PxU32), nullptr));
+                if (ids_) Check(context->memcpyDtoDAsync(ids_, outIds, size_t(kept) * sizeof(PxU32), nullptr));
                 Check(context->streamSynchronize(nullptr));
             }
         }
@@ -85,8 +100,9 @@ private:
         if (!counter_) Check(context->memAlloc(&counter_, sizeof(unsigned)));
         if (count > capacity_)
         {
+            if (ids_) throw std::runtime_error("Cannot grow active sand ID storage");
             CUdeviceptr next = 0;
-            Check(context->memAlloc(&next, size_t(count) * (2 * sizeof(physx::PxVec4) + sizeof(physx::PxU32))));
+            Check(context->memAlloc(&next, size_t(count) * (2 * sizeof(physx::PxVec4) + 2 * sizeof(physx::PxU32))));
             if (scratch_) context->memFree(scratch_);
             scratch_ = next;
             capacity_ = count;
@@ -95,6 +111,6 @@ private:
     physx::PxCudaContextManager& cuda_;
     CUmodule module_ = nullptr;
     CUfunction kernel_ = nullptr;
-    CUdeviceptr scratch_ = 0, counter_ = 0;
+    CUdeviceptr scratch_ = 0, counter_ = 0, ids_ = 0;
     unsigned capacity_ = 0;
 };

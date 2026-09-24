@@ -4,6 +4,7 @@
 #include "Camera.h"
 #include "LiquidSurface.h"
 #include "LiquidGpuTimer.h"
+#include "SandRenderer.h"
 #include "LiquidParticleCleanup.h"
 #include <memory>
 #include <extensions/PxParticleExt.h>
@@ -71,6 +72,8 @@ public:
     void SetSandRenderScale(float value) {
         if (std::isfinite(value)) sandRenderScale_ = glm::clamp(value, .5f, 2.5f);
     }
+    const SandRenderer::Parameters& GetSandRenderParameters() const { return sandParameters_; }
+    void SetSandRenderParameters(SandRenderer::Parameters value) { sandParameters_ = SandRenderer::Clamp(value); }
     int DisplayMode() const { return displayMode_; }
     void SetDisplayMode(int mode) { if (mode == 0 || mode == 1) { if (displayMode_ != mode && surface_)surface_->Invalidate(); displayMode_ = mode; } }
     unsigned int Count() const { return count_; }
@@ -221,12 +224,13 @@ public:
                 particles_ = ExtGpu::PxCreateAndPopulateParticleBuffer(desc, &cuda_);
                 if (!particles_)throw std::runtime_error("Cannot create liquid particle buffer");
                 system_->addParticleBuffer(particles_); bufferAttached_ = true;
-                GL::BindBuffer(GL::ArrayBuffer, vbo_); GL::BufferData(GL::ArrayBuffer, 2 * MaxParticles * sizeof(PxVec4), nullptr, 0x88E8); GL::BindBuffer(GL::ArrayBuffer, 0);
+                GL::BindBuffer(GL::ArrayBuffer, vbo_); GL::BufferData(GL::ArrayBuffer, (2 * MaxParticles * sizeof(PxVec4) + (granular_ ? MaxParticles * sizeof(unsigned) : 0)), nullptr, 0x88E8); GL::BindBuffer(GL::ArrayBuffer, 0);
                 { PxScopedCudaLock lock(cuda_); Check(reg_(&resource_, vbo_, 2)); }
             }
             // Load/JIT the cleanup kernel during reset, not during a simulation frame.
             if (!cleanup_) cleanup_ = std::make_unique<LiquidParticleCleanup>(cuda_);
             cleanup_->Prepare(MaxParticles);
+            if (granular_) { cleanup_->AssignIds(0, count, 0); nextSandId_ = count; }
             if (surface_)surface_->Invalidate();
             simulationSpacing_ = spacing; world_.ClearAccumulator(); lastCleanupRevision_ = world_.GetSimulationRevision();
             count_ = count; renderRadius_ = spacing * (granular_ ? .5f : .55f); revision_ = std::numeric_limits<unsigned long long>::max();
@@ -254,7 +258,7 @@ public:
             particles_ = world_.GetPhysics().createParticleBuffer(MaxParticles, &cuda_);
             if (!particles_) throw std::runtime_error("Cannot allocate emission buffer");
             GL::BindBuffer(GL::ArrayBuffer, vbo_);
-            GL::BufferData(GL::ArrayBuffer, 2 * MaxParticles * sizeof(PxVec4), nullptr, 0x88E8);
+            GL::BufferData(GL::ArrayBuffer, (2 * MaxParticles * sizeof(PxVec4) + (granular_ ? MaxParticles * sizeof(unsigned) : 0)), nullptr, 0x88E8);
             GL::BindBuffer(GL::ArrayBuffer, 0);
             { PxScopedCudaLock lock(cuda_); Check(reg_(&resource_, vbo_, 2)); }
             simulationSpacing_ = spacing;
@@ -283,6 +287,7 @@ public:
             Check(context->memcpyHtoD(reinterpret_cast<CUdeviceptr>(particles_->getVelocities() + count_), emissionVelocities_.data(), amount * sizeof(PxVec4)));
             Check(context->memcpyHtoD(reinterpret_cast<CUdeviceptr>(particles_->getPhases() + count_), emissionPhases_.data(), amount * sizeof(PxU32)));
         }
+        if (granular_) { cleanup_->AssignIds(count_, amount, nextSandId_); nextSandId_ += amount; }
         count_ += amount;
         particles_->setNbActiveParticles(count_);
         particles_->raiseFlags(PxParticleBufferFlag::eUPDATE_POSITION);
@@ -298,10 +303,15 @@ public:
         if (!count_ || width <= 0 || height <= 0)return;
         if (count_ && revision_ != world_.GetSimulationRevision()) {
             physx::PxScopedCudaLock lock(cuda_); Check(map_(1, &resource_, nullptr));
-            try { CUdeviceptr dst = 0; size_t bytes = 0; Check(pointer_(&dst, &bytes, resource_)); if (bytes < 2 * count_ * sizeof(physx::PxVec4))throw std::runtime_error("Liquid GL buffer too small"); Check(cuda_.getCudaContext()->memcpyDtoDAsync(dst, reinterpret_cast<CUdeviceptr>(particles_->getPositionInvMasses()), count_ * sizeof(physx::PxVec4), nullptr)); Check(cuda_.getCudaContext()->memcpyDtoDAsync(dst + count_ * sizeof(physx::PxVec4), reinterpret_cast<CUdeviceptr>(particles_->getVelocities()), count_ * sizeof(physx::PxVec4), nullptr)); }
+            try { CUdeviceptr dst = 0; size_t bytes = 0; Check(pointer_(&dst, &bytes, resource_)); if (bytes < 2 * count_ * sizeof(physx::PxVec4))throw std::runtime_error("Liquid GL buffer too small"); Check(cuda_.getCudaContext()->memcpyDtoDAsync(dst, reinterpret_cast<CUdeviceptr>(particles_->getPositionInvMasses()), count_ * sizeof(physx::PxVec4), nullptr)); Check(cuda_.getCudaContext()->memcpyDtoDAsync(dst + count_ * sizeof(physx::PxVec4), reinterpret_cast<CUdeviceptr>(particles_->getVelocities()), count_ * sizeof(physx::PxVec4), nullptr)); if (granular_) { if (bytes < 2 * MaxParticles * sizeof(physx::PxVec4) + count_ * sizeof(unsigned)) throw std::runtime_error("Sand ID GL buffer too small"); Check(cuda_.getCudaContext()->memcpyDtoDAsync(dst + 2 * MaxParticles * sizeof(physx::PxVec4), cleanup_->Ids(), count_ * sizeof(unsigned), nullptr)); } }
             catch (...) { unmap_(1, &resource_, nullptr); throw; }Check(unmap_(1, &resource_, nullptr)); revision_ = world_.GetSimulationRevision();
         }
         renderTimer_.Begin();
+        if (granular_ && displayMode_ == 0) {
+            if (!sandRenderer_) sandRenderer_ = std::make_unique<SandRenderer>();
+            sandRenderer_->Draw(vbo_, 2 * MaxParticles * sizeof(physx::PxVec4), count_, renderRadius_ * sandRenderScale_, camera, width, height, sandParameters_);
+            renderTimer_.End(); return;
+        }
         if (!granular_ && displayMode_ == 0 && count_) { if (!surface_)surface_ = std::make_unique<LiquidSurface>(); surface_->SetRenderParameters(renderParameters_); surface_->Draw(vbo_, count_, simulationSpacing_, camera, width, height, world_.GetSimulationRevision(), parameters_.gravityScale, containerEnabled_ ? containerPosition_ - containerSize_ * .5f : glm::vec3(-100, -30, -100), containerEnabled_ ? containerPosition_ + containerSize_ * .5f : glm::vec3(100)); }
         shader_.Use(); shader_.SetMatrix4("view", camera.GetViewMatrix()); shader_.SetMatrix4("projection", camera.GetProjectionMatrix(float(width) / height));
         shader_.SetFloat("granular", granular_ ? 1.0f : 0.0f); shader_.SetFloat("sandRender", granular_ && displayMode_ == 0 ? 1.0f : 0.0f); shader_.SetFloat("radius", renderRadius_); shader_.SetFloat("sandShapeScale", sandRenderScale_); shader_.SetFloat("viewportHeight", float(height)); shader_.SetFloat("region", 0);
@@ -383,6 +393,9 @@ private:
     float sandRenderScale_ = 1.82f; // Visual polygon extent only; no simulation changes.
     LiquidSurface::RenderParameters renderParameters_;
     std::unique_ptr<LiquidSurface> surface_;
+    std::unique_ptr<SandRenderer> sandRenderer_;
+    SandRenderer::Parameters sandParameters_;
+    unsigned nextSandId_ = 0;
     Parameters parameters_;
     std::unique_ptr<LiquidParticleCleanup> cleanup_;
     unsigned long long lastCleanupRevision_ = 0;

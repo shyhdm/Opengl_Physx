@@ -15,16 +15,18 @@ public:
     {
         float scale = ImGui::GetStyle().FontScaleDpi;
         const ImGuiViewport* viewport = ImGui::GetMainViewport();
-        const float topOffset = 40.0f * scale;
         const float availableWidth = std::max(1.0f, viewport->WorkSize.x);
-        const float availableHeight = std::max(1.0f, viewport->WorkSize.y - topOffset);
-        ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x, viewport->WorkPos.y + topOffset), ImGuiCond_Once);
-        ImGui::SetNextWindowSize(ImVec2(std::min(340.0f * scale, availableWidth), availableHeight), ImGuiCond_Once);
-        ImGui::SetNextWindowSizeConstraints(
-            ImVec2(std::min(260.0f * scale, availableWidth), std::min(120.0f * scale, availableHeight)),
-            ImVec2(availableWidth, availableHeight));
-        if (!ImGui::Begin(T("调试###Status", "Debug###Status"), nullptr,
-            ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoNav))
+        const float availableHeight = std::max(1.0f, viewport->WorkSize.y);
+        const float initialWidth = std::min(340.0f * scale, availableWidth);
+        // Set the initial placement only; dragging and resizing remain user-controlled.
+        ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x + viewport->WorkSize.x - initialWidth,
+            viewport->WorkPos.y), ImGuiCond_Once);
+        ImGui::SetNextWindowSize(ImVec2(initialWidth, availableHeight), ImGuiCond_Once);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowMinSize, ImVec2(1.0f, 1.0f));
+        bool visible = ImGui::Begin(T("调试###Status", "Debug###Status"), nullptr,
+            ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoNav);
+        ImGui::PopStyleVar();
+        if (!visible)
         {
             ImGui::End();
             return;
@@ -200,6 +202,22 @@ public:
                     sand->SetSandRenderScale(polygonScale);
                 ImGui::EndDisabled();
                 generationControls(*sand, "SandGeneration");
+                ImGui::Separator();
+                ImGui::TextUnformatted(T("沙子材质与光照", "Sand material and lighting"));
+                auto material = sand->GetSandRenderParameters();
+                bool changed = ImGui::ColorEdit3(T("沙子颜色", "Sand color"), &material.color.x);
+                ImGui::PushItemWidth(160.f * scale);
+                changed |= Number(T("粗糙度", "Roughness"), material.roughness, .01f, .15f, .8f);
+                changed |= Number(T("闪光强度", "Glint strength"), material.sparkle, .05f, 0, 4);
+                changed |= Number(T("反光矿物比例", "Reflective mineral fraction"), material.mineralFraction, .01f, 0, 1);
+                changed |= Number(T("微沙粒细节", "Micrograin detail"), material.microScale, .1f, 2, 20);
+                changed |= Number(T("颗粒遮蔽", "Grain occlusion"), material.occlusion, .05f, 0, 2);
+                changed |= Number(T("光源方位", "Light azimuth"), material.sunAzimuth, 1, -180, 180);
+                changed |= Number(T("光源仰角", "Light elevation"), material.sunElevation, 1, 5, 85);
+                ImGui::PopItemWidth();
+                if (changed) sand->SetSandRenderParameters(material);
+                if (ImGui::Button(T("恢复沙子材质", "Reset sand material"))) sand->SetSandRenderParameters(SandRenderer::Parameters{});
+
             }
             else {
                 ImGui::TextUnformatted(T("沙子模拟需要 GPU 计算", "Sand simulation requires GPU compute"));

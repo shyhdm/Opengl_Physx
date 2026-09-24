@@ -82,7 +82,7 @@ public:
 
     void Update(float deltaTime, const std::function<void(float)>& beforeStep = {})
     {
-        lastSimulationMs = 0; lastSteps = 0; contacts.Clear();
+        lastSimulationMs = lastSubmitMs = lastFetchMs = lastParticleFetchMs = 0; lastSteps = 0; contacts.Clear();
         if (!std::isfinite(deltaTime) || deltaTime <= 0.0f) return;
         accumulator += std::min(static_cast<double>(deltaTime), step);
         while (accumulator >= step)
@@ -90,9 +90,15 @@ public:
             if (beforeStep) beforeStep(static_cast<float>(step));
             auto started = std::chrono::steady_clock::now();
             scene->simulate(static_cast<float>(step));
+            auto submitted = std::chrono::steady_clock::now();
             scene->fetchResults(true);
+            auto fetched = std::chrono::steady_clock::now();
             if (cuda && scene->getNbPBDParticleSystems()) scene->fetchResultsParticleSystem();
-            lastSimulationMs += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - started).count();
+            auto finished = std::chrono::steady_clock::now();
+            lastSubmitMs += std::chrono::duration<double, std::milli>(submitted - started).count();
+            lastFetchMs += std::chrono::duration<double, std::milli>(fetched - submitted).count();
+            lastParticleFetchMs += std::chrono::duration<double, std::milli>(finished - fetched).count();
+            lastSimulationMs += std::chrono::duration<double, std::milli>(finished - started).count();
             ++lastSteps; ++simulationRevision; accumulator -= step;
         }
     }
@@ -119,6 +125,9 @@ public:
         return found;
     }
 
+    double GetLastSubmitMs() const { return lastSubmitMs; }
+    double GetLastFetchMs() const { return lastFetchMs; }
+    double GetLastParticleFetchMs() const { return lastParticleFetchMs; }
     double GetLastSimulationMs() const { return lastSimulationMs; }
     unsigned int GetLastSteps() const { return lastSteps; }
     void ClearAccumulator() { accumulator = 0; }
@@ -285,6 +294,7 @@ private:
     std::vector<physx::PxDeformableVolumeMaterial*> softMaterials, freeSoftMaterials;
     bool extensions = false;
     unsigned long long simulationRevision = 0;
+    double lastSubmitMs = 0, lastFetchMs = 0, lastParticleFetchMs = 0;
     double lastSimulationMs = 0, accumulator = 0.0;
     unsigned int lastSteps = 0;
     static constexpr double step = 1.0 / 60.0;

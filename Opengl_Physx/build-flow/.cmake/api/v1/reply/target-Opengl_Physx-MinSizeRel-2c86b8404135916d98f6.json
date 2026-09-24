@@ -537,7 +537,9 @@
 				54,
 				55,
 				56,
-				57
+				57,
+				58,
+				59
 			]
 		}
 	],
@@ -613,6 +615,11 @@
 		{
 			"backtrace" : 9,
 			"path" : "src/Editor/MousePicker.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 9,
+			"path" : "src/Editor/SystemResourceMonitor.h",
 			"sourceGroupIndex" : 1
 		},
 		{
@@ -783,6 +790,11 @@
 		{
 			"backtrace" : 9,
 			"path" : "src/Physics/Particle/SandLighting.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 9,
+			"path" : "src/Physics/Particle/SandRenderer.h",
 			"sourceGroupIndex" : 1
 		},
 		{

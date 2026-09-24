@@ -20,6 +20,8 @@ public:
             auto& io = ImGui::GetIO();
 
             io.IniFilename = nullptr;
+            io.ConfigWindowsResizeFromEdges = true;
+            io.ConfigWindowsMoveFromTitleBarOnly = false;
             ImGui::StyleColorsDark();
             auto& style = ImGui::GetStyle();
             style.WindowRounding = 8; style.FrameRounding = 4;
@@ -103,7 +105,3 @@ private:
         rendererReady = platformReady = false;
     }
 };
-
-
-
-

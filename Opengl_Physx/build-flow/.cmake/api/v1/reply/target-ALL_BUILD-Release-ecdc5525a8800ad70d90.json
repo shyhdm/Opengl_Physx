@@ -22,10 +22,10 @@
 	"dependencies" : 
 	[
 		{
-			"id" : "Opengl_Physx::@6890427a1f51a3e7e1df"
+			"id" : "ZERO_CHECK::@6890427a1f51a3e7e1df"
 		},
 		{
-			"id" : "ZERO_CHECK::@6890427a1f51a3e7e1df"
+			"id" : "Opengl_Physx::@6890427a1f51a3e7e1df"
 		}
 	],
 	"folder" : 

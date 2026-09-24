@@ -51,7 +51,7 @@ int main()
         bool previousF1Key = false;
         bool showGui = true;
         float displayedFps = 0.0f;
-        double cpuFrameMs = 0.0;
+        auto lastSample = std::chrono::steady_clock::now();
         double nextStatsRefresh = 0.0;
 
         while (!window.ShouldClose())
@@ -60,14 +60,13 @@ int main()
             double currentTime = glfwGetTime();
             float deltaTime = static_cast<float>(currentTime - lastTime);
             lastTime = currentTime;
-            if (!ready) continue;
+            if (!ready) { lastSample = std::chrono::steady_clock::now(); debugOverlay.Reset(); continue; }
             auto cpuFrameStarted = std::chrono::steady_clock::now();
             gui.BeginFrame();
             bool refreshStats = currentTime >= nextStatsRefresh;
             if (refreshStats)
             {
                 displayedFps = ImGui::GetIO().Framerate;
-                debugOverlay.Update(*scene, blastScene.get(), displayedFps, cpuFrameMs);
                 nextStatsRefresh = currentTime + 0.5;
             }
             bool f1Key = window.IsKeyDown(GLFW_KEY_F1);
@@ -86,7 +85,9 @@ int main()
                 blastScene->SetSceneIndex(scene->GetSceneIndex());
                 if (window.IsKeyDown(GLFW_KEY_ESCAPE)) window.RequestClose();
                 blastScene->BeforePhysics();
+                auto updateStarted = std::chrono::steady_clock::now();
                 scene->Update(deltaTime);
+                double updateMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - updateStarted).count();
                 blastScene->AfterPhysics([&](const physx::PxRigidActor* actor) {scene->ForgetActor(actor); });
                 if (flowSimulation)
                 {
@@ -100,6 +101,7 @@ int main()
                 }
                 int width = 0, height = 0;
                 window.GetFramebufferSize(width, height);
+                auto drawStarted = std::chrono::steady_clock::now();
                 scene->Draw(camera, width, height, [&](ModelRenderer& renderer, bool shadowPass)
                     {
                         blastRenderer->Draw(renderer, *blastScene, shadowPass);
@@ -109,10 +111,17 @@ int main()
                 {
                     nativeRenderer.Draw(camera, width, height, flowSimulation.get());
                 }
+                double drawCpuMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - drawStarted).count();
                 debugOverlay.Draw();
                 gui.Render();
-                cpuFrameMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - cpuFrameStarted).count();
+                double cpuFrameMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - cpuFrameStarted).count();
+                auto presentStarted = std::chrono::steady_clock::now();
                 window.Present();
+                auto sampleEnd = std::chrono::steady_clock::now();
+                double presentMs = std::chrono::duration<double, std::milli>(sampleEnd - presentStarted).count();
+                double frameMs = std::chrono::duration<double, std::milli>(sampleEnd - lastSample).count();
+                lastSample = sampleEnd;
+                debugOverlay.Record(*scene, blastScene.get(), frameMs, cpuFrameMs, updateMs, drawCpuMs, presentMs, width, height);
                 if (scene->GetSceneIndex() == 2 && !flowSimulation)
                 {
                     flowSimulation = std::make_unique<FlowSimulation>(flow);
@@ -129,6 +138,8 @@ int main()
                     connectBlastSelection();
                     blastScene->SetSceneIndex(activeScene);
                     lastTime = glfwGetTime();
+                    lastSample = std::chrono::steady_clock::now();
+                    debugOverlay.Reset();
                 }
         }
         scene->ClearRigidSelection();

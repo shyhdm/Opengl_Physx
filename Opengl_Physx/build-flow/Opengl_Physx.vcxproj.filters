@@ -42,6 +42,9 @@
     <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Editor\MousePicker.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Editor\SystemResourceMonitor.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Graphics\CollisionDebugRenderer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -142,6 +145,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Particle\SandLighting.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Particle\SandRenderer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\PhysicsWorld\PhysicsWorld.h">
