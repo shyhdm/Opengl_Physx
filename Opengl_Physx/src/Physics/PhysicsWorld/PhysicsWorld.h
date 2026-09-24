@@ -77,7 +77,7 @@ public:
     {
         lastSimulationMs = 0; lastSteps = 0; contacts.Clear();
         if (!std::isfinite(deltaTime) || deltaTime <= 0.0f) return;
-        accumulator += std::min(static_cast<double>(deltaTime), 0.1);
+        accumulator += std::min(static_cast<double>(deltaTime), step);
         while (accumulator >= step)
         {
             if (beforeStep) beforeStep(static_cast<float>(step));
