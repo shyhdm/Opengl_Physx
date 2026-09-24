@@ -108,8 +108,8 @@ public:
             {
                 ImGui::PushItemWidth(160.0f * scale);
                 int launchKind = scene.GetLaunchKind();
-                const char* launchKinds[] = { T("物体", "Object"), T("水体", "Water") };
-                if (ImGui::Combo(T("发射物", "Projectile"), &launchKind, launchKinds, 2)) scene.SetLaunchKind(launchKind);
+                const char* launchKinds[] = { T("物体", "Object"), T("水体", "Water"), T("沙子", "Sand") };
+                if (ImGui::Combo(T("发射物", "Projectile"), &launchKind, launchKinds, 3)) scene.SetLaunchKind(launchKind);
                 if (launchKind == 0) {
                     float speed = scene.GetLaunchSpeed(), size = scene.GetLaunchScale(), mass = scene.GetLaunchMass();
                     bool launchChanged = Number(T("速度", "Speed"), speed, 0.25f, 0.0f, 100.0f);
@@ -118,12 +118,18 @@ public:
                     if (launchChanged) scene.SetLaunchSettings(speed, size, mass);
                 }
                 else {
-                    float speed = scene.GetWaterSpeed(), rate = scene.GetWaterRate(), radius = scene.GetWaterRadius();
+                    const bool sandLaunch = launchKind == 2;
+                    float speed = sandLaunch ? scene.GetSandSpeed() : scene.GetWaterSpeed();
+                    float rate = sandLaunch ? scene.GetSandRate() : scene.GetWaterRate();
+                    float radius = sandLaunch ? scene.GetSandRadius() : scene.GetWaterRadius();
                     ImGui::BeginDisabled(!scene.SoftBodiesAvailable());
                     bool changed = Number(T("速度", "Speed"), speed, .25f, 0.f, 100.f);
                     changed |= Number(T("喷射量 (粒/秒)", "Emission (particles/s)"), rate, 100.f, 1.f, 1000000.f);
                     changed |= Number(T("发射半径", "Emission radius"), radius, .05f, .1f, 5.f);
-                    if (changed) scene.SetWaterSettings(speed, rate, radius);
+                    if (changed) {
+                        if (sandLaunch) scene.SetSandSettings(speed, rate, radius);
+                        else scene.SetWaterSettings(speed, rate, radius);
+                    }
                     ImGui::EndDisabled();
                 }
                 ImGui::PopItemWidth();
@@ -188,7 +194,7 @@ public:
             ImGui::EndDisabled();
         }
 
-        if (scene.GetSceneIndex() == 3 && scene.GetParticleTest() == 1 && ImGui::CollapsingHeader(T("GPU 粒子沙子", "GPU particle sand"), ImGuiTreeNodeFlags_DefaultOpen))
+        if (scene.GetSceneIndex() == 3 && scene.GetParticleTest() == 1 && ImGui::CollapsingHeader(T("GPU 沙子模拟", "GPU sand simulation"), ImGuiTreeNodeFlags_DefaultOpen))
         {
             ImGui::PushID("SandParameters");
             if (auto* sand = scene.GetSand()) {
@@ -205,6 +211,50 @@ public:
                     sand->SetSandRenderScale(polygonScale);
                 ImGui::EndDisabled();
                 generationControls(*sand, "SandGeneration");
+                auto containerPosition = sand->ContainerPosition(), containerSize = sand->ContainerSize();
+                auto editSandBox = [](const char* label, glm::vec3& value, bool sizeValue) {
+                    const auto previous = value;
+                    bool changed = ImGui::DragFloat3(label, &value.x, .05f, 0, 0, "%.2f");
+                    if (changed)for (int i = 0; i < 3; ++i) {
+                        if (!std::isfinite(value[i]))value[i] = previous[i];
+                        else if (sizeValue && value[i] < 1.f)value[i] = 1.f;
+                    }
+                    return changed;
+                };
+                ImGui::SetNextItemWidth(210.f * scale);
+                bool containerChanged = editSandBox(T("碰撞盒位置", "Container position"), containerPosition, false);
+                ImGui::SetNextItemWidth(210.f * scale);
+                containerChanged |= editSandBox(T("碰撞盒内尺寸", "Container inner size"), containerSize, true);
+                if (containerChanged)sand->SetContainer(containerPosition, containerSize);
+
+                ImGui::Separator();
+                ImGui::TextUnformatted(T("沙子物理参数", "Sand physics parameters"));
+                auto simulation = sand->GetSandSimulationParameters();
+                ImGui::PushItemWidth(160.f * scale);
+                auto sandNumber = [&](const char* label, float& value, float step, float low, float high, const char* help) {
+                    const bool edited = Number(label, value, step, low, high);
+                    if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", help);
+                    return edited;
+                };
+                bool simulationChanged = sandNumber(T("摩擦系数", "Friction"), simulation.friction, .01f, 0, 2,
+                    T("影响沙粒与物体及其他沙粒之间的摩擦。", "Friction against objects and other grains."));
+                simulationChanged |= sandNumber(T("颗粒间摩擦倍率", "Particle friction scale"), simulation.particleFrictionScale, .05f, 0, 5,
+                    T("颗粒间摩擦 = 摩擦系数 × 此倍率，不改变与地面的摩擦。", "Grain-to-grain friction = friction times this scale; ground friction is unchanged."));
+                simulationChanged |= sandNumber(T("速度阻尼", "Velocity damping"), simulation.damping, .01f, 0, 10,
+                    T("越大越快消耗运动速度。", "Higher values damp motion more quickly."));
+                simulationChanged |= sandNumber(T("黏附强度", "Adhesion"), simulation.adhesion, .01f, 0, 10,
+                    T("0 为原来的无黏附沙子；增大后更容易附着和聚团。", "Zero preserves non-adhesive sand; higher values increase adhesion and clumping."));
+                simulationChanged |= sandNumber(T("颗粒间黏附倍率", "Particle adhesion scale"), simulation.particleAdhesionScale, .05f, 0, 5,
+                    T("缩放沙粒之间的黏附，黏附强度为 0 时不生效。", "Scales adhesion between grains; has no effect when adhesion is zero."));
+                simulationChanged |= sandNumber(T("黏附范围倍率", "Adhesion radius scale"), simulation.adhesionRadiusScale, .05f, 1.01f, 5,
+                    T("黏附强度大于 0 时生效；较大范围会增加邻居搜索开销。", "Active when adhesion is nonzero; larger ranges increase neighbor-search cost."));
+                simulationChanged |= sandNumber(T("重力倍率", "Gravity scale"), simulation.gravityScale, .05f, -2, 5,
+                    T("只影响沙子：1 为正常重力，0 为无重力，负值反向。", "Sand only: 1 is normal gravity, 0 disables gravity, negative reverses it."));
+                ImGui::PopItemWidth();
+                if (simulationChanged) sand->SetSandSimulationParameters(simulation);
+                if (ImGui::Button(T("恢复沙子模拟参数", "Reset sand simulation parameters")))
+                    sand->SetSandSimulationParameters(LiquidGpu::SandSimulationParameters{});
+
                 ImGui::Separator();
                 ImGui::TextUnformatted(T("沙子材质与光照", "Sand material and lighting"));
                 auto material = sand->GetSandRenderParameters();

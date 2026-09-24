@@ -44,7 +44,7 @@ public:
     void Reset()
     {
         ClearSelection();
-        waterFiring = false; waterRemainder = 0;
+        particleFiring = false; waterRemainder = sandRemainder = 0;
         if (liquid) liquid->ClearForSceneChange();
         if (sand) sand->ClearForSceneChange();
         liquidPhysicsStepMs = 0;
@@ -202,21 +202,21 @@ public:
             focusRevision = revision;
             ReleaseDrag();
             leftWasDown = middleWasDown = true;
-            firing = false; waterFiring = false; waterRemainder = 0;
+            firing = false; particleFiring = false; waterRemainder = sandRemainder = 0;
             return;
         }
         if (mouseBlocked)
         {
             ReleaseDrag();
             leftWasDown = middleWasDown = true;
-            firing = false; waterFiring = false; waterRemainder = 0;
+            firing = false; particleFiring = false; waterRemainder = sandRemainder = 0;
             return;
         }
         double now = glfwGetTime();
-        if (launchKind == 1) {
-            waterFiring = middleDown && (!middleWasDown || waterFiring) && !paused && world.GetCuda();
-            waterOrigin = camera.position; waterDirection = camera.GetForward();
-            if (!waterFiring) waterRemainder = 0;
+        if (launchKind == 1 || launchKind == 2) {
+            particleFiring = middleDown && (!middleWasDown || particleFiring) && !paused && world.GetCuda();
+            particleOrigin = camera.position; particleDirection = camera.GetForward();
+            if (!particleFiring) waterRemainder = sandRemainder = 0;
             firing = false;
         }
         else if (middleDown)
@@ -267,7 +267,10 @@ public:
         {
             world.Update(deltaTime, [this](float step) {
                 if (selectedSoft) selectedSoft->UpdateDrag(step);
-                if (waterFiring) EmitWater(waterOrigin, waterDirection, step);
+                if (particleFiring) {
+                    if (launchKind == 2) EmitSand(particleOrigin, particleDirection, step);
+                    else EmitWater(particleOrigin, particleDirection, step);
+                }
                 // Diagnostic serialization, deliberately outside PhysicsWorld's timer.
                 // Only performed for an actual GPU physics step, never every draw.
                 if (isolatePhysicsTiming && UsesGpu()) {
@@ -407,7 +410,7 @@ public:
         spawnType = value == 1 && !SoftBodiesAvailable() ? 0 : value;
     }
     int GetLaunchKind() const { return launchKind; }
-    void SetLaunchKind(int value) { launchKind = std::clamp(value, 0, 1); waterFiring = false; waterRemainder = 0; firing = false; }
+    void SetLaunchKind(int value) { launchKind = std::clamp(value, 0, 2); particleFiring = false; waterRemainder = sandRemainder = 0; firing = false; }
     float GetWaterSpeed() const { return waterSpeed; }
     float GetWaterRate() const { return waterRate; }
     float GetWaterRadius() const { return waterRadius; }
@@ -429,6 +432,28 @@ public:
         }
         liquid->Emit(origin + direction * std::max(.6f, waterRadius + .3f), direction,
             waterSpeed, waterRadius, requested, std::min(step, 1.f / 60.f));
+    }
+    float GetSandSpeed() const { return sandSpeed; }
+    float GetSandRate() const { return sandRate; }
+    float GetSandRadius() const { return sandRadius; }
+    void SetSandSettings(float speed, float rate, float radius) {
+        if (std::isfinite(speed)) sandSpeed = std::clamp(speed, 0.f, 100.f);
+        if (std::isfinite(rate)) sandRate = std::clamp(rate, 1.f, 1000000.f);
+        if (std::isfinite(radius)) sandRadius = std::clamp(radius, .1f, 5.f);
+    }
+    void EmitSand(glm::vec3 origin, glm::vec3 direction, float step) {
+        if (!world.GetCuda() || paused || !std::isfinite(step) || step <= 0) return;
+        sandRemainder += double(sandRate) * std::min(step, 1.f / 60.f);
+        const auto requested = static_cast<unsigned>(sandRemainder);
+        sandRemainder -= requested;
+        if (!requested || (sand && sand->Count() == LiquidGpu::MaxParticles)) return;
+        if (!sand) {
+            // Global emission allocates an empty granular system, without a test pile or container.
+            sand = std::make_unique<LiquidGpu>(world, false, true);
+            sand->SetDisplayMode(liquidDisplayMode);
+        }
+        sand->Emit(origin + direction * std::max(.6f, sandRadius + .3f), direction,
+            sandSpeed, sandRadius, requested, std::min(step, 1.f / 60.f));
     }
     float GetLaunchSpeed() const { return launchSpeed; }
     float GetLaunchScale() const { return launchScale; }
@@ -1167,9 +1192,10 @@ private:
     int liquidDisplayMode = 0;
     int launchKind = 0;
     float waterSpeed = 20.f, waterRate = 5000.f, waterRadius = .5f;
-    double waterRemainder = 0;
-    bool waterFiring = false;
-    glm::vec3 waterOrigin{ 0 }, waterDirection{ 0,0,-1 };
+    double waterRemainder = 0, sandRemainder = 0;
+    float sandSpeed = 20.f, sandRate = 5000.f, sandRadius = .5f;
+    bool particleFiring = false;
+    glm::vec3 particleOrigin{ 0 }, particleDirection{ 0,0,-1 };
     float launchSpeed = 20.0f, launchScale = 1.0f, testScale = 1.0f, launchMass = 10.0f;
     MousePicker picker; // 后声明，先释放关节，再销毁bodies。
     bool isolatePhysicsTiming = false;

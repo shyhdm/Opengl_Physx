@@ -27,6 +27,31 @@ public:
         float viscosity = .05f, damping = .05f, surfaceTension = .77f, cohesion = 5.06f;
         float vorticity = 1.0f, friction = .05f, adhesion = .07f, gravityScale = 1.0f;
     };
+    struct SandSimulationParameters
+    {
+        float friction = .6f, particleFrictionScale = 1.f, damping = .05f;
+        float adhesion = 0.f, particleAdhesionScale = 1.f, adhesionRadiusScale = 2.f;
+        float gravityScale = 1.f;
+    };
+    const SandSimulationParameters& GetSandSimulationParameters() const { return sandSimulationParameters_; }
+    void SetSandSimulationParameters(SandSimulationParameters value)
+    {
+        if (!granular_)return;
+        const SandSimulationParameters defaults;
+        auto bound = [](float x, float low, float high, float fallback) {
+            return std::isfinite(x) ? glm::clamp(x, low, high) : fallback;
+        };
+        value.friction = bound(value.friction, 0, 2, defaults.friction);
+        value.particleFrictionScale = bound(value.particleFrictionScale, 0, 5, defaults.particleFrictionScale);
+        value.damping = bound(value.damping, 0, 10, defaults.damping);
+        value.adhesion = bound(value.adhesion, 0, 10, defaults.adhesion);
+        value.particleAdhesionScale = bound(value.particleAdhesionScale, 0, 5, defaults.particleAdhesionScale);
+        // PhysX divides by (adhesion radius - rest distance); keep the scale above one.
+        value.adhesionRadiusScale = bound(value.adhesionRadiusScale, 1.01f, 5, defaults.adhesionRadiusScale);
+        value.gravityScale = bound(value.gravityScale, -2, 5, defaults.gravityScale);
+        sandSimulationParameters_ = value;
+        ApplySandSimulationParameters();
+    }
     const Parameters& GetParameters() const { return parameters_; }
     void SetParameters(Parameters value)
     {
@@ -113,7 +138,8 @@ public:
     {
         if (!granular_) return;
         ClearForSceneChange();
-        containerEnabled_ = false; showDebugBounds_ = true;
+        containerEnabled_ = true; showDebugBounds_ = true;
+        SetContainer(containerPosition_, containerSize_);
         spacing = .08f;
         position = glm::vec3(0, 5, 0); size = glm::vec3(4);
         Reset();
@@ -306,7 +332,7 @@ public:
         particles_->raiseFlags(PxParticleBufferFlag::eUPDATE_POSITION);
         particles_->raiseFlags(PxParticleBufferFlag::eUPDATE_VELOCITY);
         particles_->raiseFlags(PxParticleBufferFlag::eUPDATE_PHASE);
-        renderRadius_ = simulationSpacing_ * .55f;
+        renderRadius_ = simulationSpacing_ * (granular_ ? .5f : .55f);
         revision_ = std::numeric_limits<unsigned long long>::max();
         UpdateSimulationMembership();
         return amount;
@@ -365,6 +391,22 @@ public:
     }
 
 private:
+    void ApplySandSimulationParameters()
+    {
+        if (!granular_ || !material_)return;
+        const auto& p = sandSimulationParameters_;
+        material_->setFriction(p.friction); material_->setParticleFrictionScale(p.particleFrictionScale);
+        material_->setDamping(p.damping); material_->setGravityScale(p.gravityScale);
+        material_->setAdhesion(p.adhesion); material_->setParticleAdhesionScale(p.particleAdhesionScale);
+        material_->setAdhesionRadiusScale(p.adhesionRadiusScale);
+        if (system_) {
+            const float rest = system_->getRestOffset();
+            // Include the adhesion falloff region in both rigid and particle contact searches.
+            system_->setContactOffset(std::max(rest + .01f, p.adhesion > 0 ? rest * p.adhesionRadiusScale : 0.f));
+            system_->setParticleContactOffset(std::max(rest + .01f,
+                p.adhesion > 0 && p.particleAdhesionScale > 0 ? rest * p.adhesionRadiusScale : 0.f));
+        }
+    }
     void EnsureSystem()
     {
         using namespace physx;
@@ -379,6 +421,7 @@ private:
             system_->setSolidRestOffset(rest); system_->setFluidRestOffset(spacing * .5f);
             SetParameters(parameters_);
 
+            ApplySandSimulationParameters();
             world_.GetScene().addActor(*system_);
             phase_ = system_->createPhase(material_, PxParticlePhaseFlags(granular_ ? PxParticlePhaseFlag::eParticlePhaseSelfCollide : (PxParticlePhaseFlag::eParticlePhaseFluid | PxParticlePhaseFlag::eParticlePhaseSelfCollide)));
 
@@ -423,6 +466,7 @@ private:
     SandRenderer::Parameters sandParameters_;
     unsigned nextSandId_ = 0;
     Parameters parameters_;
+    SandSimulationParameters sandSimulationParameters_;
     std::unique_ptr<LiquidParticleCleanup> cleanup_;
     unsigned long long lastCleanupRevision_ = 0;
     ParticleCopyTimer copyTimer_;
