@@ -16,27 +16,80 @@ layout(location=0) in vec4 position;
 layout(location=2) in uint particleId;
 flat out vec3 center;
 flat out uint identity;
+
+
+
 void main(){
+#ifdef PASS_SHADE
+    vec2 p=vec2((gl_VertexID&1)==0?-1.:1.,(gl_VertexID&2)==0?-1.:1.);
+    gl_Position=vec4(p,-1,1);return;
+#else
     identity=particleId;center=(view*vec4(position.xyz,1)).xyz;
+    int largeGrain=radius*projection[1][1]*resolution.y/max(-center.z,.01)>8.?1:0;
+    mat3 grainRotation=mat3(1); float grainExtent[6];
+    if(largeGrain!=0){
+    grainRotation=mat3(view)*orientation(particleId);
+    float size=mix(.92,1.,randomValue(particleId+43u));
+    for(int i=0;i<6;++i){
+        float extent=i<6?(i/2==0?.64:(i/2==1?.55:.50)):.64;
+        grainExtent[i]=extent*(size*mix(.90,1.,randomValue(particleId+uint(i)*73u+101u)));
+    }
+    }
     vec2 corner=vec2((gl_VertexID&1)==0?-1.:1.,(gl_VertexID&2)==0?-1.:1.);
     vec4 clip=projection*vec4(center,1);
     // Conservative bounding quad; unlike GL_POINTS, no driver point-size cap.
     float expand=max(-center.z,.01)/max(-center.z-radius,.01);
     clip.xy+=corner*vec2(projection[0][0],projection[1][1])*radius*expand;
+    // Project the eight corners of the grain's exact axis-plane box. The
+    // diagonal cuts can only shrink this box, so this cannot remove grain pixels.
+    // Retain the original bound when the box crosses the camera plane.
+    if(largeGrain!=0){
+    vec2 lower=vec2(1e20),upper=vec2(-1e20);bool safe=true;
+    for(int j=0;j<8;++j){
+        vec3 q=vec3((j&1)==0?-grainExtent[1]:grainExtent[0],
+                    (j&2)==0?-grainExtent[3]:grainExtent[2],
+                    (j&4)==0?-grainExtent[5]:grainExtent[4]);
+        vec4 projected=projection*vec4(center+grainRotation*q*radius,1);
+        if(projected.w<=.001)safe=false;
+        vec2 ndc=projected.xy/max(projected.w,.001);
+        lower=min(lower,ndc);upper=max(upper,ndc);
+    }
+    if(safe&&clip.w>0.){
+        vec2 bound=mix(lower,upper,corner*.5+.5)+corner*(2./resolution);
+        vec2 previous=clip.xy/clip.w;
+        clip.xy=vec2(corner.x<0.?max(previous.x,bound.x):min(previous.x,bound.x),
+                     corner.y<0.?max(previous.y,bound.y):min(previous.y,bound.y))*clip.w;
+    }
+    }
     // Rasterize the bounding quad on the nearest sphere plane. Actual grain
     // depth can only be greater, enabling conservative early depth rejection.
     vec4 front=projection*vec4(center+vec3(0,0,radius),1);
     if(front.w>0.)clip.z=max(-clip.w,front.z/front.w*clip.w);
     if(center.z>radius)clip=vec4(2,2,2,1);
     gl_Position=clip;
+#endif
 }
 #endif
 #ifdef FRAGMENT_SHADER
 layout(depth_greater) out float gl_FragDepth;
 flat in vec3 center;
+#ifdef PASS_DEPTH
 flat in uint identity;
-out vec4 result;
-uniform sampler2D grainDepth,grainNormals;
+#else
+uint identity;
+#endif
+
+
+
+layout(location=0) out vec4 result;
+#ifdef PASS_DEPTH
+layout(location=1) out uint visibleId;
+layout(location=2) out vec4 grainHit;
+#endif
+uniform usampler2D grainIds;
+uniform sampler2D grainDepth,grainNormals,grainHits;
+int hitFace=0;
+float storedFootprint;
 uniform vec3 sandColor,sunDirection;
 uniform float roughness,sparkleStrength,mineralFraction,microScale,occlusionStrength;
 const float PI=3.14159265359;
@@ -45,15 +98,15 @@ vec3 viewPosition(vec2 uv,float d){vec4 p=inverseProjection*vec4(uv*2.-1.,d*2.-1
 
 bool intersectGrain(vec3 ro,vec3 rd,out vec3 hit,out vec3 normal){
     float entry=-1e20,exitDistance=1e20;vec3 face=vec3(0,0,1);
-    float size=mix(.92,1.,randomValue(identity+43u));
     for(int i=0;i<14;++i){
         vec3 plane=vec3(0);float extent;
         if(i<6){int axis=i/2;plane[axis]=(i%2==0)?1.:-1.;extent=axis==0?.64:(axis==1?.55:.50);}
         else{int k=i-6;plane=normalize(vec3(k%2==0?1.:-1.,(k/2)%2==0?1.:-1.,k<4?1.:-1.));extent=.64;}
-        extent*=size*mix(.90,1.,randomValue(identity+uint(i)*73u+101u));
+        extent*=mix(.92,1.,randomValue(identity+43u))*mix(.90,1.,randomValue(identity+uint(i)*73u+101u));
         float denominator=dot(plane,rd),distance=extent-dot(plane,ro);
         if(abs(denominator)<1e-7){if(distance<0.)return false;}
-        else{float t=distance/denominator;if(denominator<0.){if(t>entry){entry=t;face=plane;}}else exitDistance=min(exitDistance,t);}
+        else{float t=distance/denominator;if(denominator<0.){if(t>entry){entry=t;face=plane;hitFace=i;}}else exitDistance=min(exitDistance,t);}
+        if(entry>exitDistance)return false;
     }
     if(entry>exitDistance||entry<0.)return false;
     hit=ro+rd*entry;normal=face;return true;
@@ -108,7 +161,7 @@ vec2 microAppearance(vec3 hit,vec3 normal,mat3 rotation,vec3 l,vec3 v){
     vec3 tangent=normalize(cross(abs(normal.z)<.8?vec3(0,0,1):vec3(0,1,0),normal));
     vec3 bitangent=cross(normal,tangent);
     vec2 coord=vec2(dot(hit,tangent),dot(hit,bitangent))*microScale;
-    float footprint=max(length(dFdx(coord)),length(dFdy(coord)));
+    float footprint=storedFootprint;
     float resolved=1.-smoothstep(.5,2.,footprint);
     vec2 cell=floor(coord);float nearest=10.,tone=0.,glints=0.;
     vec3 halfVector=normalize(l+v);
@@ -129,11 +182,7 @@ vec2 microAppearance(vec3 hit,vec3 normal,mat3 rotation,vec3 l,vec3 v){
 }
 void main(){
     vec2 uv=(gl_FragCoord.xy-viewportOrigin)/resolution;
-#ifdef PASS_SHADE
-    float nearest=texture(grainDepth,uv).r;
-    if(nearest>=1.)discard;
-    if(center.z+radius<viewPosition(uv,nearest).z-radius*.001)discard;
-#endif
+#ifdef PASS_DEPTH
     vec3 ray=normalize(viewPosition(uv,1.));
     mat3 rotation=mat3(view)*orientation(identity),inverseRotation=transpose(rotation);
     vec3 hit,localNormal;
@@ -141,11 +190,25 @@ void main(){
     vec3 surface=center+rotation*hit*radius;
     vec4 clip=projection*vec4(surface,1);gl_FragDepth=clip.z/clip.w*.5+.5;
     vec3 normal=normalize(rotation*localNormal);
-#ifdef PASS_DEPTH
-    result=vec4(normal,1);return;
+    vec3 tangent=normalize(cross(abs(localNormal.z)<.8?vec3(0,0,1):vec3(0,1,0),localNormal));
+    vec3 bitangent=cross(localNormal,tangent);
+    vec2 coord=vec2(dot(hit,tangent),dot(hit,bitangent))*microScale;
+    float footprint=max(length(dFdx(coord)),length(dFdy(coord)));
+    result=vec4(normal,float(hitFace));visibleId=identity;grainHit=vec4(hit,footprint);return;
 #endif
 #ifdef PASS_SHADE
-    if(gl_FragDepth>texture(grainDepth,uv).r)discard;
+    ivec2 pixel=ivec2(gl_FragCoord.xy-viewportOrigin);
+    float depth=texelFetch(grainDepth,pixel,0).r;if(depth>=1.)discard;
+    gl_FragDepth=depth;
+    identity=texelFetch(grainIds,pixel,0).r;
+    vec4 hitData=texelFetch(grainHits,pixel,0);vec3 hit=hitData.xyz;storedFootprint=hitData.w;
+    int face=int(texelFetch(grainNormals,pixel,0).w+.5);
+    vec3 localNormal=vec3(0);
+    if(face<6)localNormal[face/2]=(face%2==0)?1.:-1.;
+    else{int k=face-6;localNormal=normalize(vec3(k%2==0?1.:-1.,(k/2)%2==0?1.:-1.,k<4?1.:-1.));}
+    mat3 rotation=mat3(view)*orientation(identity);
+    vec3 normal=normalize(rotation*localNormal);
+    vec3 surface=viewPosition(uv,depth);
     vec3 light=normalize(mat3(view)*sunDirection),eye=normalize(-surface);
     vec3 macroNormal;float ao;neighborhood(surface,normal,uv,macroNormal,ao);
     float distanceBlend=smoothstep(4.,20.,radius*projection[1][1]*resolution.y/max(-surface.z,.01));

@@ -58,7 +58,7 @@ public:
             GL::GenVertexArrays(1, &boxVao_); GL::GenBuffers(1, &boxVbo_);
             Configure(vao_, vbo_); Configure(boxVao_, boxVbo_);
             containerEnabled_ = defaultWater && !granular_;
-            if (granular_) { position = glm::vec3(0, 5, 0); size = glm::vec3(4); showDebugBounds_ = true; }
+            if (granular_) { position = glm::vec3(0, 5, 0); size = glm::vec3(4); spacing = .08f; showDebugBounds_ = true; }
             if (defaultWater) { if (containerEnabled_) SetContainer(containerPosition_, containerSize_); Reset(); }
         }
         catch (...) { Release(); throw; }
@@ -101,7 +101,7 @@ public:
         if (!granular_) return;
         ClearForSceneChange();
         containerEnabled_ = false; showDebugBounds_ = true;
-        spacing = .2f;
+        spacing = .08f;
         position = glm::vec3(0, 5, 0); size = glm::vec3(4);
         Reset();
     }
