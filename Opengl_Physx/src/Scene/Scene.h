@@ -262,10 +262,20 @@ public:
     }
     void Update(float deltaTime)
     {
-        frameSimulationMs = 0; frameSteps = 0; frameSyncMs = 0;
+        frameSimulationMs = 0; frameSteps = 0; frameSyncMs = 0; frameRenderWaitMs = 0;
         if (!paused)
         {
-            world.Update(deltaTime, [this](float step) {if (selectedSoft) selectedSoft->UpdateDrag(step); if (waterFiring) EmitWater(waterOrigin, waterDirection, step); });
+            world.Update(deltaTime, [this](float step) {
+                if (selectedSoft) selectedSoft->UpdateDrag(step);
+                if (waterFiring) EmitWater(waterOrigin, waterDirection, step);
+                // Diagnostic serialization, deliberately outside PhysicsWorld's timer.
+                // Only performed for an actual GPU physics step, never every draw.
+                if (isolatePhysicsTiming && UsesGpu()) {
+                    auto started=std::chrono::steady_clock::now();
+                    glFinish();
+                    frameRenderWaitMs+=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-started).count();
+                }
+            });
             if (liquid && liquid->Count()) liquid->CleanupFallenParticles();
             if (sand && sand->Count()) sand->CleanupFallenParticles();
             frameSimulationMs = world.GetLastSimulationMs(); frameSteps = world.GetLastSteps();
@@ -547,6 +557,10 @@ public:
         for (const auto& object : softBodies) count += object.body->GetSimulationTetrahedronCount();
         return count;
     }
+    bool IsPhysicsTimingIsolated() const { return isolatePhysicsTiming && UsesGpu(); }
+    bool GetIsolatePhysicsTiming() const { return isolatePhysicsTiming; }
+    void SetIsolatePhysicsTiming(bool value) { isolatePhysicsTiming=value; }
+    double GetRenderWaitMs() const { return frameRenderWaitMs; }
     double GetSimulationMs() const { return frameSimulationMs; }
     double GetSoftSyncMs() const { return frameSyncMs; }
     double GetRenderUploadMs() const { return frameUploadMs; }
@@ -1158,6 +1172,8 @@ private:
     glm::vec3 waterOrigin{ 0 }, waterDirection{ 0,0,-1 };
     float launchSpeed = 20.0f, launchScale = 1.0f, testScale = 1.0f, launchMass = 10.0f;
     MousePicker picker; // 后声明，先释放关节，再销毁bodies。
+    bool isolatePhysicsTiming = false;
+    double frameRenderWaitMs = 0;
     bool paused = false;
     bool showGround = true;
     bool showCollisions = false;

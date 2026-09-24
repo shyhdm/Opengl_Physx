@@ -16,7 +16,7 @@
 // not components that can be added to these CPU durations.
 class DebugOverlay
 {
-    enum Metric { Frame, Cpu, Update, DrawCpu, Present, Physics, Submit, Fetch, ParticleFetch, Upload, SoftSync, Blast, MetricCount };
+    enum Metric { Frame, Cpu, Update, DrawCpu, Present, Physics, Submit, Fetch, ParticleFetch, Upload, SoftSync, Blast, RenderWait, MetricCount };
     struct Sample { std::array<double, MetricCount> ms{}; unsigned steps = 0; };
     struct Stats { double average = 0, p95 = 0, maximum = 0; size_t count = 0; };
 public:
@@ -26,17 +26,17 @@ public:
     }
 
     void Record(Scene& scene, const BlastScene* blast, double frameMs, double cpuMs,
-        double updateMs, double drawMs, double presentMs, int width, int height)
+        double updateMs, double drawMs, double presentMs, int width, int height, double sceneRenderMs = -1)
     {
         if (!std::isfinite(frameMs) || frameMs <= 0) return;
-        if (sceneIndex != scene.GetSceneIndex() || paused != scene.IsPaused()) Reset();
-        sceneIndex = scene.GetSceneIndex(); paused = scene.IsPaused();
+        if (sceneIndex != scene.GetSceneIndex() || paused != scene.IsPaused() || isolated != scene.IsPhysicsTimingIsolated()) Reset();
+        sceneIndex = scene.GetSceneIndex(); paused = scene.IsPaused(); isolated=scene.IsPhysicsTimingIsolated(); totalRenderMs=sceneRenderMs;
         auto& world = scene.GetPhysicsWorld();
         unsigned steps = scene.GetPhysicsSteps();
         samples.push_back({ {frameMs, cpuMs, updateMs, drawMs, presentMs,
             scene.GetSimulationMs(), steps ? world.GetLastSubmitMs() : 0,
             steps ? world.GetLastFetchMs() : 0, steps ? world.GetLastParticleFetchMs() : 0,
-            scene.GetRenderUploadMs(), scene.GetSoftSyncMs(), blast ? blast->GetUpdateMs() : 0}, steps });
+            scene.GetRenderUploadMs(), scene.GetSoftSyncMs(), blast ? blast->GetUpdateMs() : 0, scene.GetRenderWaitMs()}, steps });
         elapsed += frameMs; refresh += frameMs;
         // Keep a wall-time window, not a fixed number of frames. Hard cap limits
         // memory even when rendering an empty scene at extremely high FPS.
@@ -146,7 +146,7 @@ private:
         AddStats("Frame with step",Frame,1); copyText += " | "; AddStats("without step",Frame,0); copyText += '\n';
         AddStats("CPU before Present",Cpu); copyText += " | "; AddStats("Present",Present); copyText += '\n';
         AddStats("Scene update",Update); copyText += " | "; AddStats("Scene+Flow draw CPU",DrawCpu); copyText += '\n';
-        AddStats("PhysX per step",Physics,1,true);
+        AddStats(isolated?"PhysX scene/step (GL drained)":"PhysX scene/step (wall, includes waits)",Physics,1,true);
         const auto physicsStats = Summarize(Physics,1,true);
         copyText += '\n';
         copyText += "Particle GPU draw (async/smoothed): ";
@@ -165,9 +165,11 @@ private:
         if (physicsStats.count) std::snprintf(line,sizeof(line),"PhysX %.2f ms",physicsStats.average);
         else std::snprintf(line,sizeof(line),"PhysX N/A");
         copyText += line;
-        if (anyActive && allTimed) std::snprintf(line,sizeof(line)," | Render %.2f ms\n",renderTotal);
+        if (totalRenderMs>=0) std::snprintf(line,sizeof(line)," | Render %.2f ms\n",totalRenderMs);
         else std::snprintf(line,sizeof(line)," | Render N/A\n");
         copyText += line;
+        copyText += isolated ? "PhysX isolation ON (profiling changes overlap) | " : "PhysX isolation OFF | ";
+        AddStats("Pre-PhysX GL wait/step",RenderWait,1,true); copyText+='\n';
         if (water && water->HasWaterPassTiming()) {
             std::snprintf(line,sizeof(line),"Water GPU (async EMA): Depth %.3f ms | Thickness %.3f ms | Smooth %.3f ms\n",
                 water->WaterPassMs(LiquidSurface::Depth),water->WaterPassMs(LiquidSurface::Thickness),water->WaterPassMs(LiquidSurface::Smooth));
@@ -204,6 +206,7 @@ private:
     std::deque<Sample> samples;
     double elapsed = 0, refresh = 0;
     int sceneIndex = -1;
-    bool paused = false;
+    bool paused = false, isolated=false;
+    double totalRenderMs=-1;
     std::string copyText;
 };

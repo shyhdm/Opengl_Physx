@@ -35,6 +35,9 @@ public:
         ImGui::Text("FPS: %.0f", fps);
         ImGui::SameLine();
         if (ImGui::Button(T("复制调试信息", "Copy debug info")) && debugText) ImGui::SetClipboardText(debugText);
+        bool isolatedTiming=scene.GetIsolatePhysicsTiming();
+        if (ImGui::Checkbox(T("隔离物理计时", "Isolate physics timing"), &isolatedTiming)) scene.SetIsolatePhysicsTiming(isolatedTiming);
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip(T("物理步前等待本程序 OpenGL 完成，等待单列；会降低并行度，可能影响 FPS。不是纯 GPU 内核计时。", "Wait for this context's OpenGL before each GPU physics step. Wait is separate; profiling reduces overlap and may lower FPS. Not pure GPU kernel timing."));
         const char* scenesCN[] = { "场景 1","场景 2","场景 3","场景 4" };
         const char* scenesEN[] = { "Scene 1","Scene 2","Scene 3","Scene 4" };
         int activeScene = scene.GetSceneIndex();

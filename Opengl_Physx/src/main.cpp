@@ -8,6 +8,7 @@
 #include "BlastScene.h"
 #include "BlastChunkRenderer.h"
 #include "DebugOverlay.h"
+#include "Physics/Particle/LiquidGpuTimer.h"
 #include "FlowContext.h"
 #include "FlowSimulation.h"
 #include "FlowGLInterop.h"
@@ -47,6 +48,9 @@ int main()
         ImGuiLayer gui(window);
         ImGuiPanel panel(gui.HasChineseFont());
         DebugOverlay debugOverlay;
+        std::unique_ptr<LiquidGpuTimer> sceneRenderTimer;
+        int renderTimingScene=-1;
+        bool renderTimingGpu=false;
         double lastTime = glfwGetTime();
         bool previousF1Key = false;
         bool showGui = true;
@@ -101,6 +105,11 @@ int main()
                 }
                 int width = 0, height = 0;
                 window.GetFramebufferSize(width, height);
+                if (!sceneRenderTimer || renderTimingScene!=scene->GetSceneIndex() || renderTimingGpu!=scene->UsesGpu()) {
+                    sceneRenderTimer=std::make_unique<LiquidGpuTimer>();
+                    renderTimingScene=scene->GetSceneIndex(); renderTimingGpu=scene->UsesGpu();
+                }
+                sceneRenderTimer->Begin();
                 auto drawStarted = std::chrono::steady_clock::now();
                 scene->Draw(camera, width, height, [&](ModelRenderer& renderer, bool shadowPass)
                     {
@@ -111,6 +120,7 @@ int main()
                 {
                     nativeRenderer.Draw(camera, width, height, flowSimulation.get());
                 }
+                sceneRenderTimer->End();
                 double drawCpuMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - drawStarted).count();
                 debugOverlay.Draw();
                 gui.Render();
@@ -121,7 +131,7 @@ int main()
                 double presentMs = std::chrono::duration<double, std::milli>(sampleEnd - presentStarted).count();
                 double frameMs = std::chrono::duration<double, std::milli>(sampleEnd - lastSample).count();
                 lastSample = sampleEnd;
-                debugOverlay.Record(*scene, blastScene.get(), frameMs, cpuFrameMs, updateMs, drawCpuMs, presentMs, width, height);
+                debugOverlay.Record(*scene, blastScene.get(), frameMs, cpuFrameMs, updateMs, drawCpuMs, presentMs, width, height, sceneRenderTimer->HasResult()?sceneRenderTimer->Milliseconds():-1);
                 if (scene->GetSceneIndex() == 2 && !flowSimulation)
                 {
                     flowSimulation = std::make_unique<FlowSimulation>(flow);

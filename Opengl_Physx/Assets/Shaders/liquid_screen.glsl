@@ -95,22 +95,27 @@ float sceneDistance(vec2 q){vec4 v=inverseProjection*vec4(q*2-1,texture(sceneDep
 void main(){float d=texture(waterDepth,uv).r,t=texture(waterThickness,uv).r*thicknessStrength;result=vec4(d,t,t,d);}
 #elif defined(PASS_SMOOTH)
 void main(){
-    vec4 original=texture(waterDepth,uv);
+    // Full-resolution passes sample exact pixel centers. Integer fetches avoid
+    // redundant bilinear filtering and UV arithmetic at every tap.
+    ivec2 pixel=ivec2(gl_FragCoord.xy),limit=textureSize(waterDepth,0)-1;
+    ivec2 direction=ivec2(axis);
+    vec4 original=texelFetch(waterDepth,pixel,0);
     if(original.a>10000 || smoothRadius<=0 || nearClipped(original.a)){result=original;return;}
     float radiusFloat=resolution.x*projection[0][0]/(2*original.a)*(radius*smoothRadius);
     int taps=int(ceil(radiusFloat));if(taps<=1)taps=2;taps=min(32,taps);
     float fractional=max(0,float(taps)-radiusFloat);
     float sigma=max(.0000001,(float(taps)-fractional)/(6*smoothSharpness));
-    vec4 sum=vec4(0);float weights=0;
+    float inverseVariance=1./(2*sigma*sigma);
+    vec2 sum=vec2(0);float weights=0;
     for(int x=-taps;x<=taps;++x){
-        vec2 q=clamp(uv+axis*float(x)/resolution,.5/resolution,1-.5/resolution);
-        vec4 value=texture(waterDepth,q);
+        ivec2 q=clamp(pixel+direction*x,ivec2(0),limit);
+        vec4 value=texelFetch(waterDepth,q,0);
         if(value.a<=0 || value.a>=10000 || value.r<=0 || value.r>=10000)continue;
         float difference=original.a-value.a;
-        float weight=exp(-float(x*x)/(2*sigma*sigma))*exp(-difference*difference*depthRejection);
-        sum+=value*weight;weights+=weight;
+        float weight=exp(-float(x*x)*inverseVariance-difference*difference*depthRejection);
+        sum+=value.rg*weight;weights+=weight;
     }
-    result=vec4(sum.rg/max(weights,1e-20),original.ba);
+    result=vec4(sum/max(weights,1e-20),original.ba);
 }
 #elif defined(PASS_NORMALS)
 bool neighbor(vec2 q,float d,out vec3 p){
