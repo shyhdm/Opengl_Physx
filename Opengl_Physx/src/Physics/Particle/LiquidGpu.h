@@ -78,6 +78,8 @@ public:
     void SetSandRenderParameters(SandRenderer::Parameters value) { sandParameters_ = SandRenderer::Clamp(value); }
     int DisplayMode() const { return displayMode_; }
     void SetDisplayMode(int mode) { if (mode == 0 || mode == 1) { if (displayMode_ != mode && surface_)surface_->Invalidate(); displayMode_ = mode; } }
+    bool HasWaterPassTiming() const { return !granular_ && count_ && displayMode_==0 && surface_ && surface_->HasPassTiming(); }
+    double WaterPassMs(LiquidSurface::TimingPass pass) const { return surface_ ? surface_->PassMs(pass) : 0; }
     bool HasSandPassTiming() const { return count_ && displayMode_==0 && sandRenderer_ && sandRenderer_->HasPassTiming(); }
     double SandDepthMs() const { return sandRenderer_ ? sandRenderer_->DepthMs() : 0; }
     double SandShadeMs() const { return sandRenderer_ ? sandRenderer_->ShadeMs() : 0; }

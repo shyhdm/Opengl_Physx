@@ -1,6 +1,8 @@
 #pragma once
 #include "Shader.h"
 #include "Camera.h"
+#include "LiquidGpuTimer.h"
+#include <array>
 #include "LiquidWhitewater.h"
 #include "LiquidLighting.h"
 #include <algorithm>
@@ -9,6 +11,9 @@
 class LiquidSurface
 {
 public:
+    enum TimingPass { Background, Depth, Thickness, Pack, Smooth, Normals, Lighting, Composite, Whitewater, TimingCount };
+    bool HasPassTiming() const { for (const auto& t : passTimers_) if (!t.HasResult()) return false; return true; }
+    double PassMs(TimingPass pass) const { return passTimers_[pass].Milliseconds(); }
     struct RenderParameters {
         glm::vec3 color{ 5.f / 255.f,9.f / 255.f,49.f / 255.f };
         glm::vec3 thinColor{ 9.f / 255.f,42.f / 255.f,70.f / 255.f };
@@ -55,9 +60,11 @@ public:
         if (!count || width <= 0 || height <= 0)return;
         State state(*this);
         Resize(width, height); lighting_.Prepare(width, height); glDisable(GL_SCISSOR_TEST);
+        passTimers_[Background].Begin();
         GL::BindFramebuffer(0x8CA8, state.readFbo); GL::BindFramebuffer(0x8CA9, fbos_[0]);
         blit_(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
         blit_(0, 0, width, height, 0, 0, width, height, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+        passTimers_[Background].End(); passTimers_[Depth].Begin();
         glViewport(0, 0, width, height); glDisable(GL_CULL_FACE); glDisable(GL_BLEND); glDisable(GL_SCISSOR_TEST); glDisable(0x8DB9);
         glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE); glDepthMask(GL_TRUE); glEnable(GL_DEPTH_TEST); glDepthFunc(GL_LESS); glClearDepth(1);
         GL::BindVertexArray(particleVao_); GL::BindBuffer(GL::ArrayBuffer, positions);
@@ -71,26 +78,32 @@ public:
         GL::BindFramebuffer(0x8D40, fbos_[1]); Attach(textures_[6]);
         glClearColor(10000000.f, 0, 0, 0); glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         instanced_(GL_TRIANGLE_STRIP, 0, 4, count);
+        passTimers_[Depth].End(); passTimers_[Thickness].Begin();
         const int thicknessWidth = (width + 1) / 2, thicknessHeight = (height + 1) / 2;
         glViewport(0, 0, thicknessWidth, thicknessHeight);
         shader_.UsePass("THICKNESS"); Common(projection, view, radius, thicknessWidth, thicknessHeight); Bind(0, textures_[1], "sceneDepth");
         GL::BindFramebuffer(0x8D40, fbos_[2]); Attach(textures_[4]); glClearColor(0, 0, 0, 0); glClear(GL_COLOR_BUFFER_BIT);
         glDisable(GL_DEPTH_TEST); glDepthMask(GL_FALSE); glEnable(GL_BLEND); blendEquation_(0x8006, 0x8006); blendFunc_(GL_ONE, GL_ONE, GL_ONE, GL_ONE);
         instanced_(GL_TRIANGLE_STRIP, 0, 4, count); glDisable(GL_BLEND);
+        passTimers_[Thickness].End(); passTimers_[Pack].Begin();
         glViewport(0, 0, width, height);
         GL::BindVertexArray(screenVao_);
         Attach(textures_[2]); shader_.UsePass("PACK"); Common(projection, view, radius, width, height);
         Bind(0, textures_[6], "waterDepth"); Bind(1, textures_[4], "waterThickness"); glDrawArrays(GL_TRIANGLES, 0, 3);
+        passTimers_[Pack].End(); passTimers_[Smooth].Begin();
         for (int pass = 0; pass < renderParameters_.smoothIterations * 2; ++pass) {
             const unsigned src = pass % 2 ? 3 : 2, dst = pass % 2 ? 2 : 3;
             Attach(textures_[dst]); shader_.UsePass("SMOOTH"); Common(projection, view, radius, width, height);
             shader_.SetVector2("axis", pass % 2 ? glm::vec2(0, 1) : glm::vec2(1, 0)); Bind(0, textures_[src], "waterDepth"); glDrawArrays(GL_TRIANGLES, 0, 3);
         }
+        passTimers_[Smooth].End(); passTimers_[Normals].Begin();
         Attach(textures_[7]); shader_.UsePass("NORMALS"); Common(projection, view, radius, width, height);
         Bind(0, textures_[2], "waterDepth"); glDrawArrays(GL_TRIANGLES, 0, 3);
         Attach(textures_[6]); shader_.UsePass("VIEW_DEPTH"); Common(projection, view, radius, width, height);
         Bind(0, textures_[2], "waterDepth"); glDrawArrays(GL_TRIANGLES, 0, 3);
+        passTimers_[Normals].End(); passTimers_[Lighting].Begin();
         const GLuint background = lighting_.Render(particleVao_, screenVao_, count, radius, projection, view, textures_[0], textures_[1], width, height, boundsLow, boundsHigh, revision);
+        passTimers_[Lighting].End(); passTimers_[Composite].Begin();
         GL::BindFramebuffer(0x8CA8, fbos_[2]); GL::FramebufferTexture2D(0x8CA8, 0x8CE0, GL_TEXTURE_2D, background, 0);
         GL::BindFramebuffer(0x8CA9, state.drawFbo); blit_(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
         glViewport(0, 0, width, height); GL::BindFramebuffer(0x8D40, state.drawFbo); glEnable(GL_DEPTH_TEST); glDepthMask(GL_TRUE); glDepthFunc(GL_LESS);
@@ -99,11 +112,14 @@ public:
         shader_.SetVector3("boundsLow", boundsLow); shader_.SetVector3("boundsHigh", boundsHigh);
         Bind(0, textures_[2], "waterDepth"); Bind(1, background, "sceneColor"); Bind(2, textures_[1], "sceneDepth"); Bind(3, textures_[7], "surfaceNormals");
         GL::BindVertexArray(screenVao_); glDrawArrays(GL_TRIANGLES, 0, 3);
+        passTimers_[Composite].End(); passTimers_[Whitewater].Begin();
         GL::ActiveTexture(0x84C0); glBindTexture(GL_TEXTURE_2D, textures_[0]);
         glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, width, height);
         whitewater_.Draw(positions, count, spacing, revision, view, projection, textures_[6], textures_[1], state.drawFbo, width, height, gravityScale, textures_[0], glm::vec3(state.clearColor[0], state.clearColor[1], state.clearColor[2]));
+        passTimers_[Whitewater].End();
     }
 private:
+    std::array<LiquidGpuTimer, TimingCount> passTimers_;
     RenderParameters renderParameters_;
     using Blit = void(APIENTRY*)(GLint, GLint, GLint, GLint, GLint, GLint, GLint, GLint, GLbitfield, GLenum);
     using Divisor = void(APIENTRY*)(GLuint, GLuint);

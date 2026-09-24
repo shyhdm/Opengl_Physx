@@ -168,6 +168,17 @@ private:
         if (anyActive && allTimed) std::snprintf(line,sizeof(line)," | Render %.2f ms\n",renderTotal);
         else std::snprintf(line,sizeof(line)," | Render N/A\n");
         copyText += line;
+        if (water && water->HasWaterPassTiming()) {
+            std::snprintf(line,sizeof(line),"Water GPU (async EMA): Depth %.3f ms | Thickness %.3f ms | Smooth %.3f ms\n",
+                water->WaterPassMs(LiquidSurface::Depth),water->WaterPassMs(LiquidSurface::Thickness),water->WaterPassMs(LiquidSurface::Smooth));
+            copyText+=line;
+            std::snprintf(line,sizeof(line),"Water GPU: Background %.3f ms | Pack %.3f ms | Normals+ViewDepth %.3f ms\n",
+                water->WaterPassMs(LiquidSurface::Background),water->WaterPassMs(LiquidSurface::Pack),water->WaterPassMs(LiquidSurface::Normals));
+            copyText+=line;
+            std::snprintf(line,sizeof(line),"Water GPU: Lighting %.3f ms | Composite %.3f ms | Whitewater %.3f ms\n",
+                water->WaterPassMs(LiquidSurface::Lighting),water->WaterPassMs(LiquidSurface::Composite),water->WaterPassMs(LiquidSurface::Whitewater));
+            copyText+=line;
+        } else copyText+="Water GPU passes: N/A (no water render or awaiting queries)\n";
         if (sand && sand->HasSandPassTiming()) {
             std::snprintf(line,sizeof(line),"Sand GPU (async EMA): Depth %.3f ms | Shade %.3f ms\n",sand->SandDepthMs(),sand->SandShadeMs());
             copyText += line;
