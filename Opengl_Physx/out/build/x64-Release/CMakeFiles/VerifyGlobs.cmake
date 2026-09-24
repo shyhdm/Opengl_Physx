@@ -39,6 +39,8 @@ set(OLD_GLOB
   "D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/Particle/LiquidGpu.h"
   "D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/Particle/LiquidGpuTimer.h"
   "D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/Particle/LiquidLighting.h"
+  "D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/Particle/LiquidParticleCleanup.h"
+  "D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/Particle/LiquidParticleCleanupPtx.h"
   "D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/Particle/LiquidSurface.h"
   "D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/Particle/LiquidWhitewater.h"
   "D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/PhysicsWorld/PhysicsWorld.h"

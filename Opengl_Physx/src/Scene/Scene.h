@@ -244,6 +244,7 @@ public:
         if (!paused)
         {
             world.Update(deltaTime, [this](float step) {if (selectedSoft) selectedSoft->UpdateDrag(step); });
+            if (liquid) liquid->CleanupFallenParticles();
             frameSimulationMs = world.GetLastSimulationMs(); frameSteps = world.GetLastSteps();
             if (liquid && frameSteps) liquidPhysicsStepMs = frameSimulationMs / frameSteps;
         }
@@ -460,7 +461,7 @@ public:
         if (selectedSoft) selectedSoft->StopDrag();
     }
     bool IsPaused() const { return paused; }
-    void SingleStep() { SetPaused(true); world.SingleStep(); }
+    void SingleStep() { SetPaused(true); world.SingleStep(); if (liquid) liquid->CleanupFallenParticles(); }
     std::size_t GetBodyCount() const { return bodies.size() + 1; }
 
     unsigned int GetSoftIterations() const { return softIterations; }

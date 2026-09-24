@@ -4,6 +4,7 @@
 #include "Camera.h"
 #include "LiquidSurface.h"
 #include "LiquidGpuTimer.h"
+#include "LiquidParticleCleanup.h"
 #include <memory>
 #include <extensions/PxParticleExt.h>
 #include <extensions/PxCudaHelpersExt.h>
@@ -63,6 +64,22 @@ public:
     int DisplayMode() const { return displayMode_; }
     void SetDisplayMode(int mode) { if (mode == 0 || mode == 1) { if (displayMode_ != mode && surface_)surface_->Invalidate(); displayMode_ = mode; } }
     unsigned int Count() const { return count_; }
+    // Keep the same world-space kill plane as fallen rigid bodies.
+    static constexpr float FallenParticleHeight = -30.0f;
+    static constexpr unsigned long long CleanupIntervalSteps = 30;
+    void CleanupFallenParticles()
+    {
+        if (!particles_ || !count_) return;
+        const auto current = world_.GetSimulationRevision();
+        if (current - lastCleanupRevision_ < CleanupIntervalSteps) return;
+        if (!cleanup_) cleanup_ = std::make_unique<LiquidParticleCleanup>(cuda_);
+        const unsigned kept = cleanup_->RemoveBelow(*particles_, FallenParticleHeight);
+        lastCleanupRevision_ = current;
+        if (kept == count_) return;
+        count_ = kept;
+        revision_ = std::numeric_limits<unsigned long long>::max();
+        // Keep live foam: spatial lookup and lighting refresh on the new simulation revision.
+    }
     double GetRenderGpuMs() const { return renderTimer_.Milliseconds(); }
     bool HasRenderTiming() const { return renderTimer_.HasResult(); }
     unsigned int RequestedCount() const
@@ -168,8 +185,11 @@ public:
                 GL::BindBuffer(GL::ArrayBuffer, vbo_); GL::BufferData(GL::ArrayBuffer, 2 * count * sizeof(PxVec4), nullptr, 0x88E8); GL::BindBuffer(GL::ArrayBuffer, 0);
                 { PxScopedCudaLock lock(cuda_); Check(reg_(&resource_, vbo_, 2)); }
             }
+            // Load/JIT the cleanup kernel during reset, not during a simulation frame.
+            if (!cleanup_) cleanup_ = std::make_unique<LiquidParticleCleanup>(cuda_);
+            cleanup_->Prepare(count);
             if (surface_)surface_->Invalidate();
-            simulationSpacing_ = spacing; world_.ClearAccumulator();
+            simulationSpacing_ = spacing; world_.ClearAccumulator(); lastCleanupRevision_ = world_.GetSimulationRevision();
             count_ = count; renderRadius_ = spacing * .55f; revision_ = std::numeric_limits<unsigned long long>::max();
         }
         catch (...) {
@@ -208,13 +228,15 @@ private:
     template<class T>T Load(const char* name) { auto f = reinterpret_cast<T>(GetProcAddress(driver_, name)); if (!f)throw std::runtime_error("CUDA interop unavailable"); return f; }
     static void Check(int code) { if (code)throw std::runtime_error("CUDA liquid transfer failed"); }
     static void Configure(GLuint vao, GLuint buffer) { GL::BindVertexArray(vao); GL::BindBuffer(GL::ArrayBuffer, buffer); GL::VertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(physx::PxVec4), nullptr); GL::EnableVertexAttribArray(0); GL::BindVertexArray(0); GL::BindBuffer(GL::ArrayBuffer, 0); }
-    void ClearParticles() { if (resource_) { glFinish(); physx::PxScopedCudaLock lock(cuda_); cuda_.getCudaContext()->streamSynchronize(nullptr); }if (resource_) { physx::PxScopedCudaLock lock(cuda_); unregister_(resource_); resource_ = nullptr; }if (particles_) { if (system_)system_->removeParticleBuffer(particles_); particles_->release(); particles_ = nullptr; }if (system_) { system_->release(); system_ = nullptr; }if (material_) { material_->release(); material_ = nullptr; }count_ = 0; }
+    void ClearParticles() { cleanup_.reset(); if (resource_) { glFinish(); physx::PxScopedCudaLock lock(cuda_); cuda_.getCudaContext()->streamSynchronize(nullptr); }if (resource_) { physx::PxScopedCudaLock lock(cuda_); unregister_(resource_); resource_ = nullptr; }if (particles_) { if (system_)system_->removeParticleBuffer(particles_); particles_->release(); particles_ = nullptr; }if (system_) { system_->release(); system_ = nullptr; }if (material_) { material_->release(); material_ = nullptr; }count_ = 0; }
     void Release() { ClearParticles(); if (container_) { container_->release(); container_ = nullptr; }GL::DeleteBuffers(1, &vbo_); GL::DeleteBuffers(1, &boxVbo_); GL::DeleteVertexArrays(1, &vao_); GL::DeleteVertexArrays(1, &boxVao_); if (driver_) { FreeLibrary(driver_); driver_ = nullptr; } }
     unsigned int phase_ = 0; float simulationSpacing_ = 0;
     int displayMode_ = 0;
     LiquidSurface::RenderParameters renderParameters_;
     std::unique_ptr<LiquidSurface> surface_;
     Parameters parameters_;
+    std::unique_ptr<LiquidParticleCleanup> cleanup_;
+    unsigned long long lastCleanupRevision_ = 0;
     LiquidGpuTimer renderTimer_;
     bool showDebugBounds_ = true;
     glm::vec3 containerPosition_{ 0,4,0 }, containerSize_{ 10,8,10 };
