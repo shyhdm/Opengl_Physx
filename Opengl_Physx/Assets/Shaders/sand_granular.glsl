@@ -27,6 +27,7 @@ void main(){
     identity=particleId;center=(view*vec4(position.xyz,1)).xyz;
     int largeGrain=radius*projection[1][1]*resolution.y/max(-center.z,.01)>8.?1:0;
     mat3 grainRotation=mat3(1); float grainExtent[6];
+    float frontOffset=radius;
     if(largeGrain!=0){
     grainRotation=mat3(view)*orientation(particleId);
     float size=mix(.92,1.,randomValue(particleId+43u));
@@ -34,6 +35,11 @@ void main(){
         float extent=i<6?(i/2==0?.64:(i/2==1?.55:.50)):.64;
         grainExtent[i]=extent*(size*mix(.90,1.,randomValue(particleId+uint(i)*73u+101u)));
     }
+    // Maximum view-space Z over the six-plane box bounds the clipped grain.
+    vec3 z=vec3(grainRotation[0].z,grainRotation[1].z,grainRotation[2].z);
+    frontOffset=radius*(dot(max(z,vec3(0)),vec3(grainExtent[0],grainExtent[2],grainExtent[4]))
+                    +dot(max(-z,vec3(0)),vec3(grainExtent[1],grainExtent[3],grainExtent[5])));
+    frontOffset=-center.z>radius?min(radius,frontOffset+radius*.0001):radius;
     }
     vec2 corner=vec2((gl_VertexID&1)==0?-1.:1.,(gl_VertexID&2)==0?-1.:1.);
     vec4 clip=projection*vec4(center,1);
@@ -61,9 +67,9 @@ void main(){
                      corner.y<0.?max(previous.y,bound.y):min(previous.y,bound.y))*clip.w;
     }
     }
-    // Rasterize the bounding quad on the nearest sphere plane. Actual grain
-    // depth can only be greater, enabling conservative early depth rejection.
-    vec4 front=projection*vec4(center+vec3(0,0,radius),1);
+    // Rasterize on the conservative front of the box (sphere fallback near the
+    // camera). Actual grain depth is greater, permitting early depth rejection.
+    vec4 front=projection*vec4(center+vec3(0,0,frontOffset),1);
     if(front.w>0.)clip.z=max(-clip.w,front.z/front.w*clip.w);
     if(center.z>radius)clip=vec4(2,2,2,1);
     gl_Position=clip;
@@ -96,19 +102,40 @@ const float PI=3.14159265359;
 
 vec3 viewPosition(vec2 uv,float d){vec4 p=inverseProjection*vec4(uv*2.-1.,d*2.-1.,1);return p.xyz/p.w;}
 
+// Opposing planes share one ray denominator. Solve their slab together.
+bool clipGrainSlab(vec3 plane,vec2 extent,ivec2 index,vec3 ro,vec3 rd,
+                   inout float entry,inout float exitDistance,inout vec3 face){
+    float denominator=dot(plane,rd),origin=dot(plane,ro);
+    if(abs(denominator)<1e-7)return origin<=extent.x&&origin>=-extent.y;
+    vec2 t=vec2(extent.x-origin,-extent.y-origin)/denominator;
+    float nearT=denominator<0.?t.x:t.y;
+    float farT=denominator<0.?t.y:t.x;
+    int nearFace=denominator<0.?index.x:index.y;
+    if(nearT>entry||(nearT==entry&&nearFace<hitFace)){
+        entry=nearT;face=denominator<0.?plane:-plane;hitFace=nearFace;
+    }
+    exitDistance=min(exitDistance,farT);
+    return entry<=exitDistance;
+}
 bool intersectGrain(vec3 ro,vec3 rd,out vec3 hit,out vec3 normal){
     float entry=-1e20,exitDistance=1e20;vec3 face=vec3(0,0,1);
-    for(int i=0;i<14;++i){
-        vec3 plane=vec3(0);float extent;
-        if(i<6){int axis=i/2;plane[axis]=(i%2==0)?1.:-1.;extent=axis==0?.64:(axis==1?.55:.50);}
-        else{int k=i-6;plane=normalize(vec3(k%2==0?1.:-1.,(k/2)%2==0?1.:-1.,k<4?1.:-1.));extent=.64;}
-        extent*=mix(.92,1.,randomValue(identity+43u))*mix(.90,1.,randomValue(identity+uint(i)*73u+101u));
-        float denominator=dot(plane,rd),distance=extent-dot(plane,ro);
-        if(abs(denominator)<1e-7){if(distance<0.)return false;}
-        else{float t=distance/denominator;if(denominator<0.){if(t>entry){entry=t;face=plane;hitFace=i;}}else exitDistance=min(exitDistance,t);}
-        if(entry>exitDistance)return false;
-    }
-    if(entry>exitDistance||entry<0.)return false;
+    float grainSize=mix(.92,1.,randomValue(identity+43u));
+    vec2 extent;
+    extent=.64*(grainSize*mix(vec2(.90),vec2(1.),vec2(randomValue(identity+101u),randomValue(identity+174u))));
+    if(!clipGrainSlab(vec3(1.,0.,0.),extent,ivec2(0,1),ro,rd,entry,exitDistance,face))return false;
+    extent=.55*(grainSize*mix(vec2(.90),vec2(1.),vec2(randomValue(identity+247u),randomValue(identity+320u))));
+    if(!clipGrainSlab(vec3(0.,1.,0.),extent,ivec2(2,3),ro,rd,entry,exitDistance,face))return false;
+    extent=.50*(grainSize*mix(vec2(.90),vec2(1.),vec2(randomValue(identity+393u),randomValue(identity+466u))));
+    if(!clipGrainSlab(vec3(0.,0.,1.),extent,ivec2(4,5),ro,rd,entry,exitDistance,face))return false;
+    extent=.64*(grainSize*mix(vec2(.90),vec2(1.),vec2(randomValue(identity+539u),randomValue(identity+1050u))));
+    if(!clipGrainSlab(normalize(vec3(1.,1.,1.)),extent,ivec2(6,13),ro,rd,entry,exitDistance,face))return false;
+    extent=.64*(grainSize*mix(vec2(.90),vec2(1.),vec2(randomValue(identity+612u),randomValue(identity+977u))));
+    if(!clipGrainSlab(normalize(vec3(-1.,1.,1.)),extent,ivec2(7,12),ro,rd,entry,exitDistance,face))return false;
+    extent=.64*(grainSize*mix(vec2(.90),vec2(1.),vec2(randomValue(identity+685u),randomValue(identity+904u))));
+    if(!clipGrainSlab(normalize(vec3(1.,-1.,1.)),extent,ivec2(8,11),ro,rd,entry,exitDistance,face))return false;
+    extent=.64*(grainSize*mix(vec2(.90),vec2(1.),vec2(randomValue(identity+758u),randomValue(identity+831u))));
+    if(!clipGrainSlab(normalize(vec3(-1.,-1.,1.)),extent,ivec2(9,10),ro,rd,entry,exitDistance,face))return false;
+    if(entry<0.)return false;
     hit=ro+rd*entry;normal=face;return true;
 }
 
@@ -184,9 +211,11 @@ void main(){
     vec2 uv=(gl_FragCoord.xy-viewportOrigin)/resolution;
 #ifdef PASS_DEPTH
     vec3 ray=normalize(viewPosition(uv,1.));
-    mat3 rotation=mat3(view)*orientation(identity),inverseRotation=transpose(rotation);
+    mat3 rotation=mat3(view)*orientation(identity);
+    mat3 inverseRotation=transpose(rotation);
+    vec3 origin=inverseRotation*(-center/radius);
     vec3 hit,localNormal;
-    if(!intersectGrain(inverseRotation*(-center/radius),inverseRotation*ray,hit,localNormal))discard;
+    if(!intersectGrain(origin,inverseRotation*ray,hit,localNormal))discard;
     vec3 surface=center+rotation*hit*radius;
     vec4 clip=projection*vec4(surface,1);gl_FragDepth=clip.z/clip.w*.5+.5;
     vec3 normal=normalize(rotation*localNormal);
