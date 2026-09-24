@@ -126,6 +126,45 @@ public:
             }
         }
 
+        auto generationControls = [&](LiquidGpu& particles, const char* id) {
+            ImGui::PushID(id);
+            auto edit = [&](const char* label, glm::vec3& value, bool dimensions) {
+                const auto previous = value;
+                ImGui::SetNextItemWidth(210.f * scale);
+                if (ImGui::DragFloat3(label, &value.x, .05f, 0, 0, "%.3f"))
+                    for (int i = 0; i < 3; ++i)
+                        if (!std::isfinite(value[i]) || (dimensions && value[i] <= 0)) value[i] = previous[i];
+            };
+            edit(T("生成框位置", "Generation position"), particles.position, false);
+            edit(T("生成框大小", "Generation size"), particles.size, true);
+            ImGui::SetNextItemWidth(150.f * scale);
+            Number(T("粒子间距", "Particle spacing"), particles.spacing, .01f, .08f, .5f);
+            const auto count = particles.PreviewCount();
+            if (count == std::numeric_limits<uint64_t>::max())
+                ImGui::TextUnformatted(T("预生成: 超出计数范围", "Preview: exceeds count range"));
+            else ImGui::Text(T("预生成: %llu", "Preview: %llu"), static_cast<unsigned long long>(count));
+            ImGui::BeginDisabled(!particles.RequestedCount());
+            if (ImGui::Button(T("生成", "Generate"))) particles.Reset();
+            ImGui::EndDisabled();
+            if (count > LiquidGpu::MaxParticles)
+                ImGui::Text(T("超过容量: %u", "Exceeds capacity: %u"), LiquidGpu::MaxParticles);
+            ImGui::PopID();
+        };
+
+        if (scene.GetSceneIndex() == 3 && ImGui::CollapsingHeader(T("测试", "Test"), ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            auto testButton = [&](const char* label, int value) {
+                const bool selected = scene.GetParticleTest() == value;
+                if (selected) ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
+                if (ImGui::Button(label, ImVec2(80.0f * scale, 0))) scene.SetParticleTest(value);
+                if (selected) ImGui::PopStyleColor();
+                };
+            ImGui::PushID("ParticleTestButtons");
+            testButton(T("水体", "Water"), 0); ImGui::SameLine(); testButton(T("沙子", "Sand"), 1);
+            ImGui::PopID();
+
+        }
+
         if (scene.GetSceneIndex() == 2 && ImGui::CollapsingHeader(T("测试", "Test"), ImGuiTreeNodeFlags_DefaultOpen))
         {
             ImGui::BeginDisabled(!flowSimulation);
@@ -144,7 +183,32 @@ public:
             ImGui::EndDisabled();
         }
 
-        if (scene.GetSceneIndex() == 3 && ImGui::CollapsingHeader(T("GPU 粒子液体", "GPU particle liquid"), ImGuiTreeNodeFlags_DefaultOpen))
+        if (scene.GetSceneIndex() == 3 && scene.GetParticleTest() == 1 && ImGui::CollapsingHeader(T("GPU 粒子沙子", "GPU particle sand"), ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            ImGui::PushID("SandParameters");
+            if (auto* sand = scene.GetSand()) {
+                bool showBounds = sand->GetShowDebugBounds();
+                if (ImGui::Checkbox(T("沙子生成框", "Sand generation bounds"), &showBounds)) sand->SetShowDebugBounds(showBounds);
+                ImGui::SetNextItemWidth(160.f * scale);
+                int mode = scene.GetLiquidDisplayMode();
+                const char* modes[] = { T("渲染", "Render"), T("粒子", "Particles") };
+                if (ImGui::Combo(T("显示模式", "Display mode"), &mode, modes, 2)) scene.SetLiquidDisplayMode(mode);
+                float polygonScale = sand->SandRenderScale();
+                ImGui::BeginDisabled(mode != 0);
+                ImGui::SetNextItemWidth(160.f * scale);
+                if (ImGui::SliderFloat(T("多边形渲染缩放", "Polygon render scale"), &polygonScale, .5f, 2.5f, "%.2fx"))
+                    sand->SetSandRenderScale(polygonScale);
+                ImGui::EndDisabled();
+                generationControls(*sand, "SandGeneration");
+            }
+            else {
+                ImGui::TextUnformatted(T("沙子模拟需要 GPU 计算", "Sand simulation requires GPU compute"));
+                if (ImGui::Button(T("启用 GPU", "Enable GPU"))) scene.RequestGpu(true);
+            }
+            ImGui::PopID();
+        }
+
+        if (scene.GetSceneIndex() == 3 && scene.GetParticleTest() == 0 && ImGui::CollapsingHeader(T("GPU 粒子液体", "GPU particle liquid"), ImGuiTreeNodeFlags_DefaultOpen))
         {
             if (auto* liquid = scene.GetLiquid())
             {
@@ -165,11 +229,7 @@ public:
                     }
                     return changed;
                     };
-                editBoxVector(T("区域位置", "Region position"), liquid->position, 0, false);
-                ImGui::SetNextItemWidth(210.0f * scale);
-                editBoxVector(T("区域尺寸", "Region size"), liquid->size, .5f, true);
-                ImGui::SetNextItemWidth(150.0f * scale);
-                Number(T("粒子间距", "Particle spacing"), liquid->spacing, .01f, .08f, .5f);
+                generationControls(*liquid, "WaterGeneration");
                 auto containerPosition = liquid->ContainerPosition(), containerSize = liquid->ContainerSize();
                 ImGui::SetNextItemWidth(210.0f * scale);
                 bool containerChanged = editBoxVector(T("碰撞盒位置", "Container position"), containerPosition, 0, false);
@@ -212,12 +272,7 @@ public:
                 if (renderChanged)liquid->SetRenderParameters(render);
                 if (ImGui::Button(T("恢复渲染参数", "Reset rendering parameters")))liquid->SetRenderParameters(LiquidSurface::RenderParameters{});
                 ImGui::PopID();
-                const auto count = liquid->RequestedCount();
-                ImGui::Text(T("粒子: %u / 待生成: %u", "Particles: %u / Requested: %u"), liquid->Count(), count);
-                if (!count) ImGui::Text(T("请缩小区域或增大间距（最多 %u 粒）", "Reduce size or increase spacing (maximum %u particles)"), LiquidGpu::MaxParticles);
-                ImGui::BeginDisabled(!count);
-                if (ImGui::Button(T("生成 / 重置", "Generate / Reset"))) liquid->Reset();
-                ImGui::EndDisabled();
+
             }
             else
             {

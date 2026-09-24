@@ -129,8 +129,6 @@
     <PostBuildEvent>
       <Message>																						</Message>
       <Command>setlocal
-"C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_directory D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/Assets D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/build-flow/bin/Debug/Assets
-if %errorlevel% neq 0 goto :cmEnd
 "C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_if_different D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/../packages/glfw.3.4.0/build/native/bin/dynamic/v143/x64/glfw3.dll D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/build-flow/bin/Debug
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
@@ -399,8 +397,6 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <PostBuildEvent>
       <Message>																						</Message>
       <Command>setlocal
-"C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_directory D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/Assets D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/build-flow/bin/Release/Assets
-if %errorlevel% neq 0 goto :cmEnd
 "C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_if_different D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/../packages/glfw.3.4.0/build/native/bin/dynamic/v143/x64/glfw3.dll D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/build-flow/bin/Release
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
@@ -669,8 +665,6 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <PostBuildEvent>
       <Message>																						</Message>
       <Command>setlocal
-"C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_directory D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/Assets D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/build-flow/bin/MinSizeRel/Assets
-if %errorlevel% neq 0 goto :cmEnd
 "C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_if_different D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/../packages/glfw.3.4.0/build/native/bin/dynamic/v143/x64/glfw3.dll D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/build-flow/bin/MinSizeRel
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
@@ -938,8 +932,6 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <PostBuildEvent>
       <Message>																						</Message>
       <Command>setlocal
-"C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_directory D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/Assets D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/build-flow/bin/RelWithDebInfo/Assets
-if %errorlevel% neq 0 goto :cmEnd
 "C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E copy_if_different D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/../packages/glfw.3.4.0/build/native/bin/dynamic/v143/x64/glfw3.dll D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/build-flow/bin/RelWithDebInfo
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
@@ -1257,8 +1249,20 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Blast\BlastVoronoi.h" />
     <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Blast\RuntimeFractureWall.h" />
     <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Flow\FlowContext.h" />
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Flow\FlowGLInterop.h" />
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Flow\FlowRigidColliders.h" />
     <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Flow\FlowSimulation.h" />
     <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Flow\FlowVolumeRenderer.h" />
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Flow\FlowVoxelRenderer.h" />
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Flow\Gpu\FlowVoxelCS_vulkan.hlsl.h" />
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Particle\LiquidGpu.h" />
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Particle\LiquidGpuTimer.h" />
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Particle\LiquidLighting.h" />
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Particle\LiquidParticleCleanup.h" />
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Particle\LiquidParticleCleanupPtx.h" />
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Particle\LiquidSurface.h" />
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Particle\LiquidWhitewater.h" />
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Particle\SandLighting.h" />
     <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\PhysicsWorld\PhysicsWorld.h" />
     <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\RigidBody\CollisionLibrary.h" />
     <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\RigidBody\RigidBody.h" />
@@ -1276,6 +1280,12 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ProjectReference Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\ZERO_CHECK.vcxproj">
       <Project>{1F9D3BC3-7089-3905-A18D-C0C6C9F07DEE}</Project>
       <Name>ZERO_CHECK</Name>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </ProjectReference>
+    <ProjectReference Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\build-flow\SyncAssets.vcxproj">
+      <Project>{EDC00927-D975-328E-ACE7-9981F2210D2A}</Project>
+      <Name>SyncAssets</Name>
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </ProjectReference>

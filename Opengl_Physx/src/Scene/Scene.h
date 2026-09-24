@@ -46,6 +46,7 @@ public:
         ClearSelection();
         waterFiring = false; waterRemainder = 0;
         if (liquid) liquid->ClearForSceneChange();
+        if (sand) sand->ClearForSceneChange();
         liquidPhysicsStepMs = 0;
         softBodies.clear();
         bodies.clear();
@@ -70,7 +71,12 @@ public:
             SetGroundHalfExtent(15.0f);
             if (world.GetCuda())
             {
-                if (!liquid) {
+                if (particleTest != 0) {
+                    if (!sand) sand = std::make_unique<LiquidGpu>(world, false, true);
+                    sand->ResetSandTest();
+                    sand->SetDisplayMode(liquidDisplayMode);
+                }
+                else if (!liquid) {
                     liquid = std::make_unique<LiquidGpu>(world);
                     liquid->SetDisplayMode(liquidDisplayMode);
                 }
@@ -261,8 +267,9 @@ public:
         {
             world.Update(deltaTime, [this](float step) {if (selectedSoft) selectedSoft->UpdateDrag(step); if (waterFiring) EmitWater(waterOrigin, waterDirection, step); });
             if (liquid && liquid->Count()) liquid->CleanupFallenParticles();
+            if (sand && sand->Count()) sand->CleanupFallenParticles();
             frameSimulationMs = world.GetLastSimulationMs(); frameSteps = world.GetLastSteps();
-            if (liquid && liquid->Count() && frameSteps) liquidPhysicsStepMs = frameSimulationMs / frameSteps;
+            if (GetSimulationParticleCount() && frameSteps) liquidPhysicsStepMs = frameSimulationMs / frameSteps;
         }
         SyncSoftBodies();
         bodies.erase(std::remove_if(bodies.begin(), bodies.end(), [this](const auto& body)
@@ -301,6 +308,11 @@ public:
         for (const auto& batch : softRenderBatches) renderer.DrawMesh(*batch.mesh, glm::mat4(1), batch.material);
         if (externalDraw) externalDraw(renderer, false);
         if (liquid && liquid->Count()) liquid->Draw(camera, width, height);
+        if (sand && sand->Count()) sand->Draw(camera, width, height);
+        if (sceneIndex == 3) {
+            if (particleTest == 0 && liquid) liquid->DrawDebugBounds(camera, width, height);
+            if (particleTest == 1 && sand) sand->DrawDebugBounds(camera, width, height);
+        }
         std::vector<const physx::PxRigidActor*> visibleCollisions;
         for (const auto& object : bodies) if (object.showMesh) visibleCollisions.push_back(object.body->GetActor());
         if (externalCollisions) externalCollisions(visibleCollisions, showCollisions);
@@ -434,17 +446,26 @@ public:
         sceneIndex = value;
         Reset();
     }
+    int GetParticleTest() const { return particleTest; }
+    void SetParticleTest(int value) {
+        if (sceneIndex != 3 || value < 0 || value > 1 || value == particleTest) return;
+        particleTest = value; Reset();
+    }
+    LiquidGpu* GetSand() { return sand.get(); }
+    const LiquidGpu* GetSand() const { return sand.get(); }
+    unsigned GetSimulationParticleCount() const { return GetWaterCount() + (sand ? sand->Count() : 0); }
     int GetLiquidDisplayMode() const { return liquid ? liquid->DisplayMode() : liquidDisplayMode; }
     void SetLiquidDisplayMode(int mode)
     {
         if (mode != 0 && mode != 1) return;
         liquidDisplayMode = mode;
         if (liquid) liquid->SetDisplayMode(mode);
+        if (sand) sand->SetDisplayMode(mode);
     }
     // Runtime statistics are global; the editor separately restricts the liquid panel to scene 4.
     LiquidGpu* GetLiquid() { return liquid.get(); }
     const LiquidGpu* GetLiquid() const { return liquid.get(); }
-    double GetLiquidPhysicsStepMs() const { return GetLiquid() && liquid->Count() && !paused ? liquidPhysicsStepMs : 0; }
+    double GetLiquidPhysicsStepMs() const { return GetSimulationParticleCount() && !paused ? liquidPhysicsStepMs : 0; }
     bool SoftBodiesAvailable() const { return world.GetCuda() != nullptr; }
     std::vector<physx::PxRigidActor*> GetSoftFlowColliders()
     {
@@ -507,7 +528,7 @@ public:
         if (selectedSoft) selectedSoft->StopDrag();
     }
     bool IsPaused() const { return paused; }
-    void SingleStep() { SetPaused(true); world.SingleStep(); if (liquid) liquid->CleanupFallenParticles(); }
+    void SingleStep() { SetPaused(true); world.SingleStep(); if (liquid) liquid->CleanupFallenParticles(); if (sand) sand->CleanupFallenParticles(); }
     std::size_t GetBodyCount() const { return bodies.size() + 1; }
 
     unsigned int GetSoftIterations() const { return softIterations; }
@@ -1097,6 +1118,8 @@ private:
     std::uint64_t version = 0;
     PhysicsWorld world;
     std::unique_ptr<LiquidGpu> liquid;
+    std::unique_ptr<LiquidGpu> sand;
+    int particleTest = 0;
     SoftMeshLibrary softModels{ world.GetPhysics() };
     ModelLibrary models;
     std::array<ModelData, static_cast<std::size_t>(ModelType::Count)> rigidRenderSources;

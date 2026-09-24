@@ -43,6 +43,7 @@ set(OLD_GLOB
   "D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/Particle/LiquidParticleCleanupPtx.h"
   "D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/Particle/LiquidSurface.h"
   "D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/Particle/LiquidWhitewater.h"
+  "D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/Particle/SandLighting.h"
   "D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/PhysicsWorld/PhysicsWorld.h"
   "D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/RigidBody/CollisionLibrary.h"
   "D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/RigidBody/RigidBody.h"

@@ -10,7 +10,7 @@
 					"jsonFile" : "directory-.-Debug-f040eec181a89de70dbe.json",
 					"minimumCMakeVersion" : 
 					{
-						"string" : "3.25"
+						"string" : "3.26"
 					},
 					"projectIndex" : 0,
 					"source" : ".",
@@ -18,7 +18,8 @@
 					[
 						0,
 						1,
-						2
+						2,
+						3
 					]
 				}
 			],
@@ -35,7 +36,8 @@
 					[
 						0,
 						1,
-						2
+						2,
+						3
 					]
 				}
 			],
@@ -44,21 +46,28 @@
 				{
 					"directoryIndex" : 0,
 					"id" : "ALL_BUILD::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-ALL_BUILD-Debug-1a6e069d77056de6d8f9.json",
+					"jsonFile" : "target-ALL_BUILD-Debug-cd5efee4cf95ae1aa358.json",
 					"name" : "ALL_BUILD",
 					"projectIndex" : 0
 				},
 				{
 					"directoryIndex" : 0,
 					"id" : "Opengl_Physx::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-Opengl_Physx-Debug-950789ce2aef7f80cb82.json",
+					"jsonFile" : "target-Opengl_Physx-Debug-12b9e88cefe60674cf7c.json",
 					"name" : "Opengl_Physx",
 					"projectIndex" : 0
 				},
 				{
 					"directoryIndex" : 0,
+					"id" : "SyncAssets::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-SyncAssets-Debug-9328eb02fb5f09255d16.json",
+					"name" : "SyncAssets",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
 					"id" : "ZERO_CHECK::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-ZERO_CHECK-Debug-c156112c3547c8e85652.json",
+					"jsonFile" : "target-ZERO_CHECK-Debug-51fe6d9c6f071c383d5f.json",
 					"name" : "ZERO_CHECK",
 					"projectIndex" : 0
 				}
@@ -73,7 +82,7 @@
 					"jsonFile" : "directory-.-Release-f040eec181a89de70dbe.json",
 					"minimumCMakeVersion" : 
 					{
-						"string" : "3.25"
+						"string" : "3.26"
 					},
 					"projectIndex" : 0,
 					"source" : ".",
@@ -81,7 +90,8 @@
 					[
 						0,
 						1,
-						2
+						2,
+						3
 					]
 				}
 			],
@@ -98,7 +108,8 @@
 					[
 						0,
 						1,
-						2
+						2,
+						3
 					]
 				}
 			],
@@ -107,21 +118,28 @@
 				{
 					"directoryIndex" : 0,
 					"id" : "ALL_BUILD::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-ALL_BUILD-Release-1a6e069d77056de6d8f9.json",
+					"jsonFile" : "target-ALL_BUILD-Release-cd5efee4cf95ae1aa358.json",
 					"name" : "ALL_BUILD",
 					"projectIndex" : 0
 				},
 				{
 					"directoryIndex" : 0,
 					"id" : "Opengl_Physx::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-Opengl_Physx-Release-70a29e38c7978ad9a4e3.json",
+					"jsonFile" : "target-Opengl_Physx-Release-45ec66cf3dabeab15552.json",
 					"name" : "Opengl_Physx",
 					"projectIndex" : 0
 				},
 				{
 					"directoryIndex" : 0,
+					"id" : "SyncAssets::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-SyncAssets-Release-9328eb02fb5f09255d16.json",
+					"name" : "SyncAssets",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
 					"id" : "ZERO_CHECK::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-ZERO_CHECK-Release-c156112c3547c8e85652.json",
+					"jsonFile" : "target-ZERO_CHECK-Release-51fe6d9c6f071c383d5f.json",
 					"name" : "ZERO_CHECK",
 					"projectIndex" : 0
 				}
@@ -136,7 +154,7 @@
 					"jsonFile" : "directory-.-MinSizeRel-f040eec181a89de70dbe.json",
 					"minimumCMakeVersion" : 
 					{
-						"string" : "3.25"
+						"string" : "3.26"
 					},
 					"projectIndex" : 0,
 					"source" : ".",
@@ -144,7 +162,8 @@
 					[
 						0,
 						1,
-						2
+						2,
+						3
 					]
 				}
 			],
@@ -161,7 +180,8 @@
 					[
 						0,
 						1,
-						2
+						2,
+						3
 					]
 				}
 			],
@@ -170,21 +190,28 @@
 				{
 					"directoryIndex" : 0,
 					"id" : "ALL_BUILD::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-ALL_BUILD-MinSizeRel-1a6e069d77056de6d8f9.json",
+					"jsonFile" : "target-ALL_BUILD-MinSizeRel-cd5efee4cf95ae1aa358.json",
 					"name" : "ALL_BUILD",
 					"projectIndex" : 0
 				},
 				{
 					"directoryIndex" : 0,
 					"id" : "Opengl_Physx::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-Opengl_Physx-MinSizeRel-0d3bb917ff28a1f0a05a.json",
+					"jsonFile" : "target-Opengl_Physx-MinSizeRel-133a522a7dd76efef106.json",
 					"name" : "Opengl_Physx",
 					"projectIndex" : 0
 				},
 				{
 					"directoryIndex" : 0,
+					"id" : "SyncAssets::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-SyncAssets-MinSizeRel-9328eb02fb5f09255d16.json",
+					"name" : "SyncAssets",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
 					"id" : "ZERO_CHECK::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-ZERO_CHECK-MinSizeRel-c156112c3547c8e85652.json",
+					"jsonFile" : "target-ZERO_CHECK-MinSizeRel-51fe6d9c6f071c383d5f.json",
 					"name" : "ZERO_CHECK",
 					"projectIndex" : 0
 				}
@@ -199,7 +226,7 @@
 					"jsonFile" : "directory-.-RelWithDebInfo-f040eec181a89de70dbe.json",
 					"minimumCMakeVersion" : 
 					{
-						"string" : "3.25"
+						"string" : "3.26"
 					},
 					"projectIndex" : 0,
 					"source" : ".",
@@ -207,7 +234,8 @@
 					[
 						0,
 						1,
-						2
+						2,
+						3
 					]
 				}
 			],
@@ -224,7 +252,8 @@
 					[
 						0,
 						1,
-						2
+						2,
+						3
 					]
 				}
 			],
@@ -233,21 +262,28 @@
 				{
 					"directoryIndex" : 0,
 					"id" : "ALL_BUILD::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-ALL_BUILD-RelWithDebInfo-1a6e069d77056de6d8f9.json",
+					"jsonFile" : "target-ALL_BUILD-RelWithDebInfo-cd5efee4cf95ae1aa358.json",
 					"name" : "ALL_BUILD",
 					"projectIndex" : 0
 				},
 				{
 					"directoryIndex" : 0,
 					"id" : "Opengl_Physx::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-Opengl_Physx-RelWithDebInfo-107a35181cd75a2cfd5e.json",
+					"jsonFile" : "target-Opengl_Physx-RelWithDebInfo-be497129c5f7ba3b6d17.json",
 					"name" : "Opengl_Physx",
 					"projectIndex" : 0
 				},
 				{
 					"directoryIndex" : 0,
+					"id" : "SyncAssets::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-SyncAssets-RelWithDebInfo-9328eb02fb5f09255d16.json",
+					"name" : "SyncAssets",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
 					"id" : "ZERO_CHECK::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-ZERO_CHECK-RelWithDebInfo-c156112c3547c8e85652.json",
+					"jsonFile" : "target-ZERO_CHECK-RelWithDebInfo-51fe6d9c6f071c383d5f.json",
 					"name" : "ZERO_CHECK",
 					"projectIndex" : 0
 				}

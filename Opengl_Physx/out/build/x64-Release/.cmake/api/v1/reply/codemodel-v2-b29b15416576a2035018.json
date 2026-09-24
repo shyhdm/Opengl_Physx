@@ -10,13 +10,14 @@
 					"jsonFile" : "directory-.-Release-f040eec181a89de70dbe.json",
 					"minimumCMakeVersion" : 
 					{
-						"string" : "3.25"
+						"string" : "3.26"
 					},
 					"projectIndex" : 0,
 					"source" : ".",
 					"targetIndexes" : 
 					[
-						0
+						0,
+						1
 					]
 				}
 			],
@@ -31,7 +32,8 @@
 					"name" : "Opengl_Physx",
 					"targetIndexes" : 
 					[
-						0
+						0,
+						1
 					]
 				}
 			],
@@ -40,8 +42,15 @@
 				{
 					"directoryIndex" : 0,
 					"id" : "Opengl_Physx::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-Opengl_Physx-Release-39f3ec2c56692eadac85.json",
+					"jsonFile" : "target-Opengl_Physx-Release-ff8975fc63af1ac186ef.json",
 					"name" : "Opengl_Physx",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "SyncAssets::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-SyncAssets-Release-b7994bb5c24f72119157.json",
+					"name" : "SyncAssets",
 					"projectIndex" : 0
 				}
 			]

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.25)
+cmake_minimum_required(VERSION 3.26)
 project(Opengl_Physx LANGUAGES CXX)
 
 if(NOT WIN32 OR NOT MSVC OR NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
@@ -112,10 +112,18 @@ set_target_properties(Opengl_Physx PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
 )
 
-add_custom_command(TARGET Opengl_Physx POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
+# Check assets whenever the application target is built, even if no C++ input
+# changed. This copies only changed files and does not trigger reconfiguration.
+add_custom_target(SyncAssets
+    COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different
         "${APP_SOURCE_DIR}/Assets"
         "$<TARGET_FILE_DIR:Opengl_Physx>/Assets"
+    COMMENT "Syncing changed application assets"
+    VERBATIM
+)
+add_dependencies(Opengl_Physx SyncAssets)
+
+add_custom_command(TARGET Opengl_Physx POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${GLFW_ROOT}/bin/dynamic/v143/x64/glfw3.dll"
         "$<TARGET_FILE_DIR:Opengl_Physx>"
