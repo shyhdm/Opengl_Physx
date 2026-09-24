@@ -11,7 +11,6 @@
 #include <mutex>
 #include <stdexcept>
 #include <vector>
-#include <fstream>
 #include "CollisionLibrary.h"
 
 class PhysicsWorld
@@ -265,12 +264,7 @@ private:
     };
 
     physx::PxDefaultAllocator allocator;
-    class LoggedErrors : public physx::PxDefaultErrorCallback {
-        void reportError(physx::PxErrorCode::Enum code, const char* message, const char* file, int line) override {
-            std::ofstream("liquid_debug.log", std::ios::app) << "PhysX code=" << int(code) << " message=" << (message ? message : "") << " file=" << (file ? file : "") << ":" << line << "\n";
-            physx::PxDefaultErrorCallback::reportError(code, message, file, line);
-        }
-    } errors;
+    physx::PxDefaultErrorCallback errors;
     ContactCollector contacts;
     physx::PxFoundation* foundation = nullptr;
     physx::PxPhysics* physics = nullptr;
