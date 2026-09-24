@@ -2,10 +2,10 @@
 	"artifacts" : 
 	[
 		{
-			"path" : "bin/Release/Opengl_Physx.exe"
+			"path" : "bin/Debug/Opengl_Physx.exe"
 		},
 		{
-			"path" : "bin/Release/Opengl_Physx.pdb"
+			"path" : "bin/Debug/Opengl_Physx.pdb"
 		}
 	],
 	"backtrace" : 1,
@@ -99,7 +99,7 @@
 			"compileCommandFragments" : 
 			[
 				{
-					"fragment" : "/DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -std:c++20 -MD"
+					"fragment" : "/DWIN32 /D_WINDOWS /EHsc /Ob0 /Od /RTC1 -std:c++20 -MDd -Zi"
 				},
 				{
 					"backtrace" : 6,
@@ -269,11 +269,11 @@
 		"commandFragments" : 
 		[
 			{
-				"fragment" : "/DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -MD",
+				"fragment" : "/DWIN32 /D_WINDOWS /EHsc /Ob0 /Od /RTC1 -MDd -Zi",
 				"role" : "flags"
 			},
 			{
-				"fragment" : "/machine:x64 /INCREMENTAL:NO",
+				"fragment" : "/machine:x64 /debug /INCREMENTAL",
 				"role" : "flags"
 			},
 			{
@@ -540,7 +540,8 @@
 				57,
 				58,
 				59,
-				60
+				60,
+				61
 			]
 		}
 	],
@@ -796,6 +797,11 @@
 		{
 			"backtrace" : 9,
 			"path" : "src/Physics/Particle/SandLighting.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 9,
+			"path" : "src/Physics/Particle/SandOcclusion.h",
 			"sourceGroupIndex" : 1
 		},
 		{

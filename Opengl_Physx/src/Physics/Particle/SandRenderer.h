@@ -2,6 +2,7 @@
 #include "Shader.h"
 #include "Camera.h"
 #include "LiquidGpuTimer.h"
+#include "SandOcclusion.h"
 #include <algorithm>
 #include <cmath>
 
@@ -28,7 +29,7 @@ public:
         p.sunElevation=bound(p.sunElevation,5,85,fallback.sunElevation);
         return p;
     }
-    SandRenderer():shader_("Assets/Shaders/sand_granular.glsl",{"DEPTH","SHADE"}) {
+    SandRenderer():shader_("Assets/Shaders/sand_granular.glsl",{"DEPTH","SHADE","OCCLUDER"}) {
         GL::LoadFunction(drawBuffers_,"glDrawBuffers");
         GL::LoadFunction(divisor_,"glVertexAttribDivisor");
         GL::LoadFunction(integerPointer_,"glVertexAttribIPointer");
@@ -73,7 +74,16 @@ public:
         glEnable(GL_DEPTH_TEST);glDepthFunc(GL_LESS);glDepthMask(GL_TRUE);glColorMask(GL_TRUE,GL_TRUE,GL_TRUE,GL_TRUE);
         depthTimer_.Begin();
         glClearDepth(1);glClearColor(0,0,0,0);glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-        common("DEPTH");shader_.SetFloat("microScale",p.microScale);shader_.SetVector2("viewportOrigin",glm::vec2(0));instanced_(GL_TRIANGLE_STRIP,0,4,count);depthTimer_.End();
+        const bool useOcclusion=count>=8192;
+        if(useOcclusion){
+        common("OCCLUDER");shader_.SetVector2("viewportOrigin",glm::vec2(0));
+        glColorMask(GL_FALSE,GL_FALSE,GL_FALSE,GL_FALSE);
+        GLboolean pointSize=glIsEnabled(0x8642);glEnable(0x8642);divisor_(0,0);divisor_(2,0);
+        glDrawArrays(GL_POINTS,0,count);divisor_(0,1);divisor_(2,1);State::Enable(0x8642,pointSize);
+        occlusion_.BuildDepth(textures_[0],width,height);
+        glColorMask(GL_TRUE,GL_TRUE,GL_TRUE,GL_TRUE);glClear(GL_DEPTH_BUFFER_BIT);
+        }
+        common("DEPTH");shader_.SetInt("useOcclusion",useOcclusion?1:0);shader_.SetInt("occlusionDepth",11);shader_.SetFloat("microScale",p.microScale);shader_.SetVector2("viewportOrigin",glm::vec2(0));instanced_(GL_TRIANGLE_STRIP,0,4,count);depthTimer_.End();
         GL::BindFramebuffer(0x8CA8,state.readFbo);GL::BindFramebuffer(0x8CA9,state.drawFbo);
         glViewport(state.viewport[0],state.viewport[1],state.viewport[2],state.viewport[3]);State::Enable(GL_SCISSOR_TEST,state.scissor);
         State::Enable(0x8DB9,state.srgb);
@@ -89,10 +99,10 @@ public:
     }
 private:
     struct State {
-        GLint readFbo{},drawFbo{},active{},textures[4]{},viewport[4]{},depthFunc{},program{},vao{},buffer{};
+        GLint readFbo{},drawFbo{},active{},occlusionTexture{},textures[4]{},viewport[4]{},depthFunc{},program{},vao{},buffer{};
         GLboolean depthMask{},depthTest{},scissor{},blend{},cull{},srgb{},colorMask[4]{};GLdouble clearDepth{};GLfloat clearColor[4]{};
         State(){
-            glGetIntegerv(0x8CAA,&readFbo);glGetIntegerv(0x8CA6,&drawFbo);glGetIntegerv(0x84E0,&active);
+            glGetIntegerv(0x8CAA,&readFbo);glGetIntegerv(0x8CA6,&drawFbo);glGetIntegerv(0x84E0,&active);GL::ActiveTexture(0x84C0+11);glGetIntegerv(GL_TEXTURE_BINDING_2D,&occlusionTexture);
             for(int i=0;i<4;++i){GL::ActiveTexture(0x84C0+12+i);glGetIntegerv(GL_TEXTURE_BINDING_2D,&textures[i]);}
             glGetIntegerv(GL_VIEWPORT,viewport);glGetIntegerv(GL_DEPTH_FUNC,&depthFunc);glGetIntegerv(0x8B8D,&program);
             glGetIntegerv(0x85B5,&vao);glGetIntegerv(0x8894,&buffer);glGetBooleanv(GL_DEPTH_WRITEMASK,&depthMask);
@@ -104,10 +114,11 @@ private:
             GL::BindFramebuffer(0x8CA8,readFbo);GL::BindFramebuffer(0x8CA9,drawFbo);glViewport(viewport[0],viewport[1],viewport[2],viewport[3]);
             glDepthFunc(depthFunc);glDepthMask(depthMask);glClearDepth(clearDepth);glClearColor(clearColor[0],clearColor[1],clearColor[2],clearColor[3]);
             glColorMask(colorMask[0],colorMask[1],colorMask[2],colorMask[3]);Enable(GL_DEPTH_TEST,depthTest);Enable(GL_SCISSOR_TEST,scissor);Enable(GL_BLEND,blend);Enable(GL_CULL_FACE,cull);Enable(0x8DB9,srgb);
-            for(int i=0;i<4;++i){GL::ActiveTexture(0x84C0+12+i);glBindTexture(GL_TEXTURE_2D,textures[i]);}GL::ActiveTexture(active);
+            for(int i=0;i<4;++i){GL::ActiveTexture(0x84C0+12+i);glBindTexture(GL_TEXTURE_2D,textures[i]);}GL::ActiveTexture(0x84C0+11);glBindTexture(GL_TEXTURE_2D,occlusionTexture);GL::ActiveTexture(active);
             GL::BindVertexArray(vao);GL::BindBuffer(GL::ArrayBuffer,buffer);GL::UseProgram(program);
         }
     };
+    SandOcclusion occlusion_;
     LiquidGpuTimer depthTimer_, shadeTimer_;
     Shader shader_;GLuint vao_{},fbo_{},textures_[4]{};int width_{},height_{};
     void(APIENTRY* drawBuffers_)(GLsizei,const GLenum*)=nullptr;

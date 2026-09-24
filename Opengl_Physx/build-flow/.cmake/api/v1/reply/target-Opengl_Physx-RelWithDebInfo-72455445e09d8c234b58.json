@@ -540,7 +540,8 @@
 				57,
 				58,
 				59,
-				60
+				60,
+				61
 			]
 		}
 	],
@@ -796,6 +797,11 @@
 		{
 			"backtrace" : 9,
 			"path" : "src/Physics/Particle/SandLighting.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 9,
+			"path" : "src/Physics/Particle/SandOcclusion.h",
 			"sourceGroupIndex" : 1
 		},
 		{

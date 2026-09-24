@@ -5,6 +5,8 @@
 uniform mat4 view, projection, inverseProjection;
 uniform vec2 resolution, viewportOrigin;
 uniform float radius;
+uniform sampler2D occlusionDepth;
+uniform int useOcclusion;
 uint hash32(uint x){x^=x>>16u;x*=0x7feb352du;x^=x>>15u;x*=0x846ca68bu;return x^(x>>16u);}
 float randomValue(uint x){return float(hash32(x)>>8u)*(1./16777216.);}
 mat3 orientation(uint id){
@@ -25,6 +27,17 @@ void main(){
     gl_Position=vec4(p,-1,1);return;
 #else
     identity=particleId;center=(view*vec4(position.xyz,1)).xyz;
+#ifdef PASS_OCCLUDER
+    // A sphere of radius .41 lies strictly inside every randomized grain.
+    float innerRadius=radius*.41;
+    vec4 clip=projection*vec4(center,1);
+    gl_PointSize=clamp(resolution.y*projection[1][1]*innerRadius/max(-center.z-innerRadius,.001),1.,256.);
+    vec4 front=projection*vec4(center+vec3(0,0,innerRadius),1);
+    if(front.w>0.)clip.z=max(-clip.w,front.z/front.w*clip.w);
+    // Missing small/off-screen point occluders only reduces culling efficiency.
+    if(-center.z<=radius||radius*projection[1][1]*resolution.y/max(-center.z,.01)<=8.)clip=vec4(2,2,2,1);
+    gl_Position=clip;return;
+#else
     int largeGrain=radius*projection[1][1]*resolution.y/max(-center.z,.01)>8.?1:0;
     mat3 grainRotation=mat3(1); float grainExtent[6];
     float frontOffset=radius;
@@ -61,6 +74,20 @@ void main(){
         lower=min(lower,ndc);upper=max(upper,ndc);
     }
     if(safe&&clip.w>0.){
+        // Four max-depth texels cover the complete projected box at this level.
+        // Include a pixel guard for rasterization and a depth guard for rounding.
+        if(useOcclusion!=0&&-center.z>radius){
+            vec2 lowPixel=clamp((lower*.5+.5)*resolution-2.,vec2(0),resolution-1.);
+            vec2 highPixel=clamp((upper*.5+.5)*resolution+2.,vec2(0),resolution-1.);
+            float span=max(highPixel.x-lowPixel.x,highPixel.y-lowPixel.y)+1.;
+            int level=int(ceil(log2(max(span,1.))));
+            ivec2 lo=ivec2(floor(lowPixel/exp2(float(level))));
+            ivec2 hi=ivec2(floor(highPixel/exp2(float(level))));
+            float d=max(max(texelFetch(occlusionDepth,lo,level).r,texelFetch(occlusionDepth,ivec2(hi.x,lo.y),level).r),
+                        max(texelFetch(occlusionDepth,ivec2(lo.x,hi.y),level).r,texelFetch(occlusionDepth,hi,level).r));
+            vec4 nearest=projection*vec4(center+vec3(0,0,frontOffset),1);
+            if(nearest.z/nearest.w*.5+.5>d+.000002){gl_Position=vec4(2,2,2,1);return;}
+        }
         vec2 bound=mix(lower,upper,corner*.5+.5)+corner*(2./resolution);
         vec2 previous=clip.xy/clip.w;
         clip.xy=vec2(corner.x<0.?max(previous.x,bound.x):min(previous.x,bound.x),
@@ -73,6 +100,7 @@ void main(){
     if(front.w>0.)clip.z=max(-clip.w,front.z/front.w*clip.w);
     if(center.z>radius)clip=vec4(2,2,2,1);
     gl_Position=clip;
+#endif
 #endif
 }
 #endif
@@ -209,6 +237,15 @@ vec2 microAppearance(vec3 hit,vec3 normal,mat3 rotation,vec3 l,vec3 v){
 }
 void main(){
     vec2 uv=(gl_FragCoord.xy-viewportOrigin)/resolution;
+#ifdef PASS_OCCLUDER
+    vec3 ray=normalize(viewPosition(uv,1.));
+    float along=dot(center,ray),innerRadius=radius*.41;
+    vec3 offset=center-ray*along;
+    float discriminant=innerRadius*innerRadius-dot(offset,offset);
+    if(discriminant<=0.)discard;
+    float t=along-sqrt(discriminant);if(t<=0.)discard;
+    vec4 clip=projection*vec4(ray*t,1);gl_FragDepth=clip.z/clip.w*.5+.5;return;
+#endif
 #ifdef PASS_DEPTH
     vec3 ray=normalize(viewPosition(uv,1.));
     mat3 rotation=mat3(view)*orientation(identity);

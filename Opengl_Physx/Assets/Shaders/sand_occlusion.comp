@@ -1,0 +1,21 @@
+#version 430 core
+layout(local_size_x=8,local_size_y=8) in;
+layout(r32f,binding=0) writeonly uniform image2D destination;
+uniform sampler2D sourceDepth;
+uniform vec2 sourceSize;
+uniform int sourceLevel;
+void main(){
+    ivec2 p=ivec2(gl_GlobalInvocationID.xy);
+    if(any(greaterThanEqual(p,imageSize(destination))))return;
+    float depth=1.;
+    if(sourceLevel<0){
+        if(all(lessThan(p,ivec2(sourceSize))))depth=texelFetch(sourceDepth,p,0).r;
+    }else{
+        ivec2 q=p*2,hi=textureSize(sourceDepth,sourceLevel)-1;
+        depth=max(max(texelFetch(sourceDepth,min(q,hi),sourceLevel).r,
+                      texelFetch(sourceDepth,min(q+ivec2(1,0),hi),sourceLevel).r),
+                  max(texelFetch(sourceDepth,min(q+ivec2(0,1),hi),sourceLevel).r,
+                      texelFetch(sourceDepth,min(q+ivec2(1),hi),sourceLevel).r));
+    }
+    imageStore(destination,p,vec4(depth));
+}
