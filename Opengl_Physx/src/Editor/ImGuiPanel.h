@@ -94,14 +94,33 @@ public:
             }
             bool showGround = scene.GetShowGround();
             if (ImGui::Checkbox(T("地面", "Ground"), &showGround)) scene.SetShowGround(showGround);
+            ImGui::SetNextItemWidth(160.0f * scale);
+            int globalLiquidDisplay = scene.GetLiquidDisplayMode();
+            const char* globalLiquidModes[] = { T("渲染", "Render"), T("粒子", "Particles") };
+            if (ImGui::Combo(T("粒子显示模式", "Particle display mode"), &globalLiquidDisplay, globalLiquidModes, 2))
+                scene.SetLiquidDisplayMode(globalLiquidDisplay);
             if (ImGui::TreeNode(T("发射", "Launch")))
             {
-                float speed = scene.GetLaunchSpeed(), size = scene.GetLaunchScale(), mass = scene.GetLaunchMass();
                 ImGui::PushItemWidth(160.0f * scale);
-                bool launchChanged = Number(T("速度", "Speed"), speed, 0.25f, 0.0f, 100.0f);
-                launchChanged |= Number(T("发射大小", "Launch size"), size, 0.05f, 0.1f, 10.0f);
-                launchChanged |= Number(T("质量 (kg)", "Mass (kg)"), mass, 0.05f, 0.01f, 10000.0f);
-                if (launchChanged) scene.SetLaunchSettings(speed, size, mass);
+                int launchKind = scene.GetLaunchKind();
+                const char* launchKinds[] = { T("物体", "Object"), T("水体", "Water") };
+                if (ImGui::Combo(T("发射物", "Projectile"), &launchKind, launchKinds, 2)) scene.SetLaunchKind(launchKind);
+                if (launchKind == 0) {
+                    float speed = scene.GetLaunchSpeed(), size = scene.GetLaunchScale(), mass = scene.GetLaunchMass();
+                    bool launchChanged = Number(T("速度", "Speed"), speed, 0.25f, 0.0f, 100.0f);
+                    launchChanged |= Number(T("发射大小", "Launch size"), size, 0.05f, 0.1f, 10.0f);
+                    launchChanged |= Number(T("质量 (kg)", "Mass (kg)"), mass, 0.05f, 0.01f, 10000.0f);
+                    if (launchChanged) scene.SetLaunchSettings(speed, size, mass);
+                }
+                else {
+                    float speed = scene.GetWaterSpeed(), rate = scene.GetWaterRate(), radius = scene.GetWaterRadius();
+                    ImGui::BeginDisabled(!scene.SoftBodiesAvailable());
+                    bool changed = Number(T("速度", "Speed"), speed, .25f, 0.f, 100.f);
+                    changed |= Number(T("喷射量 (粒/秒)", "Emission (particles/s)"), rate, 100.f, 1.f, 1000000.f);
+                    changed |= Number(T("发射半径", "Emission radius"), radius, .05f, .1f, 5.f);
+                    if (changed) scene.SetWaterSettings(speed, rate, radius);
+                    ImGui::EndDisabled();
+                }
                 ImGui::PopItemWidth();
                 ImGui::TreePop();
             }
@@ -133,9 +152,9 @@ public:
                 bool showBounds = liquid->GetShowDebugBounds();
                 if (ImGui::Checkbox(T("水体调试框", "Liquid debug bounds"), &showBounds)) liquid->SetShowDebugBounds(showBounds);
                 ImGui::SetNextItemWidth(210.0f * scale);
-                int liquidDisplay = liquid->DisplayMode();
+                int liquidDisplay = scene.GetLiquidDisplayMode();
                 const char* liquidModes[] = { T("渲染", "Render"),T("粒子", "Particles") };
-                if (ImGui::Combo(T("显示模式", "Display mode"), &liquidDisplay, liquidModes, 2))liquid->SetDisplayMode(liquidDisplay);
+                if (ImGui::Combo(T("显示模式", "Display mode"), &liquidDisplay, liquidModes, 2))scene.SetLiquidDisplayMode(liquidDisplay);
                 ImGui::SetNextItemWidth(210.0f * scale);
                 auto editBoxVector = [](const char* label, glm::vec3& value, float minimum, bool sizeValue) {
                     const auto previous = value;

@@ -44,21 +44,7 @@ public:
             collisions = std::make_unique<CollisionLibrary>(*physics);
             dispatcher = PxDefaultCpuDispatcherCreate(2);
             if (!dispatcher) throw std::runtime_error("Cannot create PhysX dispatcher.");
-            PxSceneDesc description(physics->getTolerancesScale());
-            description.gravity = PxVec3(0.0f, -9.81f, 0.0f);
-            description.cpuDispatcher = dispatcher;
-            description.filterShader = Filter;
-            description.simulationEventCallback = &contacts;
-            description.flags |= PxSceneFlag::eENABLE_CCD;
-            description.solverType = particleSolver ? PxSolverType::ePGS : PxSolverType::eTGS;
-            if (cuda)
-            {
-                description.cudaContextManager = cuda;
-                description.flags |= PxSceneFlag::eENABLE_GPU_DYNAMICS | PxSceneFlag::eENABLE_PCM;
-                description.broadPhaseType = PxBroadPhaseType::eGPU;
-            }
-            scene = physics->createScene(description);
-            if (!scene) throw std::runtime_error("Cannot create PhysX scene.");
+            scene = CreateScene(particleSolver);
             material = physics->createMaterial(0.6f, 0.5f, 0.15f);
             if (!material) throw std::runtime_error("Cannot create PhysX material.");
             ground = PxCreateStatic(*physics, PxTransform(PxVec3(0.0f, -0.5f, 0.0f)), PxBoxGeometry(10.0f, 0.5f, 10.0f), *material);
@@ -71,6 +57,28 @@ public:
     ~PhysicsWorld() { Release(); }
     PhysicsWorld(const PhysicsWorld&) = delete;
     PhysicsWorld& operator=(const PhysicsWorld&) = delete;
+
+    // Call after removing the old preset's bodies and detaching its liquid actors.
+    // Rebuild only PxScene; the physics SDK, CUDA context and user particle storage survive.
+    void SetParticleSolver(bool particleSolver)
+    {
+        using namespace physx;
+        const auto wanted = particleSolver ? PxSolverType::ePGS : PxSolverType::eTGS;
+        if (scene->getSolverType() == wanted) return;
+        if (scene->getNbPBDParticleSystems() ||
+            scene->getNbActors(PxActorTypeFlag::eRIGID_STATIC | PxActorTypeFlag::eRIGID_DYNAMIC) != 1)
+            throw std::runtime_error("Clear scene actors before changing the solver.");
+        auto* replacement = CreateScene(particleSolver);
+        scene->removeActor(*ground);
+        replacement->addActor(*ground);
+        auto* previous = scene;
+        scene = replacement;
+        previous->release();
+        contacts.Clear();
+        accumulator = 0;
+        lastSimulationMs = 0;
+        lastSteps = 0;
+    }
 
     void Update(float deltaTime, const std::function<void(float)>& beforeStep = {})
     {
@@ -291,6 +299,27 @@ private:
         pair = physx::PxPairFlag::eCONTACT_DEFAULT | physx::PxPairFlag::eDETECT_CCD_CONTACT;
         if (ad.word0 == fractureFilterTag || bd.word0 == fractureFilterTag) pair |= physx::PxPairFlag::eNOTIFY_TOUCH_FOUND | physx::PxPairFlag::eNOTIFY_CONTACT_POINTS;
         return physx::PxFilterFlag::eDEFAULT;
+    }
+
+    physx::PxScene* CreateScene(bool particleSolver)
+    {
+        using namespace physx;
+        PxSceneDesc description(physics->getTolerancesScale());
+        description.gravity = PxVec3(0.0f, -9.81f, 0.0f);
+        description.cpuDispatcher = dispatcher;
+        description.filterShader = Filter;
+        description.simulationEventCallback = &contacts;
+        description.flags |= PxSceneFlag::eENABLE_CCD;
+        description.solverType = particleSolver ? PxSolverType::ePGS : PxSolverType::eTGS;
+        if (cuda)
+        {
+            description.cudaContextManager = cuda;
+            description.flags |= PxSceneFlag::eENABLE_GPU_DYNAMICS | PxSceneFlag::eENABLE_PCM;
+            description.broadPhaseType = PxBroadPhaseType::eGPU;
+        }
+        auto* result = physics->createScene(description);
+        if (!result) throw std::runtime_error("Cannot create PhysX scene.");
+        return result;
     }
 
     void Release()

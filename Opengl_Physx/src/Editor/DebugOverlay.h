@@ -15,7 +15,7 @@ public:
         double blastMs = blastScene ? blastScene->GetUpdateMs() : 0.0;
         const auto* liquid = scene.GetLiquid();
         char renderMs[32] = "N/A";
-        if (liquid && liquid->HasRenderTiming()) std::snprintf(renderMs, sizeof(renderMs), "%.2f ms", liquid->GetRenderGpuMs());
+        if (liquid && liquid->Count() && liquid->HasRenderTiming()) std::snprintf(renderMs, sizeof(renderMs), "%.2f ms", liquid->GetRenderGpuMs());
         std::snprintf(waterText, sizeof(waterText), "Particles %u  Water draw GPU %s  Water physics (scene) %.2f ms/step", liquid ? liquid->Count() : 0u, renderMs, scene.GetLiquidPhysicsStepMs());
         std::snprintf(text, sizeof(text), "Scene %d  FPS %.0f  Rigid %zu  Soft %zu  Blast actors %u  Chunks %u  Bonds %u  Steps %u  PhysX %.2f ms  Blast %.2f ms  Soft sync %.2f ms  Upload %.2f ms  Shadow %.2f ms  Main %.2f ms  Draw %.2f ms  CPU frame %.2f ms  %s  F1 UI", scene.GetSceneIndex() + 1, fps, scene.GetBodyCount() + static_cast<size_t>(blastActors), scene.GetSoftBodyCount(), blastActors, chunks, bonds, scene.GetPhysicsSteps(), scene.GetSimulationMs(), blastMs, scene.GetSoftSyncMs(), scene.GetRenderUploadMs(), scene.GetShadowDrawMs(), scene.GetMainDrawMs(), scene.GetDrawSubmitMs(), cpuFrameMs, scene.UsesGpu() ? "GPU" : "CPU");
         std::snprintf(copyText, sizeof(copyText), "%s\n%s", text, waterText);

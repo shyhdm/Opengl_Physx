@@ -22,7 +22,7 @@
 class Scene
 {
 public:
-    explicit Scene(bool useGpu = true, int initialScene = 0) : world(useGpu, initialScene == 3)
+    explicit Scene(bool useGpu = true, int initialScene = 0) : world(useGpu, useGpu || initialScene == 3)
     {
         sceneIndex = initialScene;
         // 可见平面位于 y=0，与现有静态地面碰撞体顶面重合。
@@ -44,10 +44,13 @@ public:
     void Reset()
     {
         ClearSelection();
-        liquid.reset();
+        waterFiring = false; waterRemainder = 0;
+        if (liquid) liquid->ClearForSceneChange();
         liquidPhysicsStepMs = 0;
         softBodies.clear();
         bodies.clear();
+        // GPU scenes share scene 4's solver so identical water emitters behave consistently.
+        world.SetParticleSolver(world.GetCuda() != nullptr || sceneIndex == 3);
         smokeFloorEnabled = false;
         smokeFloorId = 0;
         smokeFloorPositionInitialized = false;
@@ -65,7 +68,14 @@ public:
             ground.scale = glm::vec3(30.0f, 1.0f, 30.0f);
             groundMaterial.textureTiling = glm::vec2(15.0f);
             SetGroundHalfExtent(15.0f);
-            if (world.GetCuda()) liquid = std::make_unique<LiquidGpu>(world);
+            if (world.GetCuda())
+            {
+                if (!liquid) {
+                    liquid = std::make_unique<LiquidGpu>(world);
+                    liquid->SetDisplayMode(liquidDisplayMode);
+                }
+                else liquid->ResetForScene();
+            }
             return;
         }
         if (sceneIndex == 2)
@@ -186,18 +196,24 @@ public:
             focusRevision = revision;
             ReleaseDrag();
             leftWasDown = middleWasDown = true;
-            firing = false;
+            firing = false; waterFiring = false; waterRemainder = 0;
             return;
         }
         if (mouseBlocked)
         {
             ReleaseDrag();
             leftWasDown = middleWasDown = true;
-            firing = false;
+            firing = false; waterFiring = false; waterRemainder = 0;
             return;
         }
         double now = glfwGetTime();
-        if (middleDown)
+        if (launchKind == 1) {
+            waterFiring = middleDown && (!middleWasDown || waterFiring) && !paused && world.GetCuda();
+            waterOrigin = camera.position; waterDirection = camera.GetForward();
+            if (!waterFiring) waterRemainder = 0;
+            firing = false;
+        }
+        else if (middleDown)
         {
             if (now >= nextShot && (!middleWasDown || firing))
             {
@@ -243,10 +259,10 @@ public:
         frameSimulationMs = 0; frameSteps = 0; frameSyncMs = 0;
         if (!paused)
         {
-            world.Update(deltaTime, [this](float step) {if (selectedSoft) selectedSoft->UpdateDrag(step); });
-            if (liquid) liquid->CleanupFallenParticles();
+            world.Update(deltaTime, [this](float step) {if (selectedSoft) selectedSoft->UpdateDrag(step); if (waterFiring) EmitWater(waterOrigin, waterDirection, step); });
+            if (liquid && liquid->Count()) liquid->CleanupFallenParticles();
             frameSimulationMs = world.GetLastSimulationMs(); frameSteps = world.GetLastSteps();
-            if (liquid && frameSteps) liquidPhysicsStepMs = frameSimulationMs / frameSteps;
+            if (liquid && liquid->Count() && frameSteps) liquidPhysicsStepMs = frameSimulationMs / frameSteps;
         }
         SyncSoftBodies();
         bodies.erase(std::remove_if(bodies.begin(), bodies.end(), [this](const auto& body)
@@ -284,7 +300,7 @@ public:
         for (const auto& batch : rigidRenderBatches) renderer.DrawMesh(*batch.mesh, glm::mat4(1.0f), batch.material);
         for (const auto& batch : softRenderBatches) renderer.DrawMesh(*batch.mesh, glm::mat4(1), batch.material);
         if (externalDraw) externalDraw(renderer, false);
-        if (liquid) liquid->Draw(camera, width, height);
+        if (liquid && liquid->Count()) liquid->Draw(camera, width, height);
         std::vector<const physx::PxRigidActor*> visibleCollisions;
         for (const auto& object : bodies) if (object.showMesh) visibleCollisions.push_back(object.body->GetActor());
         if (externalCollisions) externalCollisions(visibleCollisions, showCollisions);
@@ -368,6 +384,30 @@ public:
         if (value < 0 || value > 2) throw std::invalid_argument("Invalid spawn type.");
         spawnType = value == 1 && !SoftBodiesAvailable() ? 0 : value;
     }
+    int GetLaunchKind() const { return launchKind; }
+    void SetLaunchKind(int value) { launchKind = std::clamp(value, 0, 1); waterFiring = false; waterRemainder = 0; firing = false; }
+    float GetWaterSpeed() const { return waterSpeed; }
+    float GetWaterRate() const { return waterRate; }
+    float GetWaterRadius() const { return waterRadius; }
+    unsigned GetWaterCount() const { return liquid ? liquid->Count() : 0; }
+    void SetWaterSettings(float speed, float rate, float radius) {
+        if (std::isfinite(speed)) waterSpeed = std::clamp(speed, 0.f, 100.f);
+        if (std::isfinite(rate)) waterRate = std::clamp(rate, 1.f, 1000000.f);
+        if (std::isfinite(radius)) waterRadius = std::clamp(radius, .1f, 5.f);
+    }
+    void EmitWater(glm::vec3 origin, glm::vec3 direction, float step) {
+        if (!world.GetCuda() || paused || !std::isfinite(step) || step <= 0) return;
+        waterRemainder += double(waterRate) * std::min(step, 1.f / 60.f);
+        const auto requested = static_cast<unsigned>(waterRemainder);
+        waterRemainder -= requested;
+        if (!requested || (liquid && liquid->Count() == LiquidGpu::MaxParticles)) return;
+        if (!liquid) {
+            liquid = std::make_unique<LiquidGpu>(world, false);
+            liquid->SetDisplayMode(liquidDisplayMode);
+        }
+        liquid->Emit(origin + direction * std::max(.6f, waterRadius + .3f), direction,
+            waterSpeed, waterRadius, requested, std::min(step, 1.f / 60.f));
+    }
     float GetLaunchSpeed() const { return launchSpeed; }
     float GetLaunchScale() const { return launchScale; }
     float GetTestScale() const { return testScale; }
@@ -393,12 +433,18 @@ public:
         if (sceneIndex == value) return;
         sceneIndex = value;
         Reset();
-        const bool usesParticleSolver = world.GetScene().getSolverType() == physx::PxSolverType::ePGS;
-        if (usesParticleSolver != (value == 3)) RequestGpu(UsesGpu());
     }
+    int GetLiquidDisplayMode() const { return liquid ? liquid->DisplayMode() : liquidDisplayMode; }
+    void SetLiquidDisplayMode(int mode)
+    {
+        if (mode != 0 && mode != 1) return;
+        liquidDisplayMode = mode;
+        if (liquid) liquid->SetDisplayMode(mode);
+    }
+    // Runtime statistics are global; the editor separately restricts the liquid panel to scene 4.
     LiquidGpu* GetLiquid() { return liquid.get(); }
     const LiquidGpu* GetLiquid() const { return liquid.get(); }
-    double GetLiquidPhysicsStepMs() const { return liquid && !paused ? liquidPhysicsStepMs : 0; }
+    double GetLiquidPhysicsStepMs() const { return GetLiquid() && liquid->Count() && !paused ? liquidPhysicsStepMs : 0; }
     bool SoftBodiesAvailable() const { return world.GetCuda() != nullptr; }
     std::vector<physx::PxRigidActor*> GetSoftFlowColliders()
     {
@@ -1081,6 +1127,12 @@ private:
     int spawnType = 0;
     static constexpr float minimumLaunchMass = 0.01f;
     static constexpr float testDestructibleMass = 1.0f;
+    int liquidDisplayMode = 0;
+    int launchKind = 0;
+    float waterSpeed = 20.f, waterRate = 5000.f, waterRadius = .5f;
+    double waterRemainder = 0;
+    bool waterFiring = false;
+    glm::vec3 waterOrigin{ 0 }, waterDirection{ 0,0,-1 };
     float launchSpeed = 20.0f, launchScale = 1.0f, testScale = 1.0f, launchMass = 10.0f;
     MousePicker picker; // 后声明，先释放关节，再销毁bodies。
     bool paused = false;
