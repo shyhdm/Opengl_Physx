@@ -144,6 +144,9 @@
     <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Particle\LiquidWhitewater.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Particle\ParticleCopyTimer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="D:\Dev\.cpp\Opengl_Physx\Opengl_Physx\src\Physics\Particle\SandLighting.h">
       <Filter>Header Files</Filter>
     </ClInclude>

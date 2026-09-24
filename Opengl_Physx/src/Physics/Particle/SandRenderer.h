@@ -1,6 +1,7 @@
 #pragma once
 #include "Shader.h"
 #include "Camera.h"
+#include "LiquidGpuTimer.h"
 #include <algorithm>
 #include <cmath>
 
@@ -17,7 +18,7 @@ public:
     static Parameters Clamp(Parameters p) {
         Parameters fallback;
         auto bound=[](float x,float a,float b,float f){return std::isfinite(x)?std::clamp(x,a,b):f;};
-        for(int i=0;i<4;++i)p.color[i]=bound(p.color[i],0,1,fallback.color[i]);
+        for(int i=0;i<3;++i)p.color[i]=bound(p.color[i],0,1,fallback.color[i]);
         p.roughness=bound(p.roughness,.15f,.8f,fallback.roughness);
         p.sparkle=bound(p.sparkle,0,4,fallback.sparkle);
         p.mineralFraction=bound(p.mineralFraction,0,1,fallback.mineralFraction);
@@ -37,6 +38,9 @@ public:
     ~SandRenderer(){GL::DeleteVertexArrays(1,&vao_);GL::DeleteFramebuffers(1,&fbo_);glDeleteTextures(4,textures_);}
     SandRenderer(const SandRenderer&)=delete;
     SandRenderer& operator=(const SandRenderer&)=delete;
+    bool HasPassTiming() const { return depthTimer_.HasResult() && shadeTimer_.HasResult(); }
+    double DepthMs() const { return depthTimer_.Milliseconds(); }
+    double ShadeMs() const { return shadeTimer_.Milliseconds(); }
     void Draw(GLuint buffer,size_t idOffset,unsigned count,float radius,const Camera& camera,int width,int height,Parameters p) {
         if(!count||width<=0||height<=0)return;
         State state;
@@ -67,11 +71,13 @@ public:
         };
         glViewport(0,0,width,height);glDisable(GL_BLEND);glDisable(GL_CULL_FACE);glDisable(GL_SCISSOR_TEST);glDisable(0x8DB9);
         glEnable(GL_DEPTH_TEST);glDepthFunc(GL_LESS);glDepthMask(GL_TRUE);glColorMask(GL_TRUE,GL_TRUE,GL_TRUE,GL_TRUE);
+        depthTimer_.Begin();
         glClearDepth(1);glClearColor(0,0,0,0);glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-        common("DEPTH");shader_.SetFloat("microScale",p.microScale);shader_.SetVector2("viewportOrigin",glm::vec2(0));instanced_(GL_TRIANGLE_STRIP,0,4,count);
+        common("DEPTH");shader_.SetFloat("microScale",p.microScale);shader_.SetVector2("viewportOrigin",glm::vec2(0));instanced_(GL_TRIANGLE_STRIP,0,4,count);depthTimer_.End();
         GL::BindFramebuffer(0x8CA8,state.readFbo);GL::BindFramebuffer(0x8CA9,state.drawFbo);
         glViewport(state.viewport[0],state.viewport[1],state.viewport[2],state.viewport[3]);State::Enable(GL_SCISSOR_TEST,state.scissor);
         State::Enable(0x8DB9,state.srgb);
+        shadeTimer_.Begin();
         common("SHADE");shader_.SetVector2("viewportOrigin",glm::vec2(state.viewport[0],state.viewport[1]));
         for(int i=0;i<4;++i){GL::ActiveTexture(0x84C0+12+i);glBindTexture(GL_TEXTURE_2D,textures_[i]);}
         shader_.SetInt("grainDepth",12);shader_.SetInt("grainNormals",13);shader_.SetInt("grainIds",14);shader_.SetInt("grainHits",15);
@@ -79,7 +85,7 @@ public:
         shader_.SetFloat("mineralFraction",p.mineralFraction);shader_.SetFloat("microScale",p.microScale);shader_.SetFloat("occlusionStrength",p.occlusion);
         float az=glm::radians(p.sunAzimuth),el=glm::radians(p.sunElevation);
         shader_.SetVector3("sunDirection",glm::vec3(std::sin(az)*std::cos(el),std::sin(el),std::cos(az)*std::cos(el)));
-        glDrawArrays(GL_TRIANGLE_STRIP,0,4);
+        glDrawArrays(GL_TRIANGLE_STRIP,0,4);shadeTimer_.End();
     }
 private:
     struct State {
@@ -102,6 +108,7 @@ private:
             GL::BindVertexArray(vao);GL::BindBuffer(GL::ArrayBuffer,buffer);GL::UseProgram(program);
         }
     };
+    LiquidGpuTimer depthTimer_, shadeTimer_;
     Shader shader_;GLuint vao_{},fbo_{},textures_[4]{};int width_{},height_{};
     void(APIENTRY* drawBuffers_)(GLsizei,const GLenum*)=nullptr;
     void(APIENTRY* divisor_)(GLuint,GLuint)=nullptr;

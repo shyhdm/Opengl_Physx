@@ -4,6 +4,8 @@
 #include "Camera.h"
 #include "LiquidSurface.h"
 #include "LiquidGpuTimer.h"
+#include "ParticleCopyTimer.h"
+#include <chrono>
 #include "SandRenderer.h"
 #include "LiquidParticleCleanup.h"
 #include <memory>
@@ -76,6 +78,15 @@ public:
     void SetSandRenderParameters(SandRenderer::Parameters value) { sandParameters_ = SandRenderer::Clamp(value); }
     int DisplayMode() const { return displayMode_; }
     void SetDisplayMode(int mode) { if (mode == 0 || mode == 1) { if (displayMode_ != mode && surface_)surface_->Invalidate(); displayMode_ = mode; } }
+    bool HasSandPassTiming() const { return count_ && displayMode_==0 && sandRenderer_ && sandRenderer_->HasPassTiming(); }
+    double SandDepthMs() const { return sandRenderer_ ? sandRenderer_->DepthMs() : 0; }
+    double SandShadeMs() const { return sandRenderer_ ? sandRenderer_->ShadeMs() : 0; }
+    bool HasInteropTiming() const { return count_ && uploadSamples_!=0; }
+    double MapCpuMs() const { return mapCpuMs_; }
+    double UnmapCpuMs() const { return unmapCpuMs_; }
+    double UploadAgeMs() const { return std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-lastUpload_).count(); }
+    bool HasCopyTiming() const { return count_ && copyTimer_.HasResult(); }
+    double CopyGpuMs() const { return copyTimer_.Milliseconds(); }
     unsigned int Count() const { return count_; }
     unsigned int Capacity() const { return particles_ ? particles_->getMaxParticles() : 0; }
     // Drop scene contents, but retain the user buffers, interop registration and cleanup storage.
@@ -302,9 +313,22 @@ public:
     {
         if (!count_ || width <= 0 || height <= 0)return;
         if (count_ && revision_ != world_.GetSimulationRevision()) {
-            physx::PxScopedCudaLock lock(cuda_); Check(map_(1, &resource_, nullptr));
+            physx::PxScopedCudaLock lock(cuda_);
+            auto mapStart=std::chrono::steady_clock::now();
+            Check(map_(1, &resource_, nullptr));
+            auto mapEnd=std::chrono::steady_clock::now();
+            copyTimer_.Begin(driver_);
             try { CUdeviceptr dst = 0; size_t bytes = 0; Check(pointer_(&dst, &bytes, resource_)); if (bytes < 2 * count_ * sizeof(physx::PxVec4))throw std::runtime_error("Liquid GL buffer too small"); Check(cuda_.getCudaContext()->memcpyDtoDAsync(dst, reinterpret_cast<CUdeviceptr>(particles_->getPositionInvMasses()), count_ * sizeof(physx::PxVec4), nullptr)); Check(cuda_.getCudaContext()->memcpyDtoDAsync(dst + count_ * sizeof(physx::PxVec4), reinterpret_cast<CUdeviceptr>(particles_->getVelocities()), count_ * sizeof(physx::PxVec4), nullptr)); if (granular_) { if (bytes < 2 * MaxParticles * sizeof(physx::PxVec4) + count_ * sizeof(unsigned)) throw std::runtime_error("Sand ID GL buffer too small"); Check(cuda_.getCudaContext()->memcpyDtoDAsync(dst + 2 * MaxParticles * sizeof(physx::PxVec4), cleanup_->Ids(), count_ * sizeof(unsigned), nullptr)); } }
-            catch (...) { unmap_(1, &resource_, nullptr); throw; }Check(unmap_(1, &resource_, nullptr)); revision_ = world_.GetSimulationRevision();
+            catch (...) { copyTimer_.End(); unmap_(1, &resource_, nullptr); throw; }
+            copyTimer_.End();
+            auto unmapStart=std::chrono::steady_clock::now();
+            Check(unmap_(1, &resource_, nullptr));
+            lastUpload_=std::chrono::steady_clock::now();
+            double mapMs=std::chrono::duration<double,std::milli>(mapEnd-mapStart).count();
+            double unmapMs=std::chrono::duration<double,std::milli>(lastUpload_-unmapStart).count();
+            mapCpuMs_=uploadSamples_?mapCpuMs_*.9+mapMs*.1:mapMs;
+            unmapCpuMs_=uploadSamples_?unmapCpuMs_*.9+unmapMs*.1:unmapMs;
+            ++uploadSamples_; revision_ = world_.GetSimulationRevision();
         }
         renderTimer_.Begin();
         if (granular_ && displayMode_ == 0) {
@@ -381,7 +405,7 @@ private:
     static void Check(int code) { if (code)throw std::runtime_error("CUDA liquid transfer failed"); }
     static void Configure(GLuint vao, GLuint buffer) { GL::BindVertexArray(vao); GL::BindBuffer(GL::ArrayBuffer, buffer); GL::VertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(physx::PxVec4), nullptr); GL::EnableVertexAttribArray(0); GL::BindVertexArray(0); GL::BindBuffer(GL::ArrayBuffer, 0); }
     void ClearParticles() { cleanup_.reset(); if (resource_) { glFinish(); physx::PxScopedCudaLock lock(cuda_); cuda_.getCudaContext()->streamSynchronize(nullptr); }if (resource_) { physx::PxScopedCudaLock lock(cuda_); unregister_(resource_); resource_ = nullptr; }if (particles_) { if (system_ && bufferAttached_)system_->removeParticleBuffer(particles_); bufferAttached_ = false; particles_->release(); particles_ = nullptr; }if (system_) { system_->release(); system_ = nullptr; }if (material_) { material_->release(); material_ = nullptr; }count_ = 0; }
-    void Release() { ClearParticles(); if (container_) { container_->release(); container_ = nullptr; }GL::DeleteBuffers(1, &vbo_); GL::DeleteBuffers(1, &boxVbo_); GL::DeleteVertexArrays(1, &vao_); GL::DeleteVertexArrays(1, &boxVao_); if (driver_) { FreeLibrary(driver_); driver_ = nullptr; } }
+    void Release() { ClearParticles(); { physx::PxScopedCudaLock lock(cuda_); copyTimer_.Release(); } if (container_) { container_->release(); container_ = nullptr; }GL::DeleteBuffers(1, &vbo_); GL::DeleteBuffers(1, &boxVbo_); GL::DeleteVertexArrays(1, &vao_); GL::DeleteVertexArrays(1, &boxVao_); if (driver_) { FreeLibrary(driver_); driver_ = nullptr; } }
     const bool granular_;
     bool containerEnabled_ = true;
     std::vector<physx::PxVec4> emissionPositions_, emissionVelocities_;
@@ -399,6 +423,10 @@ private:
     Parameters parameters_;
     std::unique_ptr<LiquidParticleCleanup> cleanup_;
     unsigned long long lastCleanupRevision_ = 0;
+    ParticleCopyTimer copyTimer_;
+    double mapCpuMs_=0,unmapCpuMs_=0;
+    unsigned long long uploadSamples_=0;
+    std::chrono::steady_clock::time_point lastUpload_{};
     LiquidGpuTimer renderTimer_;
     bool showDebugBounds_ = true;
     glm::vec3 containerPosition_{ 0,4,0 }, containerSize_{ 10,8,10 };

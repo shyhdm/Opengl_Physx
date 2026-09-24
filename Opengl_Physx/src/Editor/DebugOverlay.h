@@ -168,6 +168,22 @@ private:
         if (anyActive && allTimed) std::snprintf(line,sizeof(line)," | Render %.2f ms\n",renderTotal);
         else std::snprintf(line,sizeof(line)," | Render N/A\n");
         copyText += line;
+        if (sand && sand->HasSandPassTiming()) {
+            std::snprintf(line,sizeof(line),"Sand GPU (async EMA): Depth %.3f ms | Shade %.3f ms\n",sand->SandDepthMs(),sand->SandShadeMs());
+            copyText += line;
+        } else copyText += "Sand GPU: Depth N/A | Shade N/A\n";
+        unsigned timingIndex=0;
+        for (const auto* p : {water,sand}) {
+            const char* name=timingIndex++==0?"Water":"Sand";
+            if (!p || !p->Count()) continue;
+            if (p->HasInteropTiming()) {
+                std::snprintf(line,sizeof(line),"%s upload (EMA/upload): Map CPU %.3f ms | Unmap CPU %.3f ms | Last upload %.0f ms ago | Copy GPU ",
+                    name,p->MapCpuMs(),p->UnmapCpuMs(),p->UploadAgeMs());
+                copyText += line;
+                if (p->HasCopyTiming()) {std::snprintf(line,sizeof(line),"%.3f ms\n",p->CopyGpuMs());copyText+=line;}
+                else copyText += "N/A\n";
+            } else {copyText+=name;copyText+=" upload: N/A\n";}
+        }
         std::snprintf(line,sizeof(line),"Steps/s %.1f / target 60 | Sim/wall %.2fx\n",totalSteps*1000/elapsed,totalSteps*1000/(60*elapsed)); copyText += line;
         AddStats("Submit/step",Submit,1,true); copyText += " | "; AddStats("Fetch/step",Fetch,1,true); copyText += '\n';
         AddStats("Particle fetch/step",ParticleFetch,1,true); copyText += " (CPU API durations, not GPU kernels)\n";
