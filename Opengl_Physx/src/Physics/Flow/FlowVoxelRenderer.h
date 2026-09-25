@@ -14,10 +14,17 @@ public:
     explicit FlowVoxelRenderer(FlowContext& flow) : flow_(flow) {}
     ~FlowVoxelRenderer()
     {
+        ReleaseResources();
+    }
+    void ReleaseResources() noexcept
+    {
+        if (constants_.empty() && !pipeline_) return;
         auto* context = flow_.Context();
         flow_.Loader().deviceInterface.waitIdle(flow_.DeviceQueue());
         for (auto& slot : constants_) flow_.Interface().destroyBuffer(context, slot.buffer);
         if (pipeline_) flow_.Interface().destroyComputePipeline(context, pipeline_);
+        constants_.clear();
+        pipeline_ = nullptr;
     }
     FlowVoxelRenderer(const FlowVoxelRenderer&) = delete;
     FlowVoxelRenderer& operator=(const FlowVoxelRenderer&) = delete;

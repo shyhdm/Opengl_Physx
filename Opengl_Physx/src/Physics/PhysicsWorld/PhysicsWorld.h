@@ -11,11 +11,32 @@
 #include <mutex>
 #include <stdexcept>
 #include <vector>
+#include <unordered_map>
 #include "CollisionLibrary.h"
+#include "../Particle/SharedParticleSimulation.h"
 
 class PhysicsWorld
 {
 public:
+    std::shared_ptr<SharedParticleSimulation> AcquireParticleSimulation() {
+        auto shared = particleSimulation_.lock();
+        if (!shared) {
+            if (!cuda) throw std::runtime_error("GPU particles require CUDA");
+            shared = std::make_shared<SharedParticleSimulation>(*physics, *scene, *cuda);
+            particleSimulation_ = shared;
+        }
+        return shared;
+    }
+    static constexpr unsigned ParticleLimit = 1000000;
+    unsigned TotalParticleCount() const {
+        unsigned total = 0;
+        for (const auto& entry : particleCounts_) total += entry.second;
+        return total;
+    }
+    void SetParticleCount(const void* owner, unsigned count) {
+        if (count) particleCounts_[owner] = count;
+        else particleCounts_.erase(owner);
+    }
     struct Impact
     {
         physx::PxVec3 position{ 0 };
@@ -288,6 +309,8 @@ private:
     physx::PxDefaultCpuDispatcher* dispatcher = nullptr;
     physx::PxScene* scene = nullptr;
     physx::PxMaterial* material = nullptr;
+    std::unordered_map<const void*, unsigned> particleCounts_;
+    std::weak_ptr<SharedParticleSimulation> particleSimulation_;
     physx::PxRigidStatic* ground = nullptr;
     std::unique_ptr<CollisionLibrary> collisions;
     physx::PxCudaContextManager* cuda = nullptr;

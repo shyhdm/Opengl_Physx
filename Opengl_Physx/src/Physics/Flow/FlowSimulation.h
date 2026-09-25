@@ -76,7 +76,7 @@ public:
     explicit FlowSimulation(FlowContext& flowContext)
         : flowContext_(flowContext), voxelRenderer_(flowContext)
     {
-        Initialize();
+        // Allocate the simulation grid only when its scene becomes active.
     }
 
     ~FlowSimulation()
@@ -136,10 +136,7 @@ public:
             return;
         }
         sceneActive_ = active;
-        if (sceneActive_)
-        {
-            Reset();
-        }
+        Reset();
     }
 
     bool IsSceneActive() const
@@ -149,12 +146,16 @@ public:
 
     void Reset()
     {
+        // A force-clear only erases density; rebuilding also releases grid storage.
+        Shutdown();
         colliders_.Reset();
         absoluteSimTime_ = 0.0;
         forceClearNextFrame_ = true;
         latestReadback_ = {};
         latestReadback_.generation = ++generation_;
         minimumReadbackFrame_ = std::numeric_limits<NvFlowUint64>::max();
+        lastSubmittedFrame_ = 0;
+        if (sceneActive_) Initialize();
     }
 
     void SyncRigidBodies(physx::PxScene& scene, const std::vector<physx::PxRigidActor*>& proxies = {}) { colliders_.Update(scene, settings_.cellSize, proxies); }
@@ -455,11 +456,14 @@ private:
 
     void Shutdown() noexcept
     {
+        if (!grid_ && !gridParams_) return;
         auto& loader = flowContext_.Loader();
         if (flowContext_.DeviceQueue() && loader.deviceInterface.waitIdle)
         {
             loader.deviceInterface.waitIdle(flowContext_.DeviceQueue());
         }
+
+        voxelRenderer_.ReleaseResources();
 
         if (grid_ && loader.gridInterface.destroyGrid)
         {
@@ -472,6 +476,7 @@ private:
             loader.gridParamsInterface.destroyGridParams(gridParams_);
             gridParams_ = nullptr;
         }
+        flowContext_.CollectUnusedResources();
     }
 
     FlowContext& flowContext_;

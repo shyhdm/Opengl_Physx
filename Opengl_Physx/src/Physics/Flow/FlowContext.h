@@ -66,6 +66,23 @@ public:
     NvFlowDevice* Device() const { return device_; }
     NvFlowPhysicalDeviceDesc PhysicalDevice() const { return physicalDevice_; }
 
+    // Flow normally keeps unused transient resources for 60 submitted frames.
+    // An inactive scene submits no more frames, so explicitly drain that cache.
+    void CollectUnusedResources() noexcept
+    {
+        auto& device = loader_.deviceInterface;
+        auto* context = Context();
+        if (!context || !device.setResourceMinLifetime || !device.flush || !device.waitIdle) return;
+        device.waitIdle(deviceQueue_);
+        device.setResourceMinLifetime(context, 0u);
+        for (unsigned i = 0; i < 2; ++i) {
+            NvFlowUint64 frame = 0;
+            if (device.flush(deviceQueue_, &frame, nullptr, nullptr)) break;
+            device.waitIdle(deviceQueue_);
+        }
+        device.setResourceMinLifetime(context, 60u);
+    }
+
 private:
     static void LoaderError(const char* message, void*)
     {

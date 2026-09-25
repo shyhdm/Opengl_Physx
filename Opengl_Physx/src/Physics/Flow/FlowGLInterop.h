@@ -46,6 +46,16 @@ public:
     FlowGLInterop(const FlowGLInterop&) = delete;
     FlowGLInterop& operator=(const FlowGLInterop&) = delete;
 
+    // Keep shader programs; discard resolution-dependent interop allocations.
+    void ReleaseIdleResources() noexcept
+    {
+        const bool hadResources = width_ || height_ || !spareBuffers_.empty();
+        ReleaseSlots();
+        for (auto& buffer : spareBuffers_) DestroyBuffer(buffer);
+        spareBuffers_.clear();
+        if (hadResources) flow_.CollectUnusedResources();
+    }
+
     void Draw(const Camera& camera, int width, int height, FlowSimulation* simulation)
     {
         if (width <= 0 || height <= 0) return;
@@ -236,7 +246,7 @@ void main() {
     void EnsureSize(int width, int height)
     {
         if (width_ == width && height_ == height) return;
-        ReleaseSlots();
+        ReleaseIdleResources();
         width_ = width; height_ = height;
         GL::BindBuffer(UnpackBuffer, 0);
         for (auto& slot : slots_)
@@ -304,17 +314,17 @@ void main() {
     }
     void Release() noexcept
     {
-        ReleaseSlots();
-        for (auto& buffer : spareBuffers_)
-        {
-            if (buffer.gl) GL::DeleteBuffers(1, &buffer.gl);
-            if (buffer.memory) deleteMemory_(1, &buffer.memory);
-            if (buffer.handle) flow_.Loader().deviceInterface.closeBufferExternalHandle(flow_.Context(), buffer.vk, &buffer.handle, sizeof(buffer.handle));
-            if (buffer.vk) flow_.Interface().destroyBuffer(flow_.Context(), buffer.vk);
-        }
-        spareBuffers_.clear();
+        ReleaseIdleResources();
         if (packProgram_) GL::DeleteProgram(packProgram_); packProgram_ = 0;
         if (vao_) GL::DeleteVertexArrays(1, &vao_); vao_ = 0;
+    }
+    void DestroyBuffer(Buffer& buffer) noexcept
+    {
+        if (buffer.gl) GL::DeleteBuffers(1, &buffer.gl);
+        if (buffer.memory) deleteMemory_(1, &buffer.memory);
+        if (buffer.handle) flow_.Loader().deviceInterface.closeBufferExternalHandle(flow_.Context(), buffer.vk, &buffer.handle, sizeof(buffer.handle));
+        if (buffer.vk) flow_.Interface().destroyBuffer(flow_.Context(), buffer.vk);
+        buffer = {};
     }
     std::vector<Buffer> spareBuffers_;
     FlowContext& flow_;

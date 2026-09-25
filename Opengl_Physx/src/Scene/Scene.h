@@ -274,11 +274,11 @@ public:
                 // Diagnostic serialization, deliberately outside PhysicsWorld's timer.
                 // Only performed for an actual GPU physics step, never every draw.
                 if (isolatePhysicsTiming && UsesGpu()) {
-                    auto started=std::chrono::steady_clock::now();
+                    auto started = std::chrono::steady_clock::now();
                     glFinish();
-                    frameRenderWaitMs+=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-started).count();
+                    frameRenderWaitMs += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - started).count();
                 }
-            });
+                });
             if (liquid && liquid->Count()) liquid->CleanupFallenParticles();
             if (sand && sand->Count()) sand->CleanupFallenParticles();
             frameSimulationMs = world.GetLastSimulationMs(); frameSteps = world.GetLastSteps();
@@ -320,8 +320,9 @@ public:
         for (const auto& batch : rigidRenderBatches) renderer.DrawMesh(*batch.mesh, glm::mat4(1.0f), batch.material);
         for (const auto& batch : softRenderBatches) renderer.DrawMesh(*batch.mesh, glm::mat4(1), batch.material);
         if (externalDraw) externalDraw(renderer, false);
-        if (liquid && liquid->Count()) liquid->Draw(camera, width, height);
+        // Opaque grains must enter scene color/depth before water captures them.
         if (sand && sand->Count()) sand->Draw(camera, width, height);
+        if (liquid && liquid->Count()) liquid->Draw(camera, width, height);
         if (sceneIndex == 3) {
             if (particleTest == 0 && liquid) liquid->DrawDebugBounds(camera, width, height);
             if (particleTest == 1 && sand) sand->DrawDebugBounds(camera, width, height);
@@ -584,7 +585,7 @@ public:
     }
     bool IsPhysicsTimingIsolated() const { return isolatePhysicsTiming && UsesGpu(); }
     bool GetIsolatePhysicsTiming() const { return isolatePhysicsTiming; }
-    void SetIsolatePhysicsTiming(bool value) { isolatePhysicsTiming=value; }
+    void SetIsolatePhysicsTiming(bool value) { isolatePhysicsTiming = value; }
     double GetRenderWaitMs() const { return frameRenderWaitMs; }
     double GetSimulationMs() const { return frameSimulationMs; }
     double GetSoftSyncMs() const { return frameSyncMs; }

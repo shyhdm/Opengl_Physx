@@ -35,7 +35,7 @@ public:
         ImGui::Text("FPS: %.0f", fps);
         ImGui::SameLine();
         if (ImGui::Button(T("复制调试信息", "Copy debug info")) && debugText) ImGui::SetClipboardText(debugText);
-        bool isolatedTiming=scene.GetIsolatePhysicsTiming();
+        bool isolatedTiming = scene.GetIsolatePhysicsTiming();
         if (ImGui::Checkbox(T("隔离物理计时", "Isolate physics timing"), &isolatedTiming)) scene.SetIsolatePhysicsTiming(isolatedTiming);
         if (ImGui::IsItemHovered()) ImGui::SetTooltip(T("物理步前等待本程序 OpenGL 完成，等待单列；会降低并行度，可能影响 FPS。不是纯 GPU 内核计时。", "Wait for this context's OpenGL before each GPU physics step. Wait is separate; profiling reduces overlap and may lower FPS. Not pure GPU kernel timing."));
         const char* scenesCN[] = { "场景 1","场景 2","场景 3","场景 4" };
@@ -145,11 +145,13 @@ public:
                 if (ImGui::DragFloat3(label, &value.x, .05f, 0, 0, "%.3f"))
                     for (int i = 0; i < 3; ++i)
                         if (!std::isfinite(value[i]) || (dimensions && value[i] <= 0)) value[i] = previous[i];
-            };
+                };
             edit(T("生成框位置", "Generation position"), particles.position, false);
             edit(T("生成框大小", "Generation size"), particles.size, true);
             ImGui::SetNextItemWidth(150.f * scale);
-            Number(T("粒子间距", "Particle spacing"), particles.spacing, .01f, .08f, .5f);
+            Number(T("粒子半径", "Particle radius"), particles.particleRadius, .001f, LiquidGpu::MinParticleRadius, LiquidGpu::MaxParticleRadius);
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip(T("物理采样半径。重新生成或清空后发射生效。当前半径: %.3f", "Physical sampling radius. Applies after regeneration or clearing. Current radius: %.3f"), particles.ActiveParticleRadius());
             const auto count = particles.PreviewCount();
             if (count == std::numeric_limits<uint64_t>::max())
                 ImGui::TextUnformatted(T("预生成: 超出计数范围", "Preview: exceeds count range"));
@@ -157,10 +159,10 @@ public:
             ImGui::BeginDisabled(!particles.RequestedCount());
             if (ImGui::Button(T("生成", "Generate"))) particles.Reset();
             ImGui::EndDisabled();
-            if (count > LiquidGpu::MaxParticles)
-                ImGui::Text(T("超过容量: %u", "Exceeds capacity: %u"), LiquidGpu::MaxParticles);
+            if (count > particles.GenerationCapacity())
+                ImGui::Text(T("水沙合计上限100万，可生成: %u", "Water + sand limit: 1,000,000. Generation budget: %u"), particles.GenerationCapacity());
             ImGui::PopID();
-        };
+            };
 
         if (scene.GetSceneIndex() == 3 && ImGui::CollapsingHeader(T("测试", "Test"), ImGuiTreeNodeFlags_DefaultOpen))
         {
@@ -220,7 +222,7 @@ public:
                         else if (sizeValue && value[i] < 1.f)value[i] = 1.f;
                     }
                     return changed;
-                };
+                    };
                 ImGui::SetNextItemWidth(210.f * scale);
                 bool containerChanged = editSandBox(T("碰撞盒位置", "Container position"), containerPosition, false);
                 ImGui::SetNextItemWidth(210.f * scale);
@@ -235,7 +237,7 @@ public:
                     const bool edited = Number(label, value, step, low, high);
                     if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", help);
                     return edited;
-                };
+                    };
                 bool simulationChanged = sandNumber(T("摩擦系数", "Friction"), simulation.friction, .01f, 0, 2,
                     T("影响沙粒与物体及其他沙粒之间的摩擦。", "Friction against objects and other grains."));
                 simulationChanged |= sandNumber(T("颗粒间摩擦倍率", "Particle friction scale"), simulation.particleFrictionScale, .05f, 0, 5,

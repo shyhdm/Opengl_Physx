@@ -100,9 +100,23 @@ private:
         if (!counter_) Check(context->memAlloc(&counter_, sizeof(unsigned)));
         if (count > capacity_)
         {
-            if (ids_) throw std::runtime_error("Cannot grow active sand ID storage");
-            CUdeviceptr next = 0;
-            Check(context->memAlloc(&next, size_t(count) * (2 * sizeof(physx::PxVec4) + 2 * sizeof(physx::PxU32))));
+            CUdeviceptr next = 0, nextIds = 0;
+            Check(context->streamSynchronize(nullptr));
+            try {
+                Check(context->memAlloc(&next, size_t(count) * (2 * sizeof(physx::PxVec4) + 2 * sizeof(physx::PxU32))));
+                if (ids_) {
+                    Check(context->memAlloc(&nextIds, size_t(count) * sizeof(unsigned)));
+                    Check(context->memcpyDtoDAsync(nextIds, ids_, size_t(capacity_) * sizeof(unsigned), nullptr));
+                    Check(context->streamSynchronize(nullptr));
+                }
+            }
+            catch (...) {
+                context->streamSynchronize(nullptr);
+                if (nextIds) context->memFree(nextIds);
+                if (next) context->memFree(next);
+                throw;
+            }
+            if (ids_) { context->memFree(ids_); ids_ = nextIds; }
             if (scratch_) context->memFree(scratch_);
             scratch_ = next;
             capacity_ = count;

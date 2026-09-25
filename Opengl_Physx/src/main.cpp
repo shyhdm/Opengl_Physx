@@ -49,8 +49,8 @@ int main()
         ImGuiPanel panel(gui.HasChineseFont());
         DebugOverlay debugOverlay;
         std::unique_ptr<LiquidGpuTimer> sceneRenderTimer;
-        int renderTimingScene=-1;
-        bool renderTimingGpu=false;
+        int renderTimingScene = -1;
+        bool renderTimingGpu = false;
         double lastTime = glfwGetTime();
         bool previousF1Key = false;
         bool showGui = true;
@@ -95,6 +95,8 @@ int main()
                 blastScene->AfterPhysics([&](const physx::PxRigidActor* actor) {scene->ForgetActor(actor); });
                 if (flowSimulation)
                 {
+                    if (scene->GetSceneIndex() != 2 && flowSimulation->IsSceneActive())
+                        nativeRenderer.ReleaseIdleResources();
                     flowSimulation->SetSceneActive(scene->GetSceneIndex() == 2);
                     const auto& flowSettings = flowSimulation->GetSettings();
                     scene->SetSmokeFloor(flowSimulation->IsSceneActive() && flowSimulation->IsSmoke(),
@@ -105,9 +107,9 @@ int main()
                 }
                 int width = 0, height = 0;
                 window.GetFramebufferSize(width, height);
-                if (!sceneRenderTimer || renderTimingScene!=scene->GetSceneIndex() || renderTimingGpu!=scene->UsesGpu()) {
-                    sceneRenderTimer=std::make_unique<LiquidGpuTimer>();
-                    renderTimingScene=scene->GetSceneIndex(); renderTimingGpu=scene->UsesGpu();
+                if (!sceneRenderTimer || renderTimingScene != scene->GetSceneIndex() || renderTimingGpu != scene->UsesGpu()) {
+                    sceneRenderTimer = std::make_unique<LiquidGpuTimer>();
+                    renderTimingScene = scene->GetSceneIndex(); renderTimingGpu = scene->UsesGpu();
                 }
                 sceneRenderTimer->Begin();
                 auto drawStarted = std::chrono::steady_clock::now();
@@ -131,7 +133,7 @@ int main()
                 double presentMs = std::chrono::duration<double, std::milli>(sampleEnd - presentStarted).count();
                 double frameMs = std::chrono::duration<double, std::milli>(sampleEnd - lastSample).count();
                 lastSample = sampleEnd;
-                debugOverlay.Record(*scene, blastScene.get(), frameMs, cpuFrameMs, updateMs, drawCpuMs, presentMs, width, height, sceneRenderTimer->HasResult()?sceneRenderTimer->Milliseconds():-1);
+                debugOverlay.Record(*scene, blastScene.get(), frameMs, cpuFrameMs, updateMs, drawCpuMs, presentMs, width, height, sceneRenderTimer->HasResult() ? sceneRenderTimer->Milliseconds() : -1);
                 if (scene->GetSceneIndex() == 2 && !flowSimulation)
                 {
                     flowSimulation = std::make_unique<FlowSimulation>(flow);

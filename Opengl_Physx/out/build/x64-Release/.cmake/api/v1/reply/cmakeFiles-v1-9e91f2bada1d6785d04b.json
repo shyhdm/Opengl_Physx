@@ -1,0 +1,207 @@
+{
+	"globsDependent" : 
+	[
+		{
+			"expression" : "D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/*.h",
+			"paths" : 
+			[
+				"D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Data/ModelData.h",
+				"D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Data/ModelLibrary.h",
+				"D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Editor/DebugOverlay.h",
+				"D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Editor/ImGuiLayer.h",
+				"D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Editor/ImGuiPanel.h",
+				"D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Editor/MousePicker.h",
+				"D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Editor/SystemResourceMonitor.h",
+				"D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Graphics/CollisionDebugRenderer.h",
+				"D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Graphics/Material.h",
+				"D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Graphics/Mesh.h",
+				"D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Graphics/ModelRenderer.h",
+				"D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Graphics/OutlineEffect.h",
+				"D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Graphics/Shader.h",
+				"D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Graphics/ShadowMap.h",
+				"D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Graphics/Texture.h",
+				"D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/Blast/BlastAsset.h",
+				"D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/Blast/BlastChunkRenderer.h",
+				"D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/Blast/BlastCollisionLibrary.h",
+				"D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/Blast/BlastContext.h",
+				"D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/Blast/BlastLibrary.h",
+				"D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/Blast/BlastMesh.h",
+				"D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/Blast/BlastPhysics.h",
+				"D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/Blast/BlastRuntime.h",
+				"D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/Blast/BlastScene.h",
+				"D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/Blast/BlastVoronoi.h",
+				"D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/Blast/RuntimeFractureWall.h",
+				"D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/Flow/FlowContext.h",
+				"D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/Flow/FlowGLInterop.h",
+				"D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/Flow/FlowRigidColliders.h",
+				"D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/Flow/FlowSimulation.h",
+				"D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/Flow/FlowVolumeRenderer.h",
+				"D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/Flow/FlowVoxelRenderer.h",
+				"D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/Flow/Gpu/FlowVoxelCS_vulkan.hlsl.h",
+				"D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/Particle/LiquidGpu.h",
+				"D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/Particle/LiquidGpuTimer.h",
+				"D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/Particle/LiquidLighting.h",
+				"D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/Particle/LiquidParticleCleanup.h",
+				"D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/Particle/LiquidParticleCleanupPtx.h",
+				"D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/Particle/LiquidSurface.h",
+				"D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/Particle/LiquidWhitewater.h",
+				"D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/Particle/ParticleCopyTimer.h",
+				"D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/Particle/SandLighting.h",
+				"D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/Particle/SandOcclusion.h",
+				"D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/Particle/SandRenderer.h",
+				"D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/Particle/SharedParticleSimulation.h",
+				"D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/PhysicsWorld/PhysicsWorld.h",
+				"D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/RigidBody/CollisionLibrary.h",
+				"D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/RigidBody/RigidBody.h",
+				"D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/SoftBody/SoftBody.h",
+				"D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/SoftBody/SoftGpuBuffer.h",
+				"D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Physics/SoftBody/SoftMeshLibrary.h",
+				"D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Platform/OpenGL.h",
+				"D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Platform/Window.h",
+				"D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Scene/Camera.h",
+				"D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Scene/Scene.h",
+				"D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Scene/Transform.h"
+			],
+			"recurse" : true
+		}
+	],
+	"inputs" : 
+	[
+		{
+			"path" : "CMakeLists.txt"
+		},
+		{
+			"isGenerated" : true,
+			"path" : "out/build/x64-Release/CMakeFiles/4.3.1-msvc1/CMakeSystem.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/Program Files/Microsoft Visual Studio/18/Community/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-4.3/Modules/CMakeSystemSpecificInitialize.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/Program Files/Microsoft Visual Studio/18/Community/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-4.3/Modules/Platform/Windows-Initialize.cmake"
+		},
+		{
+			"isGenerated" : true,
+			"path" : "out/build/x64-Release/CMakeFiles/4.3.1-msvc1/CMakeCXXCompiler.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/Program Files/Microsoft Visual Studio/18/Community/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-4.3/Modules/CMakeSystemSpecificInformation.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/Program Files/Microsoft Visual Studio/18/Community/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-4.3/Modules/CMakeGenericSystem.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/Program Files/Microsoft Visual Studio/18/Community/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-4.3/Modules/CMakeInitializeConfigs.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/Program Files/Microsoft Visual Studio/18/Community/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-4.3/Modules/Platform/Windows.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/Program Files/Microsoft Visual Studio/18/Community/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-4.3/Modules/Platform/WindowsPaths.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/Program Files/Microsoft Visual Studio/18/Community/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-4.3/Modules/CMakeCXXInformation.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/Program Files/Microsoft Visual Studio/18/Community/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-4.3/Modules/CMakeLanguageInformation.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/Program Files/Microsoft Visual Studio/18/Community/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-4.3/Modules/Compiler/MSVC-CXX.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/Program Files/Microsoft Visual Studio/18/Community/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-4.3/Modules/Compiler/MSVC.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/Program Files/Microsoft Visual Studio/18/Community/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-4.3/Modules/Compiler/CMakeCommonCompilerMacros.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/Program Files/Microsoft Visual Studio/18/Community/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-4.3/Modules/Platform/Windows-MSVC-CXX.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/Program Files/Microsoft Visual Studio/18/Community/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-4.3/Modules/Platform/Windows-MSVC.cmake"
+		},
+		{
+			"isGenerated" : true,
+			"path" : "out/build/x64-Release/CMakeFiles/4.3.1-msvc1/CMakeRCCompiler.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/Program Files/Microsoft Visual Studio/18/Community/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-4.3/Modules/CMakeRCInformation.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/Program Files/Microsoft Visual Studio/18/Community/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-4.3/Modules/CMakeCommonLanguageInclude.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/Program Files/Microsoft Visual Studio/18/Community/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-4.3/Modules/Internal/CMakeCXXLinkerInformation.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/Program Files/Microsoft Visual Studio/18/Community/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-4.3/Modules/Internal/CMakeCommonLinkerInformation.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/Program Files/Microsoft Visual Studio/18/Community/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-4.3/Modules/Linker/MSVC-CXX.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/Program Files/Microsoft Visual Studio/18/Community/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-4.3/Modules/Linker/MSVC.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/Program Files/Microsoft Visual Studio/18/Community/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-4.3/Modules/Platform/Linker/Windows-MSVC-CXX.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/Program Files/Microsoft Visual Studio/18/Community/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/share/cmake-4.3/Modules/Platform/Linker/Windows-MSVC.cmake"
+		}
+	],
+	"kind" : "cmakeFiles",
+	"paths" : 
+	{
+		"build" : "D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/out/build/x64-Release",
+		"source" : "D:/Dev/.cpp/Opengl_Physx/Opengl_Physx"
+	},
+	"version" : 
+	{
+		"major" : 1,
+		"minor" : 1
+	}
+}

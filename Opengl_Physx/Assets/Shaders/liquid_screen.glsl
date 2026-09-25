@@ -115,7 +115,10 @@ void main(){
         float weight=exp(-float(x*x)*inverseVariance-difference*difference*depthRejection);
         sum+=value.rg*weight;weights+=weight;
     }
-    result=vec4(sum/max(weights,1e-20),original.ba);
+    // A single thin droplet needs its spherical depth, not the bulk-water blur.
+    // Raw depth/thickness survive every pass in alpha/blue, avoiding cumulative flattening.
+    float bulk=smoothstep(radius*.75,radius*1.5,original.b);
+    result=vec4(mix(vec2(original.a,original.b),sum/max(weights,1e-20),bulk),original.ba);
 }
 #elif defined(PASS_NORMALS)
 bool neighbor(vec2 q,float d,out vec3 p){
@@ -231,7 +234,19 @@ void main(){
     vec3 transmitted=refractedScene(position,exitPoint);
     vec3 absorption=exp(-max(data.g,0)*vec3(.624,.156,.078)*absorptionStrength);
     transmitted=transmitted*absorption+colorForThickness(data.g)*(1-absorption);
-    result=vec4(mix(transmitted,reflected,reflectedWeight),1);
+    // A direct light reflection supplies a curved highlight even when the
+    // reflected ray leaves the screen and only the flat background is available.
+    vec3 toLight=normalize(vec3(-.4,.8,.3));
+    vec3 toEye=-incoming;
+    vec3 halfSum=toLight+toEye;
+    vec3 halfVector=halfSum*inversesqrt(max(dot(halfSum,halfSum),1e-8));
+    float nh=max(dot(n,halfVector),0.0);
+    float normalFootprint=max(length(dFdx(n)),length(dFdy(n)));
+    float exponent=mix(180.0,24.0,smoothstep(.02,.3,normalFootprint));
+    float highlight=pow(nh,exponent)*(exponent/180.0)*max(dot(n,toLight),0.0);
+    vec3 color=mix(transmitted,reflected,reflectedWeight);
+    color+=vec3(.96,.98,1.0)*highlight*.85*reflectionStrength;
+    result=vec4(color,1);
     vec4 clip=projection*vec4(position,1);gl_FragDepth=clip.z/clip.w*.5+.5;
 }
 #endif
