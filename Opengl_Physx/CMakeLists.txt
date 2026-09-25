@@ -15,8 +15,8 @@ set(PHYSX_BIN "${PHYSX_ROOT}/physx/bin/win.x86_64.vc143.md/release")
 set(BLAST_SDK "${PHYSX_ROOT}/blast/_build/windows-x86_64/release/blast-sdk")
 set(FLOW_ROOT "${PHYSX_ROOT}/flow" CACHE PATH "NVIDIA Flow root")
 set(FLOW_BIN "${FLOW_ROOT}/_build/windows-x86_64/release")
-set(GLFW_ROOT "${APP_SOURCE_DIR}/../packages/glfw.3.4.0/build/native")
-set(GLM_ROOT "${APP_SOURCE_DIR}/../packages/glm.1.0.3/build/native")
+set(GLFW_ROOT "${APP_SOURCE_DIR}/../packages/glfw.3.4.0/build/native" CACHE PATH "GLFW native package root")
+set(GLM_ROOT "${APP_SOURCE_DIR}/../packages/glm.1.0.3/build/native" CACHE PATH "GLM native package root")
 set(IMGUI_ROOT "${APP_SOURCE_DIR}/ThirdParty/imgui")
 
 foreach(required_path IN ITEMS
@@ -143,3 +143,20 @@ foreach(runtime_dll IN LISTS PHYSX_DLLS BLAST_DLLS FLOW_DLLS)
             "$<TARGET_FILE_DIR:Opengl_Physx>"
     )
 endforeach()
+
+# Optional portable distribution, enabled only by the release build script.
+option(APP_PORTABLE_RUNTIME "Copy MSVC redistributable runtime beside the EXE" OFF)
+if(APP_PORTABLE_RUNTIME)
+    set(CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS_SKIP TRUE)
+    include(InstallRequiredSystemLibraries)
+    if(NOT CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS)
+        message(FATAL_ERROR "MSVC redistributable runtime was not found")
+    endif()
+    foreach(runtime_file IN LISTS CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS)
+        add_custom_command(TARGET Opengl_Physx POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${runtime_file}" "$<TARGET_FILE_DIR:Opengl_Physx>"
+            VERBATIM)
+    endforeach()
+endif()
+

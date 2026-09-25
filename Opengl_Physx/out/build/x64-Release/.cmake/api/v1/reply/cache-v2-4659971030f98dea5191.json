@@ -2,6 +2,18 @@
 	"entries" : 
 	[
 		{
+			"name" : "APP_PORTABLE_RUNTIME",
+			"properties" : 
+			[
+				{
+					"name" : "HELPSTRING",
+					"value" : "Copy MSVC redistributable runtime beside the EXE"
+				}
+			],
+			"type" : "BOOL",
+			"value" : "OFF"
+		},
+		{
 			"name" : "APP_SOURCE_DIR",
 			"properties" : 
 			[
@@ -135,10 +147,10 @@
 				},
 				{
 					"name" : "HELPSTRING",
-					"value" : "CXX compiler"
+					"value" : "No help, variable specified on the command line."
 				}
 			],
-			"type" : "STRING",
+			"type" : "FILEPATH",
 			"value" : "C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/cl.exe"
 		},
 		{
@@ -507,7 +519,7 @@
 				}
 			],
 			"type" : "FILEPATH",
-			"value" : "C:/PROGRA~1/MIB055~1/18/COMMUN~1/Common7/IDE/COMMON~1/MICROS~1/CMake/Ninja/ninja.exe"
+			"value" : "C:/Program Files/Microsoft Visual Studio/18/Community/Common7/IDE/CommonExtensions/Microsoft/CMake/Ninja/ninja.exe"
 		},
 		{
 			"name" : "CMAKE_MODULE_LINKER_FLAGS",
@@ -1040,6 +1052,30 @@
 			],
 			"type" : "PATH",
 			"value" : "D:/Dev/.cpp/_Library/PhysX-main/flow"
+		},
+		{
+			"name" : "GLFW_ROOT",
+			"properties" : 
+			[
+				{
+					"name" : "HELPSTRING",
+					"value" : "GLFW native package root"
+				}
+			],
+			"type" : "PATH",
+			"value" : "D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/../packages/glfw.3.4.0/build/native"
+		},
+		{
+			"name" : "GLM_ROOT",
+			"properties" : 
+			[
+				{
+					"name" : "HELPSTRING",
+					"value" : "GLM native package root"
+				}
+			],
+			"type" : "PATH",
+			"value" : "D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/../packages/glm.1.0.3/build/native"
 		},
 		{
 			"name" : "Opengl_Physx_BINARY_DIR",

@@ -1,0 +1,63 @@
+name: Windows runnable build
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: windows-build-${{ github.sha }}
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: windows-2022
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+          toolset: '14.44'
+      - name: Download fixed SDK bundle
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download build-deps-v1 --repo "$env:GITHUB_REPOSITORY" --pattern windows-build-deps.zip --dir .ci-deps
+          if ($LASTEXITCODE -ne 0) { throw 'Upload the one-time SDK bundle to build-deps-v1 first.' }
+          $config = Get-Content scripts/dependencies.json -Raw | ConvertFrom-Json
+          $actual = (Get-FileHash .ci-deps/windows-build-deps.zip -Algorithm SHA256).Hash
+          if ($actual -ne $config.sha256) { throw 'Dependency bundle checksum mismatch.' }
+          Expand-Archive .ci-deps/windows-build-deps.zip .ci-deps/sdk
+      - name: Compile and package
+        shell: pwsh
+        run: ./scripts/Build.ps1 -DependencyRoot .ci-deps/sdk -Revision $env:GITHUB_SHA
+      - name: Keep build logs and package available
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-${{ github.sha }}
+          path: dist/*
+          retention-days: 7
+      - name: Publish source-matched runtime automatically
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = "build-$env:GITHUB_SHA"
+          $existing = gh release view $tag --repo "$env:GITHUB_REPOSITORY" --json isDraft,assets 2>$null
+          if ($LASTEXITCODE -eq 0) {
+            $release = $existing | ConvertFrom-Json
+            if (!$release.isDraft) {
+              if ('runtime.zip' -notin $release.assets.name -or 'runtime.sha256' -notin $release.assets.name) { throw 'Published release is incomplete. Delete that broken release and rerun.' }
+              Write-Host 'This source revision is already published.'
+              exit 0
+            }
+          } else {
+            gh release create $tag --repo "$env:GITHUB_REPOSITORY" --target "$env:GITHUB_SHA" --title "Automatic build $env:GITHUB_SHA" --notes 'Built automatically from this exact source revision. Download the repository and run the root launcher.' --prerelease --draft
+            if ($LASTEXITCODE -ne 0) { throw 'Cannot create automatic release.' }
+          }
+          gh release upload $tag dist/runtime.zip dist/runtime.sha256 --repo "$env:GITHUB_REPOSITORY" --clobber
+          if ($LASTEXITCODE -ne 0) { throw 'Automatic release upload failed.' }
+          gh release edit $tag --repo "$env:GITHUB_REPOSITORY" --draft=false --latest=false
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot publish completed release.' }

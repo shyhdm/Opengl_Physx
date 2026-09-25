@@ -1,2 +1,6 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+/source-version.txt export-subst
+*.ps1 text eol=crlf
+*.bat text eol=crlf

@@ -399,3 +399,9 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+
+# Downloaded runtime and automated build output
+/Runtime/
+/.ci-build/
+/.ci-deps/
+/dist/
