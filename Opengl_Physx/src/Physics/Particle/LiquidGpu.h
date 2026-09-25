@@ -88,6 +88,7 @@ public:
         value.adhesion = bounded(value.adhesion, 0, 10, .07f);
         value.gravityScale = bounded(value.gravityScale, -2, 5, 1);
         parameters_ = value;
+        UpdateSharedOffsets();
         if (!material_ || granular_)return;
         material_->setViscosity(value.viscosity); material_->setDamping(value.damping);
         material_->setSurfaceTension(value.surfaceTension); material_->setCohesion(value.cohesion);
@@ -100,6 +101,12 @@ public:
     // The generation lattice uses the diameter; visual surface padding is separate.
     static constexpr float MinParticleRadius = .01f, MaxParticleRadius = .25f;
     float particleRadius = SharedParticleSimulation::DefaultWaterRadius;
+    void SetParticleRadius(float value) {
+        if (!std::isfinite(value)) return;
+        particleRadius = glm::clamp(value, MinParticleRadius, MaxParticleRadius);
+        // A live population changes size when regenerated; an empty owner can publish immediately.
+        if (!count_) UpdateSharedOffsets();
+    }
     float ActiveParticleRadius() const { return count_ ? simulationRadius_ : particleRadius; }
     explicit LiquidGpu(PhysicsWorld& world, bool defaultWater = true, bool granular = false) :granular_(granular), density_(granular ? SandDensity : WaterDensity), world_(world), cuda_(*world.GetCuda()), shader_("Assets/Shaders/liquid_particles.glsl")
     {
@@ -114,6 +121,7 @@ public:
             Configure(vao_, vbo_); Configure(boxVao_, boxVbo_);
             containerEnabled_ = defaultWater && !granular_;
             if (granular_) { position = glm::vec3(0, 5, 0); size = glm::vec3(4); particleRadius = SharedParticleSimulation::DefaultSandRadius; showDebugBounds_ = true; }
+            UpdateSharedOffsets();
             if (defaultWater) { if (containerEnabled_) SetContainer(containerPosition_, containerSize_); Reset(); }
         }
         catch (...) { Release(); throw; }
@@ -471,7 +479,9 @@ private:
     void SetActiveCount(unsigned count) { world_.SetParticleCount(this, count); count_ = count; }
     void ApplySandSimulationParameters()
     {
-        if (!granular_ || !material_)return;
+        if (!granular_)return;
+        UpdateSharedOffsets();
+        if (!material_)return;
         const auto& p = sandSimulationParameters_;
         material_->setFriction(p.friction); material_->setParticleFrictionScale(p.particleFrictionScale);
         material_->setDamping(p.damping); material_->setGravityScale(p.gravityScale);
@@ -481,13 +491,12 @@ private:
     }
     void UpdateSharedOffsets()
     {
-        if (!sharedSystem_) return;
         const float activeSpacing = 2.f * ActiveParticleRadius();
         if (granular_) {
             const auto& p = sandSimulationParameters_;
-            sharedSystem_->Configure(true, activeSpacing, p.adhesion, p.particleAdhesionScale, p.adhesionRadiusScale);
+            world_.ConfigureParticleSimulation(true, activeSpacing, p.adhesion, p.particleAdhesionScale, p.adhesionRadiusScale, count_ != 0);
         }
-        else sharedSystem_->Configure(false, activeSpacing, parameters_.adhesion, 1.f, 2.f);
+        else world_.ConfigureParticleSimulation(false, activeSpacing, parameters_.adhesion, 1.f, 2.f, count_ != 0);
     }
     void EnsureSystem()
     {
@@ -513,6 +522,7 @@ private:
         auto& scene = world_.GetScene();
         if (count_)
         {
+            UpdateSharedOffsets();
             if (system_ && !system_->getScene()) scene.addActor(*system_);
             if (system_ && particles_ && !bufferAttached_) { system_->addParticleBuffer(particles_); bufferAttached_ = true; }
             if (containerEnabled_ && container_ && !container_->getScene()) scene.addActor(*container_);

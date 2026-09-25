@@ -156,7 +156,9 @@ public:
             edit(T("生成框位置", "Generation position"), particles.position, false);
             edit(T("生成框大小", "Generation size"), particles.size, true);
             ImGui::SetNextItemWidth(150.f * scale);
-            Number(T("粒子半径", "Particle radius"), particles.particleRadius, .001f, LiquidGpu::MinParticleRadius, LiquidGpu::MaxParticleRadius);
+            float radius = particles.particleRadius;
+            if (Number(T("粒子半径", "Particle radius"), radius, .001f, LiquidGpu::MinParticleRadius, LiquidGpu::MaxParticleRadius))
+                particles.SetParticleRadius(radius);
             if (ImGui::IsItemHovered())
                 ImGui::SetTooltip(T("物理采样半径。重新生成或清空后发射生效。当前半径: %.3f", "Physical sampling radius. Applies after regeneration or clearing. Current radius: %.3f"), particles.ActiveParticleRadius());
             const auto count = particles.PreviewCount();

@@ -1,6 +1,7 @@
 #pragma once
 #include <PxPhysicsAPI.h>
 #include <algorithm>
+#include <array>
 #include <limits>
 #include <stdexcept>
 
@@ -10,14 +11,19 @@ class SharedParticleSimulation {
 public:
     static constexpr float DefaultWaterRadius = .1f;
     static constexpr float DefaultSandRadius = DefaultWaterRadius / .6f;
-    SharedParticleSimulation(physx::PxPhysics& physics, physx::PxScene& scene, physx::PxCudaContextManager& cuda) : physics_(physics) {
+    struct Configuration {
+        float spacing, adhesion = 0, adhesionScale = 1, adhesionRadius = 2;
+    };
+    using Configurations = std::array<Configuration, 2>;
+    static Configurations Defaults() {
+        return { Configuration{2.f * DefaultWaterRadius, .07f}, Configuration{2.f * DefaultSandRadius} };
+    }
+    SharedParticleSimulation(physx::PxPhysics& physics, physx::PxScene& scene, physx::PxCudaContextManager& cuda,
+        const Configurations& configurations) : physics_(physics) {
         system_ = physics.createPBDParticleSystem(cuda, 96);
         if (!system_) throw std::runtime_error("Cannot create shared GPU particle system");
-        // Reserve compatible physical scales for BOTH materials before any simulation.
-        // Joining/leaving a phase must not change an existing pile's contact geometry.
-        slots_[0].spacing = 2.f * DefaultWaterRadius;
-        slots_[0].adhesion = .07f;
-        slots_[1].spacing = 2.f * DefaultSandRadius;
+        // Retain both configurations, but only populated phases contribute to solver scales.
+        for (unsigned i = 0; i < 2; ++i) static_cast<Configuration&>(slots_[i]) = configurations[i];
         ApplyOffsets();
         scene.addActor(*system_);
     }
@@ -40,23 +46,25 @@ public:
         return slot.material;
     }
     unsigned Phase(bool sand) { Material(sand); return slots_[sand ? 1 : 0].phase; }
-    void Configure(bool sand, float spacing, float adhesion, float adhesionScale, float adhesionRadius) {
+    void Configure(bool sand, float spacing, float adhesion, float adhesionScale, float adhesionRadius, bool active) {
         auto& slot = slots_[sand ? 1 : 0];
-        slot.active = true; slot.spacing = spacing;
+        slot.active = active; slot.spacing = spacing;
         slot.adhesion = adhesion; slot.adhesionScale = adhesionScale; slot.adhesionRadius = adhesionRadius;
         ApplyOffsets();
     }
-    void Deactivate(bool sand) { slots_[sand ? 1 : 0].active = false; }
+    void Deactivate(bool sand) { slots_[sand ? 1 : 0].active = false; ApplyOffsets(); }
 private:
-    struct Slot {
+    struct Slot : Configuration {
         physx::PxPBDMaterial* material = nullptr; unsigned phase = 0;
-        bool active = false; float spacing = .08f, adhesion = 0, adhesionScale = 1, adhesionRadius = 2;
+        bool active = false;
     };
     void ApplyOffsets() {
         const auto& water = slots_[0]; const auto& sand = slots_[1];
+        if (!water.active && !sand.active) return;
         float wallRest = std::numeric_limits<float>::max(), wallContact = 0, particleContact = 0;
         for (unsigned i = 0; i < 2; ++i) {
             const auto& s = slots_[i];
+            if (!s.active) continue;
             const float rest = s.spacing * .5f / (i ? 1.f : .6f);
             wallRest = std::min(wallRest, rest);
             const float solidContact = std::max(rest + .01f, s.adhesion > 0 && s.adhesionScale > 0 ? rest * s.adhesionRadius : 0.f);
@@ -64,10 +72,12 @@ private:
             particleContact = std::max(particleContact, std::max(rest + .01f,
                 i && s.adhesion > 0 && s.adhesionScale > 0 ? rest * s.adhesionRadius : 0.f));
         }
-        const float solidRest = sand.spacing * .5f;
-        const float fluidRest = water.spacing * .5f;
+        // Inactive-phase offsets are compatible placeholders, not saved settings.
+        // Activating that phase restores its independently configured radius.
+        const float solidRest = sand.active ? sand.spacing * .5f : water.spacing * .5f / .6f;
+        const float fluidRest = water.active ? water.spacing * .5f : solidRest * .6f;
         // The SDK exposes one collider rest distance for the whole system.
-        // Use both configured phase scales, even while one phase has no particles.
+        // Derive the shared collider/search scales from populated phases only.
         // This SDK initializes GPU mGridCellWidth when the actor enters the scene.
         // Updating particleContactOffset alone changes the kernel radius but not the
         // search grid. Reinsert the same actor between completed simulation steps;
@@ -76,10 +86,14 @@ private:
         auto* scene = system_->getScene();
         const bool rebuildGrid = scene && system_->getParticleContactOffset() != nextContact;
         if (rebuildGrid) scene->removeActor(*system_);
+        // Expand bounds before changing rest distances; shrink only after both phases are updated.
+        const float nextWallContact = std::max(wallContact, std::max(solidRest, fluidRest) + .01f);
+        system_->setContactOffset(std::max(system_->getContactOffset(), nextWallContact));
+        system_->setParticleContactOffset(std::max(system_->getParticleContactOffset(), nextContact));
         system_->setRestOffset(wallRest);
         system_->setSolidRestOffset(solidRest);
         system_->setFluidRestOffset(fluidRest);
-        system_->setContactOffset(std::max(wallContact, std::max(solidRest, fluidRest) + .01f));
+        system_->setContactOffset(nextWallContact);
         system_->setParticleContactOffset(nextContact);
         if (rebuildGrid) scene->addActor(*system_);
     }

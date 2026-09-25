@@ -22,10 +22,15 @@ public:
         auto shared = particleSimulation_.lock();
         if (!shared) {
             if (!cuda) throw std::runtime_error("GPU particles require CUDA");
-            shared = std::make_shared<SharedParticleSimulation>(*physics, *scene, *cuda);
+            shared = std::make_shared<SharedParticleSimulation>(*physics, *scene, *cuda, particleConfigurations_);
             particleSimulation_ = shared;
         }
         return shared;
+    }
+    // Settings survive releasing the last particle buffer, without retaining GPU allocations.
+    void ConfigureParticleSimulation(bool sand, float spacing, float adhesion, float adhesionScale, float adhesionRadius, bool active) {
+        particleConfigurations_[sand ? 1 : 0] = { spacing, adhesion, adhesionScale, adhesionRadius };
+        if (auto shared = particleSimulation_.lock()) shared->Configure(sand, spacing, adhesion, adhesionScale, adhesionRadius, active);
     }
     static constexpr unsigned ParticleLimit = 1000000;
     unsigned TotalParticleCount() const {
@@ -310,6 +315,7 @@ private:
     physx::PxScene* scene = nullptr;
     physx::PxMaterial* material = nullptr;
     std::unordered_map<const void*, unsigned> particleCounts_;
+    SharedParticleSimulation::Configurations particleConfigurations_ = SharedParticleSimulation::Defaults();
     std::weak_ptr<SharedParticleSimulation> particleSimulation_;
     physx::PxRigidStatic* ground = nullptr;
     std::unique_ptr<CollisionLibrary> collisions;
