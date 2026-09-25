@@ -47,6 +47,9 @@ public:
         particleFiring = false; waterRemainder = sandRemainder = 0;
         if (liquid) liquid->ClearForSceneChange();
         if (sand) sand->ClearForSceneChange();
+        activeLinkedWaterRadius = linkedWaterRadius;
+        if (liquid) liquid->SetParticleRadius(linkedWaterRadius);
+        if (sand) sand->SetParticleRadius(linkedWaterRadius / .6f);
         liquidPhysicsStepMs = 0;
         softBodies.clear();
         bodies.clear();
@@ -73,13 +76,16 @@ public:
             {
                 if (particleTest != 0) {
                     if (!sand) sand = std::make_unique<LiquidGpu>(world, false, true);
+                    sand->SetParticleRadius(linkedWaterRadius / .6f);
                     sand->SetDensity(sandDensity);
                     sand->ResetSandTest();
                     sand->SetDisplayMode(liquidDisplayMode);
                 }
                 else if (!liquid) {
-                    liquid = std::make_unique<LiquidGpu>(world);
+                    liquid = std::make_unique<LiquidGpu>(world, false);
+                    liquid->SetParticleRadius(linkedWaterRadius);
                     liquid->SetDensity(waterDensity);
+                    liquid->ResetForScene();
                     liquid->SetDisplayMode(liquidDisplayMode);
                 }
                 else liquid->ResetForScene();
@@ -431,11 +437,14 @@ public:
         if (!requested || (liquid && liquid->Count() == LiquidGpu::MaxParticles)) return;
         if (!liquid) {
             liquid = std::make_unique<LiquidGpu>(world, false);
+            liquid->SetParticleRadius(linkedWaterRadius);
             liquid->SetDensity(waterDensity);
             liquid->SetDisplayMode(liquidDisplayMode);
         }
+        liquid->SetParticleRadius(activeLinkedWaterRadius);
         liquid->Emit(origin + direction * std::max(.6f, waterRadius + .3f), direction,
             waterSpeed, waterRadius, requested, std::min(step, 1.f / 60.f));
+        liquid->SetParticleRadius(linkedWaterRadius);
     }
     float GetSandSpeed() const { return sandSpeed; }
     float GetSandRate() const { return sandRate; }
@@ -454,11 +463,14 @@ public:
         if (!sand) {
             // Global emission allocates an empty granular system, without a test pile or container.
             sand = std::make_unique<LiquidGpu>(world, false, true);
+            sand->SetParticleRadius(linkedWaterRadius / .6f);
             sand->SetDensity(sandDensity);
             sand->SetDisplayMode(liquidDisplayMode);
         }
+        sand->SetParticleRadius(activeLinkedWaterRadius / .6f);
         sand->Emit(origin + direction * std::max(.6f, sandRadius + .3f), direction,
             sandSpeed, sandRadius, requested, std::min(step, 1.f / 60.f));
+        sand->SetParticleRadius(linkedWaterRadius / .6f);
     }
     float GetLaunchSpeed() const { return launchSpeed; }
     float GetLaunchScale() const { return launchScale; }
@@ -492,6 +504,32 @@ public:
         particleTest = value; Reset();
     }
     float GetWaterDensity() const { return waterDensity; }
+    void SetLinkedParticleRadius(bool editingSand, float value) {
+        if (!std::isfinite(value)) return;
+        const float water = std::clamp(editingSand ? value * .6f : value,
+            LiquidGpu::MinParticleRadius, LiquidGpu::MaxParticleRadius * .6f);
+        if (water == linkedWaterRadius) return;
+        linkedWaterRadius = water;
+        if (liquid) liquid->SetParticleRadius(water);
+        if (sand) sand->SetParticleRadius(water / .6f);
+    }
+    void RegenerateParticles(LiquidGpu& selected) {
+        if (activeLinkedWaterRadius != linkedWaterRadius) {
+            const bool hadWater = liquid && liquid->Count();
+            const bool hadSand = sand && sand->Count();
+            if (liquid) liquid->ClearForRadiusChange();
+            if (sand) sand->ClearForRadiusChange();
+            activeLinkedWaterRadius = linkedWaterRadius;
+            waterRemainder = sandRemainder = 0;
+            if (liquid) liquid->SetParticleRadius(linkedWaterRadius);
+            if (sand) sand->SetParticleRadius(linkedWaterRadius / .6f);
+            selected.Reset();
+            // Existing other-phase particles also regenerate from their own generation box.
+            auto* other = &selected == liquid.get() ? sand.get() : liquid.get();
+            if (other && (&selected == liquid.get() ? hadSand : hadWater) && other->RequestedCount()) other->Reset();
+        }
+        else selected.Reset();
+    }
     float GetSandDensity() const { return sandDensity; }
     void SetWaterDensity(float value) {
         if (!std::isfinite(value)) return;
@@ -1175,6 +1213,8 @@ private:
     inline static std::uint64_t nextObject = 0, nextVersion = 0;
     std::uint64_t version = 0;
     PhysicsWorld world;
+    float activeLinkedWaterRadius = SharedParticleSimulation::DefaultWaterRadius;
+    float linkedWaterRadius = SharedParticleSimulation::DefaultWaterRadius;
     float waterDensity = LiquidGpu::WaterDensity, sandDensity = LiquidGpu::SandDensity;
     std::unique_ptr<LiquidGpu> liquid;
     std::unique_ptr<LiquidGpu> sand;

@@ -67,9 +67,10 @@ private:
             if (!s.active) continue;
             const float rest = s.spacing * .5f / (i ? 1.f : .6f);
             wallRest = std::min(wallRest, rest);
-            const float solidContact = std::max(rest + .01f, s.adhesion > 0 && s.adhesionScale > 0 ? rest * s.adhesionRadius : 0.f);
-            wallContact = std::max(wallContact, i ? solidContact : rest + (s.adhesion > 0 ? std::max(.01f, rest) : .01f));
-            particleContact = std::max(particleContact, std::max(rest + .01f,
+            const float margin = rest * .06f; // 0.01 at the reference sand radius; scale with particle size.
+            const float solidContact = std::max(rest + margin, s.adhesion > 0 && s.adhesionScale > 0 ? rest * s.adhesionRadius : 0.f);
+            wallContact = std::max(wallContact, i ? solidContact : rest + (s.adhesion > 0 ? std::max(margin, rest) : margin));
+            particleContact = std::max(particleContact, std::max(rest + margin,
                 i && s.adhesion > 0 && s.adhesionScale > 0 ? rest * s.adhesionRadius : 0.f));
         }
         // Inactive-phase offsets are compatible placeholders, not saved settings.
@@ -82,12 +83,12 @@ private:
         // Updating particleContactOffset alone changes the kernel radius but not the
         // search grid. Reinsert the same actor between completed simulation steps;
         // buffers, phases, materials and particle state remain owned by this system.
-        const float nextContact = std::max(particleContact, std::max(solidRest, fluidRest) + .01f);
+        const float nextContact = std::max(particleContact, std::max(solidRest, fluidRest) * 1.06f);
         auto* scene = system_->getScene();
         const bool rebuildGrid = scene && system_->getParticleContactOffset() != nextContact;
         if (rebuildGrid) scene->removeActor(*system_);
         // Expand bounds before changing rest distances; shrink only after both phases are updated.
-        const float nextWallContact = std::max(wallContact, std::max(solidRest, fluidRest) + .01f);
+        const float nextWallContact = std::max(wallContact, std::max(solidRest, fluidRest) * 1.06f);
         system_->setContactOffset(std::max(system_->getContactOffset(), nextWallContact));
         system_->setParticleContactOffset(std::max(system_->getParticleContactOffset(), nextContact));
         system_->setRestOffset(wallRest);

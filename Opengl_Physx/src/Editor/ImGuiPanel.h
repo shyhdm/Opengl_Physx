@@ -157,16 +157,19 @@ public:
             edit(T("生成框大小", "Generation size"), particles.size, true);
             ImGui::SetNextItemWidth(150.f * scale);
             float radius = particles.particleRadius;
-            if (Number(T("粒子半径", "Particle radius"), radius, .001f, LiquidGpu::MinParticleRadius, LiquidGpu::MaxParticleRadius))
-                particles.SetParticleRadius(radius);
+            const bool editingSand = &particles == scene.GetSand();
+            const float minRadius = editingSand ? LiquidGpu::MinParticleRadius / .6f : LiquidGpu::MinParticleRadius;
+            const float maxRadius = editingSand ? LiquidGpu::MaxParticleRadius : LiquidGpu::MaxParticleRadius * .6f;
+            if (Number(T("粒子半径", "Particle radius"), radius, .001f, minRadius, maxRadius))
+                scene.SetLinkedParticleRadius(editingSand, radius);
             if (ImGui::IsItemHovered())
-                ImGui::SetTooltip(T("物理采样半径。重新生成或清空后发射生效。当前半径: %.3f", "Physical sampling radius. Applies after regeneration or clearing. Current radius: %.3f"), particles.ActiveParticleRadius());
+                ImGui::SetTooltip(T("水半径 = 沙半径 × 0.6。生成或切换场景时统一生效；已有另一种粒子也会重新生成。当前半径: %.3f", "Water radius = sand radius * 0.6. Applies on generation or scene change; the other populated phase is regenerated too. Current radius: %.3f"), particles.ActiveParticleRadius());
             const auto count = particles.PreviewCount();
             if (count == std::numeric_limits<uint64_t>::max())
                 ImGui::TextUnformatted(T("预生成: 超出计数范围", "Preview: exceeds count range"));
             else ImGui::Text(T("预生成: %llu", "Preview: %llu"), static_cast<unsigned long long>(count));
             ImGui::BeginDisabled(!particles.RequestedCount());
-            if (ImGui::Button(T("生成", "Generate"))) particles.Reset();
+            if (ImGui::Button(T("生成", "Generate"))) scene.RegenerateParticles(particles);
             ImGui::EndDisabled();
             if (count > particles.GenerationCapacity())
                 ImGui::Text(T("水沙合计上限100万，可生成: %u", "Water + sand limit: 1,000,000. Generation budget: %u"), particles.GenerationCapacity());

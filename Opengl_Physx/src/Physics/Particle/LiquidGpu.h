@@ -107,6 +107,12 @@ public:
         // A live population changes size when regenerated; an empty owner can publish immediately.
         if (!count_) UpdateSharedOffsets();
     }
+    // Called only when regeneration commits new radii for both populations.
+    void ClearForRadiusChange() {
+        ClearParticles();
+        revision_ = std::numeric_limits<unsigned long long>::max();
+        if (surface_) surface_->Invalidate();
+    }
     float ActiveParticleRadius() const { return count_ ? simulationRadius_ : particleRadius; }
     explicit LiquidGpu(PhysicsWorld& world, bool defaultWater = true, bool granular = false) :granular_(granular), density_(granular ? SandDensity : WaterDensity), world_(world), cuda_(*world.GetCuda()), shader_("Assets/Shaders/liquid_particles.glsl")
     {
@@ -179,7 +185,6 @@ public:
         ClearForSceneChange();
         containerEnabled_ = true; showDebugBounds_ = true;
         SetContainer(containerPosition_, containerSize_);
-        particleRadius = SharedParticleSimulation::DefaultSandRadius;
         position = glm::vec3(0, 5, 0); size = glm::vec3(4);
         Reset();
     }
