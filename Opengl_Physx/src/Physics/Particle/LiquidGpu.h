@@ -15,13 +15,36 @@
 #include <array>
 #include <limits>
 #include <vector>
+#include <bit>
 
 class LiquidGpu
 {
 public:
     static constexpr unsigned MaxParticles = PhysicsWorld::ParticleLimit;
-    static constexpr float WaterDensity = 10.f;
+    static constexpr float WaterDensity = 3.f;
     static constexpr float SandDensity = 16.f;
+    static constexpr float MinDensity = .001f, MaxDensity = 100000.f;
+    float GetDensity() const { return density_; }
+    // Called by the editor between completed simulation steps, including while paused.
+    void SetDensity(float value)
+    {
+        if (!std::isfinite(value)) return;
+        value = glm::clamp(value, MinDensity, MaxDensity);
+        if (value == density_) return;
+        if (particles_ && count_) {
+            const float diameter = 2.f * simulationRadius_;
+            const float inverseMass = 1.f / (value * diameter * diameter * diameter);
+            physx::PxScopedCudaLock lock(cuda_);
+            auto* context = cuda_.getCudaContext();
+            // Write only the w component; positions, velocities, phases and IDs are retained.
+            Check(context->streamSynchronize(nullptr));
+            Check(setMass_(reinterpret_cast<CUdeviceptr>(particles_->getPositionInvMasses()) + 3 * sizeof(float),
+                sizeof(physx::PxVec4), std::bit_cast<unsigned int>(inverseMass), 1, count_));
+            Check(context->streamSynchronize(nullptr));
+            particles_->raiseFlags(physx::PxParticleBufferFlag::eUPDATE_POSITION);
+        }
+        density_ = value;
+    }
     struct Parameters
     {
         float viscosity = .05f, damping = .05f, surfaceTension = .77f, cohesion = 5.06f;
@@ -78,13 +101,14 @@ public:
     static constexpr float MinParticleRadius = .01f, MaxParticleRadius = .25f;
     float particleRadius = SharedParticleSimulation::DefaultWaterRadius;
     float ActiveParticleRadius() const { return count_ ? simulationRadius_ : particleRadius; }
-    explicit LiquidGpu(PhysicsWorld& world, bool defaultWater = true, bool granular = false) :granular_(granular), world_(world), cuda_(*world.GetCuda()), shader_("Assets/Shaders/liquid_particles.glsl")
+    explicit LiquidGpu(PhysicsWorld& world, bool defaultWater = true, bool granular = false) :granular_(granular), density_(granular ? SandDensity : WaterDensity), world_(world), cuda_(*world.GetCuda()), shader_("Assets/Shaders/liquid_particles.glsl")
     {
         try {
             driver_ = LoadLibraryW(L"nvcuda.dll");
             if (!driver_) throw std::runtime_error("CUDA driver unavailable");
             reg_ = Load<Register>("cuGraphicsGLRegisterBuffer"); unregister_ = Load<Unregister>("cuGraphicsUnregisterResource");
             map_ = Load<Map>("cuGraphicsMapResources"); unmap_ = Load<Map>("cuGraphicsUnmapResources"); pointer_ = Load<Pointer>("cuGraphicsResourceGetMappedPointer_v2");
+            setMass_ = Load<SetMass>("cuMemsetD2D32_v2");
             GL::GenVertexArrays(1, &vao_); GL::GenBuffers(1, &vbo_);
             GL::GenVertexArrays(1, &boxVao_); GL::GenBuffers(1, &boxVbo_);
             Configure(vao_, vbo_); Configure(boxVao_, boxVbo_);
@@ -251,7 +275,7 @@ public:
             if (!positions || !velocities || !phases)throw std::runtime_error("Liquid initialization allocation failed");
             const glm::ivec3 dims(glm::floor(size / spacing));
             const glm::vec3 first = position - .5f * glm::vec3(dims - glm::ivec3(1)) * spacing;
-            unsigned int n = 0; const float mass = (granular_ ? SandDensity : WaterDensity) * spacing * spacing * spacing;
+            unsigned int n = 0; const float mass = density_ * spacing * spacing * spacing;
             for (int z = 0; z < dims.z; ++z)for (int y = 0; y < dims.y; ++y)for (int x = 0; x < dims.x; ++x) { auto p = first + glm::vec3(x, y, z) * spacing; positions[n] = PxVec4(p.x, p.y, p.z, 1.0f / mass); velocities[n] = PxVec4(0.0f); phases[n++] = phase_; }
             ExtGpu::PxParticleBufferDesc desc; desc.maxParticles = AllocationCapacity(count); desc.numActiveParticles = count; desc.positions = positions; desc.velocities = velocities; desc.phases = phases;
             if (reuse)
@@ -321,7 +345,7 @@ public:
         const auto right = glm::normalize(glm::cross(direction, std::abs(direction.y) < .95f ? glm::vec3(0, 1, 0) : glm::vec3(1, 0, 0)));
         const auto up = glm::cross(right, direction);
         const float diameter = 2.f * simulationRadius_;
-        const float inverseMass = 1.0f / ((granular_ ? SandDensity : WaterDensity) * diameter * diameter * diameter);
+        const float inverseMass = 1.0f / (density_ * diameter * diameter * diameter);
         for (unsigned i = 0; i < amount; ++i) {
             const double sequence = double(emittedSequence_++);
             const float radial = radius * std::sqrt(float(std::fmod(sequence * .7548776662466927 + .5, 1.0)));
@@ -508,6 +532,8 @@ private:
             if (container_ && container_->getScene()) scene.removeActor(*container_);
         }
     }
+    using SetMass = int(WINAPI*)(CUdeviceptr, size_t, unsigned int, size_t, size_t);
+    SetMass setMass_ = nullptr;
     using Register = int(WINAPI*)(void**, unsigned int, unsigned int); using Unregister = int(WINAPI*)(void*);
     using Map = int(WINAPI*)(unsigned int, void**, CUstream); using Pointer = int(WINAPI*)(CUdeviceptr*, size_t*, void*);
     template<class T>T Load(const char* name) { auto f = reinterpret_cast<T>(GetProcAddress(driver_, name)); if (!f)throw std::runtime_error("CUDA interop unavailable"); return f; }
@@ -516,6 +542,7 @@ private:
     void ClearParticles() { cleanup_.reset(); if (resource_) { glFinish(); physx::PxScopedCudaLock lock(cuda_); cuda_.getCudaContext()->streamSynchronize(nullptr); }if (resource_) { physx::PxScopedCudaLock lock(cuda_); unregister_(resource_); resource_ = nullptr; }if (particles_) { if (system_ && bufferAttached_)system_->removeParticleBuffer(particles_); bufferAttached_ = false; particles_->release(); particles_ = nullptr; }ReleaseSystemReference(); SetActiveCount(0); }
     void Release() { ClearParticles(); { physx::PxScopedCudaLock lock(cuda_); copyTimer_.Release(); } if (container_) { container_->release(); container_ = nullptr; }GL::DeleteBuffers(1, &vbo_); GL::DeleteBuffers(1, &boxVbo_); GL::DeleteVertexArrays(1, &vao_); GL::DeleteVertexArrays(1, &boxVao_); if (driver_) { FreeLibrary(driver_); driver_ = nullptr; } }
     const bool granular_;
+    float density_;
     bool containerEnabled_ = true;
     std::vector<physx::PxVec4> emissionPositions_, emissionVelocities_;
     std::vector<physx::PxU32> emissionPhases_;

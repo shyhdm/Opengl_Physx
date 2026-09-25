@@ -104,6 +104,13 @@ public:
             const char* globalLiquidModes[] = { T("渲染", "Render"), T("粒子", "Particles") };
             if (ImGui::Combo(T("粒子显示模式", "Particle display mode"), &globalLiquidDisplay, globalLiquidModes, 2))
                 scene.SetLiquidDisplayMode(globalLiquidDisplay);
+            ImGui::PushItemWidth(160.f * scale);
+            float waterDensity = scene.GetWaterDensity(), sandDensity = scene.GetSandDensity();
+            if (Number(T("水体密度", "Water density"), waterDensity, .05f, LiquidGpu::MinDensity, LiquidGpu::MaxDensity))
+                scene.SetWaterDensity(waterDensity);
+            if (Number(T("沙子密度", "Sand density"), sandDensity, .05f, LiquidGpu::MinDensity, LiquidGpu::MaxDensity))
+                scene.SetSandDensity(sandDensity);
+            ImGui::PopItemWidth();
             if (ImGui::TreeNode(T("发射", "Launch")))
             {
                 ImGui::PushItemWidth(160.0f * scale);

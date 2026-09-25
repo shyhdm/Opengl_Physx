@@ -73,11 +73,13 @@ public:
             {
                 if (particleTest != 0) {
                     if (!sand) sand = std::make_unique<LiquidGpu>(world, false, true);
+                    sand->SetDensity(sandDensity);
                     sand->ResetSandTest();
                     sand->SetDisplayMode(liquidDisplayMode);
                 }
                 else if (!liquid) {
                     liquid = std::make_unique<LiquidGpu>(world);
+                    liquid->SetDensity(waterDensity);
                     liquid->SetDisplayMode(liquidDisplayMode);
                 }
                 else liquid->ResetForScene();
@@ -429,6 +431,7 @@ public:
         if (!requested || (liquid && liquid->Count() == LiquidGpu::MaxParticles)) return;
         if (!liquid) {
             liquid = std::make_unique<LiquidGpu>(world, false);
+            liquid->SetDensity(waterDensity);
             liquid->SetDisplayMode(liquidDisplayMode);
         }
         liquid->Emit(origin + direction * std::max(.6f, waterRadius + .3f), direction,
@@ -451,6 +454,7 @@ public:
         if (!sand) {
             // Global emission allocates an empty granular system, without a test pile or container.
             sand = std::make_unique<LiquidGpu>(world, false, true);
+            sand->SetDensity(sandDensity);
             sand->SetDisplayMode(liquidDisplayMode);
         }
         sand->Emit(origin + direction * std::max(.6f, sandRadius + .3f), direction,
@@ -486,6 +490,20 @@ public:
     void SetParticleTest(int value) {
         if (sceneIndex != 3 || value < 0 || value > 1 || value == particleTest) return;
         particleTest = value; Reset();
+    }
+    float GetWaterDensity() const { return waterDensity; }
+    float GetSandDensity() const { return sandDensity; }
+    void SetWaterDensity(float value) {
+        if (!std::isfinite(value)) return;
+        value = std::clamp(value, LiquidGpu::MinDensity, LiquidGpu::MaxDensity);
+        if (liquid) liquid->SetDensity(value);
+        waterDensity = value;
+    }
+    void SetSandDensity(float value) {
+        if (!std::isfinite(value)) return;
+        value = std::clamp(value, LiquidGpu::MinDensity, LiquidGpu::MaxDensity);
+        if (sand) sand->SetDensity(value);
+        sandDensity = value;
     }
     LiquidGpu* GetSand() { return sand.get(); }
     const LiquidGpu* GetSand() const { return sand.get(); }
@@ -1157,6 +1175,7 @@ private:
     inline static std::uint64_t nextObject = 0, nextVersion = 0;
     std::uint64_t version = 0;
     PhysicsWorld world;
+    float waterDensity = LiquidGpu::WaterDensity, sandDensity = LiquidGpu::SandDensity;
     std::unique_ptr<LiquidGpu> liquid;
     std::unique_ptr<LiquidGpu> sand;
     int particleTest = 0;
