@@ -86,17 +86,24 @@ public:
 
     // Call after removing the old preset's bodies and detaching its liquid actors.
     // Rebuild only PxScene; the physics SDK, CUDA context and user particle storage survive.
+    physx::PxRigidStatic* GetGroundActor() const { return ground; }
+    void SetGroundEnabled(bool enabled) {
+        if (enabled && !ground->getScene()) scene->addActor(*ground);
+        else if (!enabled && ground->getScene()) scene->removeActor(*ground);
+    }
     void SetParticleSolver(bool particleSolver)
     {
         using namespace physx;
         const auto wanted = particleSolver ? PxSolverType::ePGS : PxSolverType::eTGS;
         if (scene->getSolverType() == wanted) return;
         if (scene->getNbPBDParticleSystems() ||
-            scene->getNbActors(PxActorTypeFlag::eRIGID_STATIC | PxActorTypeFlag::eRIGID_DYNAMIC) != 1)
+            scene->getNbActors(PxActorTypeFlag::eRIGID_STATIC | PxActorTypeFlag::eRIGID_DYNAMIC) != (ground->getScene() ? 1u : 0u))
             throw std::runtime_error("Clear scene actors before changing the solver.");
         auto* replacement = CreateScene(particleSolver);
-        scene->removeActor(*ground);
-        replacement->addActor(*ground);
+        if (ground->getScene()) {
+            scene->removeActor(*ground);
+            replacement->addActor(*ground);
+        }
         auto* previous = scene;
         scene = replacement;
         previous->release();

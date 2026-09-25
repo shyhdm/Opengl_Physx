@@ -535,7 +535,8 @@
 				59,
 				60,
 				61,
-				62
+				62,
+				63
 			]
 		}
 	],
@@ -641,6 +642,11 @@
 		{
 			"backtrace" : 9,
 			"path" : "src/Graphics/OutlineEffect.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 9,
+			"path" : "src/Graphics/SceneLight.h",
 			"sourceGroupIndex" : 1
 		},
 		{

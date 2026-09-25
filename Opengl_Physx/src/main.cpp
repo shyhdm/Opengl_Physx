@@ -66,6 +66,7 @@ int main()
             lastTime = currentTime;
             if (!ready) { lastSample = std::chrono::steady_clock::now(); debugOverlay.Reset(); continue; }
             auto cpuFrameStarted = std::chrono::steady_clock::now();
+            scene->SetGpuLoad(debugOverlay.GpuLoadPercent());
             gui.BeginFrame();
             bool refreshStats = currentTime >= nextStatsRefresh;
             if (refreshStats)

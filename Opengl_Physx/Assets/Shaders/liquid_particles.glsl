@@ -1,3 +1,4 @@
+uniform vec3 sunDirection;
 uniform mat4 view;
 uniform mat4 projection;
 uniform float radius;
@@ -72,7 +73,7 @@ if(sandRender>.5){
     n=normalize(mat3(view)*nw);
     vec3 surface=viewCenter+localToView*localHit*radius*sandShapeScale;
     vec4 clip=projection*vec4(surface,1);gl_FragDepth=clip.z/clip.w*.5+.5;
-    vec3 light=normalize(mat3(view)*normalize(vec3(-.4,.8,.5)));
+    vec3 light=normalize(mat3(view)*normalize(sunDirection));
     vec3 eye=normalize(-surface);
     float nl=max(dot(n,light),0.);
     vec3 base=mix(vec3(.30,.19,.085),vec3(.72,.53,.28),grainSeed);
@@ -89,7 +90,7 @@ if(sandRender>.5){
     return;
 }
 vec3 n=vec3(p.x,-p.y,sqrt(1-r));vec3 surface=viewCenter+n*radius;vec4 clip=projection*vec4(surface,1);gl_FragDepth=clip.z/clip.w*.5+.5;
-float diffuse=max(dot(n,normalize(vec3(-.4,.7,.6))),0);float spec=pow(max(dot(n,normalize(vec3(-.2,.3,1))),0),40);
+float diffuse=max(dot(n,normalize(mat3(view)*sunDirection)),0);float spec=pow(max(dot(n,normalize(normalize(mat3(view)*sunDirection)+normalize(-surface))),0),40);
 vec3 color=granular>.5?vec3(.68,.46,.20):vec3(.025,.28,.65);
 outputColor=vec4(color*(.3+.7*diffuse)+vec3(granular>.5?.08:.65)*spec,1);
 }

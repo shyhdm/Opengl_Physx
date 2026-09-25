@@ -1,4 +1,5 @@
 #pragma once
+#include "SceneLight.h"
 #include "Camera.h"
 #include "Shader.h"
 #include "Mesh.h"
@@ -10,7 +11,7 @@ class ModelRenderer
 {
 public:
     // 平行光的传播方向；高光由相机位置决定。
-    glm::vec3 lightDirection = glm::vec3(-0.4f, -0.8f, -0.6f);
+
     glm::vec3 lightColor = glm::vec3(1.0f);
     float ambientStrength = 0.2f;
     float diffuseStrength = 0.8f;
@@ -26,7 +27,7 @@ public:
     {
         shadowReady = false;
         if (!shadowsEnabled) return;
-        glm::vec3 direction = glm::length(lightDirection) > 0.0001f ? glm::normalize(lightDirection) : glm::vec3(0, -1, 0);
+        glm::vec3 direction = -SceneLight::Direction();
         glm::vec3 up = std::abs(direction.y) > 0.99f ? glm::vec3(0, 0, 1) : glm::vec3(0, 1, 0);
         // 固定覆盖场景中心，避免相机移动导致阴影采样抖动。
         lightSpaceMatrix = glm::ortho(-18.0f, 18.0f, -18.0f, 18.0f, 1.0f, 100.0f) * glm::lookAt(-direction * 40.0f, glm::vec3(0), up);
@@ -97,7 +98,7 @@ public:
         shader.SetInt("shadowFilterRadius", shadowFilterRadius);
         shadowMap.Bind();
         shader.SetVector3("cameraPosition", camera.position);
-        shader.SetVector3("lightDirection", lightDirection);
+        shader.SetVector3("lightDirection", -SceneLight::Direction());
         shader.SetVector3("lightColor", lightColor);
         shader.SetFloat("ambientStrength", ambientStrength);
         shader.SetFloat("diffuseStrength", diffuseStrength);

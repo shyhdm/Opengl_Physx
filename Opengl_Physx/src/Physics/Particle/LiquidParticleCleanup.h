@@ -18,7 +18,6 @@ public:
         auto* context = cuda_.getCudaContext();
         context->streamSynchronize(nullptr);
         if (ids_) context->memFree(ids_);
-        if (scratch_) context->memFree(scratch_);
         if (counter_) context->memFree(counter_);
         if (module_) context->moduleUnload(module_);
     }
@@ -56,26 +55,24 @@ public:
             CUdeviceptr positions = reinterpret_cast<CUdeviceptr>(particles.getPositionInvMasses());
             CUdeviceptr velocities = reinterpret_cast<CUdeviceptr>(particles.getVelocities());
             CUdeviceptr phases = reinterpret_cast<CUdeviceptr>(particles.getPhases());
-            CUdeviceptr outPositions = scratch_;
-            CUdeviceptr outVelocities = scratch_ + size_t(capacity_) * sizeof(PxVec4);
-            CUdeviceptr outPhases = scratch_ + size_t(capacity_) * 2 * sizeof(PxVec4);
-            CUdeviceptr outIds = outPhases + size_t(capacity_) * sizeof(PxU32);
             unsigned inputCount = count;
-            void* args[] = { &positions, &velocities, &phases, &outPositions,
-                &outVelocities, &outPhases, &counter_, &inputCount, &killHeight, &ids_, &outIds };
+            void* args[] = { &positions, &velocities, &counter_, &inputCount, &killHeight };
             Check(context->launchKernel(kernel_, (count + 255) / 256, 1, 1,
                 256, 1, 1, 0, nullptr, args, nullptr, __FILE__, __LINE__));
             Check(context->streamSynchronize(nullptr));
-            // Only four bytes cross from GPU to CPU, not the particle arrays.
-            Check(context->memcpyDtoH(&kept, counter_, sizeof(kept)));
-            if (kept > count) throw std::runtime_error("Invalid liquid cleanup count");
-            if (kept == count) return count;
-            if (kept)
-            {
-                Check(context->memcpyDtoDAsync(positions, outPositions, size_t(kept) * sizeof(PxVec4), nullptr));
-                Check(context->memcpyDtoDAsync(velocities, outVelocities, size_t(kept) * sizeof(PxVec4), nullptr));
-                Check(context->memcpyDtoDAsync(phases, outPhases, size_t(kept) * sizeof(PxU32), nullptr));
-                if (ids_) Check(context->memcpyDtoDAsync(ids_, outIds, size_t(kept) * sizeof(PxU32), nullptr));
+            unsigned removed = 0;
+            Check(context->memcpyDtoH(&removed, counter_, sizeof(removed)));
+            if (removed > count) throw std::runtime_error("Invalid liquid cleanup count");
+            if (!removed) return count;
+            kept = count - removed;
+            if (kept) {
+                // Destinations are holes in [0, kept); donors are read-only entries in [kept, count).
+                // Surviving prefix entries never move. IDs travel only with the tail donors.
+                CUdeviceptr tail = counter_ + sizeof(unsigned);
+                Check(context->memsetD32Async(tail, count, 1, nullptr));
+                void* fillArgs[] = { &positions, &velocities, &phases, &ids_, &tail, &kept, &killHeight };
+                Check(context->launchKernel(fillKernel_, (kept + 255) / 256, 1, 1,
+                    256, 1, 1, 0, nullptr, fillArgs, nullptr, __FILE__, __LINE__));
                 Check(context->streamSynchronize(nullptr));
             }
         }
@@ -96,14 +93,14 @@ private:
     {
         auto* context = cuda_.getCudaContext();
         if (!module_) Check(context->moduleLoadDataEx(&module_, LiquidParticleCleanupPtx, 0, nullptr, nullptr));
-        if (!kernel_) Check(context->moduleGetFunction(&kernel_, module_, "compactLiquidParticles"));
-        if (!counter_) Check(context->memAlloc(&counter_, sizeof(unsigned)));
+        if (!kernel_) Check(context->moduleGetFunction(&kernel_, module_, "countRemovedParticles"));
+        if (!fillKernel_) Check(context->moduleGetFunction(&fillKernel_, module_, "fillParticleHoles"));
+        if (!counter_) Check(context->memAlloc(&counter_, 2 * sizeof(unsigned)));
         if (count > capacity_)
         {
-            CUdeviceptr next = 0, nextIds = 0;
+            CUdeviceptr nextIds = 0;
             Check(context->streamSynchronize(nullptr));
             try {
-                Check(context->memAlloc(&next, size_t(count) * (2 * sizeof(physx::PxVec4) + 2 * sizeof(physx::PxU32))));
                 if (ids_) {
                     Check(context->memAlloc(&nextIds, size_t(count) * sizeof(unsigned)));
                     Check(context->memcpyDtoDAsync(nextIds, ids_, size_t(capacity_) * sizeof(unsigned), nullptr));
@@ -113,18 +110,15 @@ private:
             catch (...) {
                 context->streamSynchronize(nullptr);
                 if (nextIds) context->memFree(nextIds);
-                if (next) context->memFree(next);
                 throw;
             }
             if (ids_) { context->memFree(ids_); ids_ = nextIds; }
-            if (scratch_) context->memFree(scratch_);
-            scratch_ = next;
             capacity_ = count;
         }
     }
     physx::PxCudaContextManager& cuda_;
     CUmodule module_ = nullptr;
-    CUfunction kernel_ = nullptr;
-    CUdeviceptr scratch_ = 0, counter_ = 0, ids_ = 0;
+    CUfunction kernel_ = nullptr, fillKernel_ = nullptr;
+    CUdeviceptr counter_ = 0, ids_ = 0;
     unsigned capacity_ = 0;
 };

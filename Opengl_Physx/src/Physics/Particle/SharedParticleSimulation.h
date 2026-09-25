@@ -2,6 +2,7 @@
 #include <PxPhysicsAPI.h>
 #include <algorithm>
 #include <array>
+#include <vector>
 #include <limits>
 #include <stdexcept>
 
@@ -34,6 +35,24 @@ public:
     SharedParticleSimulation(const SharedParticleSimulation&) = delete;
     SharedParticleSimulation& operator=(const SharedParticleSimulation&) = delete;
     physx::PxPBDParticleSystem* System() const { return system_; }
+    void AttachBuffer(physx::PxParticleBuffer* buffer) {
+        buffers_.push_back(buffer);
+        system_->addParticleBuffer(buffer);
+    }
+    void DetachBuffer(physx::PxParticleBuffer* buffer) {
+        system_->removeParticleBuffer(buffer);
+        buffers_.erase(std::remove(buffers_.begin(), buffers_.end(), buffer), buffers_.end());
+    }
+    // A count change shifts later buffers' offsets in PhysX's shared flat arrays.
+    // Republish their unchanged user data; do not reorder, recreate, or reset particles.
+    void NotifyParticleCountChanged() {
+        for (auto* buffer : buffers_) {
+            buffer->raiseFlags(physx::PxParticleBufferFlag::eUPDATE_POSITION);
+            buffer->raiseFlags(physx::PxParticleBufferFlag::eUPDATE_VELOCITY);
+            buffer->raiseFlags(physx::PxParticleBufferFlag::eUPDATE_PHASE);
+        }
+    }
+
     physx::PxPBDMaterial* Material(bool sand) {
         auto& slot = slots_[sand ? 1 : 0];
         if (!slot.material) {
@@ -101,4 +120,5 @@ private:
     physx::PxPhysics& physics_;
     physx::PxPBDParticleSystem* system_ = nullptr;
     Slot slots_[2];
+    std::vector<physx::PxParticleBuffer*> buffers_;
 };

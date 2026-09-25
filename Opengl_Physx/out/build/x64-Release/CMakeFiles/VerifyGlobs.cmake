@@ -16,6 +16,7 @@ set(OLD_GLOB
   "D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Graphics/Mesh.h"
   "D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Graphics/ModelRenderer.h"
   "D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Graphics/OutlineEffect.h"
+  "D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Graphics/SceneLight.h"
   "D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Graphics/Shader.h"
   "D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Graphics/ShadowMap.h"
   "D:/Dev/.cpp/Opengl_Physx/Opengl_Physx/src/Graphics/Texture.h"

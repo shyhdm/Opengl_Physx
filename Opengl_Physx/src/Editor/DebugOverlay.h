@@ -20,6 +20,7 @@ class DebugOverlay
     struct Sample { std::array<double, MetricCount> ms{}; unsigned steps = 0; };
     struct Stats { double average = 0, p95 = 0, maximum = 0; size_t count = 0; };
 public:
+    double GpuLoadPercent() const { return resources.Read()[2].percent; }
     void Reset()
     {
         samples.clear(); elapsed = refresh = 0; copyText.clear(); sceneIndex = -1;

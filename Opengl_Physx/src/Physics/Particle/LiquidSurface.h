@@ -1,4 +1,5 @@
 #pragma once
+#include "SceneLight.h"
 #include "Shader.h"
 #include "Camera.h"
 #include "LiquidGpuTimer.h"
@@ -152,6 +153,7 @@ private:
     };
     void Common(const glm::mat4& projection, const glm::mat4& view, float radius, int w, int h) {
         shader_.SetMatrix4("projection", projection); shader_.SetMatrix4("inverseProjection", glm::inverse(projection)); shader_.SetMatrix4("view", view); shader_.SetMatrix4("inverseView", glm::inverse(view));
+        shader_.SetVector3("sunDirection", SceneLight::Direction());
         shader_.SetVector3("waterColor", renderParameters_.color);
         shader_.SetVector3("waterThinColor", renderParameters_.thinColor);
         shader_.SetVector2("colorTransition", renderParameters_.colorRange);

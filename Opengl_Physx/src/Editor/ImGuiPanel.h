@@ -1,4 +1,5 @@
 #pragma once
+#include "SceneLight.h"
 #include "Scene.h"
 #include "BlastScene.h"
 #include "FlowSimulation.h"
@@ -99,18 +100,41 @@ public:
             }
             bool showGround = scene.GetShowGround();
             if (ImGui::Checkbox(T("地面", "Ground"), &showGround)) scene.SetShowGround(showGround);
-            ImGui::SetNextItemWidth(160.0f * scale);
-            int globalLiquidDisplay = scene.GetLiquidDisplayMode();
-            const char* globalLiquidModes[] = { T("渲染", "Render"), T("粒子", "Particles") };
-            if (ImGui::Combo(T("粒子显示模式", "Particle display mode"), &globalLiquidDisplay, globalLiquidModes, 2))
-                scene.SetLiquidDisplayMode(globalLiquidDisplay);
             ImGui::PushItemWidth(160.f * scale);
-            float waterDensity = scene.GetWaterDensity(), sandDensity = scene.GetSandDensity();
-            if (Number(T("水体密度", "Water density"), waterDensity, .05f, LiquidGpu::MinDensity, LiquidGpu::MaxDensity))
-                scene.SetWaterDensity(waterDensity);
-            if (Number(T("沙子密度", "Sand density"), sandDensity, .05f, LiquidGpu::MinDensity, LiquidGpu::MaxDensity))
-                scene.SetSandDensity(sandDensity);
+            auto lightAngle = [&](const char* label, float& value) {
+                const float previous = value;
+                if (!ImGui::DragFloat(label, &value, 1.f, 0.f, 0.f, "%.3f")) return false;
+                if (!std::isfinite(value)) value = previous;
+                return value != previous;
+                };
+            float lightAzimuth = SceneLight::Azimuth(), lightElevation = SceneLight::Elevation();
+            bool lightChanged = lightAngle(T("光源方位", "Light azimuth"), lightAzimuth);
+            lightChanged |= lightAngle(T("光源仰角", "Light elevation"), lightElevation);
+            if (lightChanged) SceneLight::SetAngles(lightAzimuth, lightElevation);
             ImGui::PopItemWidth();
+            if (ImGui::TreeNode(T("粒子设置", "Particle settings")))
+            {
+                ImGui::SetNextItemWidth(160.0f * scale);
+                int globalLiquidDisplay = scene.GetLiquidDisplayMode();
+                const char* globalLiquidModes[] = { T("渲染", "Render"), T("粒子", "Particles") };
+                if (ImGui::Combo(T("粒子显示模式", "Particle display mode"), &globalLiquidDisplay, globalLiquidModes, 2))
+                    scene.SetLiquidDisplayMode(globalLiquidDisplay);
+                ImGui::PushItemWidth(160.f * scale);
+                float waterDensity = scene.GetWaterDensity(), sandDensity = scene.GetSandDensity();
+                if (Number(T("水体密度", "Water density"), waterDensity, .05f, LiquidGpu::MinDensity, LiquidGpu::MaxDensity))
+                    scene.SetWaterDensity(waterDensity);
+                if (Number(T("沙子密度", "Sand density"), sandDensity, .05f, LiquidGpu::MinDensity, LiquidGpu::MaxDensity))
+                    scene.SetSandDensity(sandDensity);
+                float waterParticleRadius = scene.GetWaterParticleRadius();
+                if (Number(T("水粒半径", "Water particle radius"), waterParticleRadius, .001f, LiquidGpu::MinParticleRadius, LiquidGpu::MaxParticleRadius * .6f))
+                    scene.SetLinkedParticleRadius(false, waterParticleRadius);
+                float sandParticleRadius = scene.GetSandParticleRadius();
+                if (Number(T("沙粒半径", "Sand particle radius"), sandParticleRadius, .001f, LiquidGpu::MinParticleRadius / .6f, LiquidGpu::MaxParticleRadius))
+                    scene.SetLinkedParticleRadius(true, sandParticleRadius);
+                if (ImGui::IsItemHovered()) ImGui::SetTooltip(T("水半径 = 沙半径 × 0.6。生成或切换场景时生效；半径改变后生成会删除另一种粒子。", "Water radius = sand radius * 0.6. Applies on generation or scene change. Generating after a radius change removes the other particle type."));
+                ImGui::PopItemWidth();
+                ImGui::TreePop();
+            }
             if (ImGui::TreeNode(T("发射", "Launch")))
             {
                 ImGui::PushItemWidth(160.0f * scale);
@@ -155,24 +179,16 @@ public:
                 };
             edit(T("生成框位置", "Generation position"), particles.position, false);
             edit(T("生成框大小", "Generation size"), particles.size, true);
-            ImGui::SetNextItemWidth(150.f * scale);
-            float radius = particles.particleRadius;
-            const bool editingSand = &particles == scene.GetSand();
-            const float minRadius = editingSand ? LiquidGpu::MinParticleRadius / .6f : LiquidGpu::MinParticleRadius;
-            const float maxRadius = editingSand ? LiquidGpu::MaxParticleRadius : LiquidGpu::MaxParticleRadius * .6f;
-            if (Number(T("粒子半径", "Particle radius"), radius, .001f, minRadius, maxRadius))
-                scene.SetLinkedParticleRadius(editingSand, radius);
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip(T("水半径 = 沙半径 × 0.6。生成或切换场景时统一生效；已有另一种粒子也会重新生成。当前半径: %.3f", "Water radius = sand radius * 0.6. Applies on generation or scene change; the other populated phase is regenerated too. Current radius: %.3f"), particles.ActiveParticleRadius());
             const auto count = particles.PreviewCount();
             if (count == std::numeric_limits<uint64_t>::max())
                 ImGui::TextUnformatted(T("预生成: 超出计数范围", "Preview: exceeds count range"));
             else ImGui::Text(T("预生成: %llu", "Preview: %llu"), static_cast<unsigned long long>(count));
-            ImGui::BeginDisabled(!particles.RequestedCount());
+            const auto capacity = scene.ParticleGenerationCapacity(particles);
+            ImGui::BeginDisabled(!count || count > capacity);
             if (ImGui::Button(T("生成", "Generate"))) scene.RegenerateParticles(particles);
             ImGui::EndDisabled();
-            if (count > particles.GenerationCapacity())
-                ImGui::Text(T("水沙合计上限100万，可生成: %u", "Water + sand limit: 1,000,000. Generation budget: %u"), particles.GenerationCapacity());
+            if (count > capacity)
+                ImGui::Text(T("水沙合计上限100万，可生成: %u", "Water + sand limit: 1,000,000. Generation budget: %u"), capacity);
             ImGui::PopID();
             };
 
@@ -185,9 +201,50 @@ public:
                 if (selected) ImGui::PopStyleColor();
                 };
             ImGui::PushID("ParticleTestButtons");
-            testButton(T("水体", "Water"), 0); ImGui::SameLine(); testButton(T("沙子", "Sand"), 1);
+            testButton(T("水体", "Water"), 0); ImGui::SameLine(); testButton(T("沙子", "Sand"), 1); ImGui::SameLine(); testButton(T("沙滩", "Beach"), 2);
             ImGui::PopID();
-
+            if (scene.GetParticleTest() == 2) {
+                ImGui::PushID("BeachTestControls");
+                if (auto* sand = scene.GetSand()) {
+                    bool showBounds = sand->GetShowDebugBounds();
+                    if (ImGui::Checkbox(T("沙滩调试框", "Beach debug bounds"), &showBounds)) sand->SetShowDebugBounds(showBounds);
+                    int mode = scene.GetLiquidDisplayMode();
+                    const char* modes[] = { T("渲染", "Render"), T("粒子", "Particles") };
+                    ImGui::SetNextItemWidth(160.f * scale);
+                    if (ImGui::Combo(T("显示模式", "Display mode"), &mode, modes, 2)) scene.SetLiquidDisplayMode(mode);
+                }
+                auto containerPosition = scene.BeachBoxPosition(), containerSize = scene.BeachBoxSize();
+                auto editSandBox = [](const char* label, glm::vec3& value, bool sizeValue) {
+                    const auto previous = value;
+                    bool changed = ImGui::DragFloat3(label, &value.x, .05f, 0, 0, "%.2f");
+                    if (changed)for (int i = 0; i < 3; ++i) {
+                        if (!std::isfinite(value[i]))value[i] = previous[i];
+                        else if (sizeValue && value[i] < 1.f)value[i] = 1.f;
+                    }
+                    return changed;
+                    };
+                ImGui::SetNextItemWidth(210.f * scale);
+                bool containerChanged = editSandBox(T("碰撞盒位置", "Container position"), containerPosition, false);
+                ImGui::SetNextItemWidth(210.f * scale);
+                containerChanged |= editSandBox(T("碰撞盒内尺寸", "Container inner size"), containerSize, true);
+                if (containerChanged)scene.SetBeachBox(containerPosition, containerSize);
+                ImGui::PushItemWidth(160.f * scale);
+                float emissionSpeed = scene.BeachEmissionSpeed(), emissionRadius = scene.BeachEmissionRadius();
+                bool emissionChanged = Number(T("发射速度", "Emission speed"), emissionSpeed, .25f, 0.f, 100.f);
+                emissionChanged |= Number(T("发射半径", "Emission radius"), emissionRadius, .01f, .01f, scene.BeachMaxEmissionRadius());
+                if (emissionChanged) scene.SetBeachEmission(emissionSpeed, emissionRadius);
+                ImGui::PopItemWidth();
+                if (ImGui::Button(T("重新生成", "Regenerate"))) scene.RegenerateBeach();
+                ImGui::SameLine();
+                ImGui::BeginDisabled(!scene.BeachSpraying() && !scene.BeachCanSpray());
+                if (ImGui::Button(scene.BeachSpraying() ? T("暂停发射", "Pause emission") : T("开始喷射", "Start emission"))) scene.ToggleBeachSpray();
+                ImGui::EndDisabled();
+                if (scene.BeachGenerationFailed()) ImGui::TextUnformatted(T("沙滩粒子超出容量或半径无效，请增大半径后重新生成", "Beach exceeds capacity or radius is invalid; increase radius and regenerate"));
+                else if (scene.BeachGpuLoad() < 0) ImGui::TextUnformatted(T("等待 GPU 占用统计", "Waiting for GPU usage"));
+                else if (scene.BeachGpuLoad() >= 90) ImGui::TextUnformatted(T("GPU 占用达到 90%，喷射已停止", "GPU usage reached 90%; emission stopped"));
+                else if (!scene.BeachCanSpray()) ImGui::TextUnformatted(T("已达到粒子总容量，喷射已停止", "Particle capacity reached; emission stopped"));
+                ImGui::PopID();
+            }
         }
 
         if (scene.GetSceneIndex() == 2 && ImGui::CollapsingHeader(T("测试", "Test"), ImGuiTreeNodeFlags_DefaultOpen))
@@ -213,7 +270,7 @@ public:
             ImGui::PushID("SandParameters");
             if (auto* sand = scene.GetSand()) {
                 bool showBounds = sand->GetShowDebugBounds();
-                if (ImGui::Checkbox(T("沙子生成框", "Sand generation bounds"), &showBounds)) sand->SetShowDebugBounds(showBounds);
+                if (ImGui::Checkbox(T("沙子调试框", "Sand debug bounds"), &showBounds)) sand->SetShowDebugBounds(showBounds);
                 ImGui::SetNextItemWidth(160.f * scale);
                 int mode = scene.GetLiquidDisplayMode();
                 const char* modes[] = { T("渲染", "Render"), T("粒子", "Particles") };
@@ -279,8 +336,6 @@ public:
                 changed |= Number(T("反光矿物比例", "Reflective mineral fraction"), material.mineralFraction, .01f, 0, 1);
                 changed |= Number(T("微沙粒细节", "Micrograin detail"), material.microScale, .1f, 2, 20);
                 changed |= Number(T("颗粒遮蔽", "Grain occlusion"), material.occlusion, .05f, 0, 2);
-                changed |= Number(T("光源方位", "Light azimuth"), material.sunAzimuth, 1, -180, 180);
-                changed |= Number(T("光源仰角", "Light elevation"), material.sunElevation, 1, 5, 85);
                 ImGui::PopItemWidth();
                 if (changed) sand->SetSandRenderParameters(material);
                 if (ImGui::Button(T("恢复沙子材质", "Reset sand material"))) sand->SetSandRenderParameters(SandRenderer::Parameters{});

@@ -1,3 +1,4 @@
+uniform vec3 sunDirection;
 uniform mat4 view,projection,inverseProjection;
 uniform float spacing;
 uniform vec2 resolution;
@@ -47,7 +48,7 @@ void main(){
         if(targetZ<=depth)q=uv;
         vec3 transmitted=texture(sceneColor,q).rgb*exp(-chord*vec3(.624,.156,.078));
         float fresnel=.02037+.97963*pow(1-clamp(dot(-incident,n),0,1),5);
-        vec3 light=normalize(mat3(view)*normalize(vec3(-.4,.8,.3)));
+        vec3 light=normalize(mat3(view)*normalize(sunDirection));
         float highlight=pow(max(0,dot(n,normalize(light-incident))),100)*.5;
         float coverage=clamp(fade*edge*smoothstep(0,radius,solid-depth),0,1);
         coverage*=exp(-submersion/max(spacing*4,.001));

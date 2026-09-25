@@ -44,6 +44,7 @@ public:
     void Reset()
     {
         ClearSelection();
+        beachSpraying = false; beachRemainder = 0;
         particleFiring = false; waterRemainder = sandRemainder = 0;
         if (liquid) liquid->ClearForSceneChange();
         if (sand) sand->ClearForSceneChange();
@@ -74,6 +75,14 @@ public:
             SetGroundHalfExtent(15.0f);
             if (world.GetCuda())
             {
+                if (particleTest == 2) {
+                    if (!sand) sand = std::make_unique<LiquidGpu>(world, false, true);
+                    sand->SetParticleRadius(linkedWaterRadius / .6f);
+                    sand->SetDensity(sandDensity);
+                    sand->SetDisplayMode(liquidDisplayMode);
+                    beachGenerationFailed = !sand->ResetBeach(beachBoxPosition, beachBoxSize);
+                    return;
+                }
                 if (particleTest != 0) {
                     if (!sand) sand = std::make_unique<LiquidGpu>(world, false, true);
                     sand->SetParticleRadius(linkedWaterRadius / .6f);
@@ -275,6 +284,7 @@ public:
         {
             world.Update(deltaTime, [this](float step) {
                 if (selectedSoft) selectedSoft->UpdateDrag(step);
+                EmitBeachWater(step);
                 if (particleFiring) {
                     if (launchKind == 2) EmitSand(particleOrigin, particleDirection, step);
                     else EmitWater(particleOrigin, particleDirection, step);
@@ -334,6 +344,7 @@ public:
         if (sceneIndex == 3) {
             if (particleTest == 0 && liquid) liquid->DrawDebugBounds(camera, width, height);
             if (particleTest == 1 && sand) sand->DrawDebugBounds(camera, width, height);
+            if (particleTest == 2 && sand) sand->DrawDebugBounds(camera, width, height, false);
         }
         std::vector<const physx::PxRigidActor*> visibleCollisions;
         for (const auto& object : bodies) if (object.showMesh) visibleCollisions.push_back(object.body->GetActor());
@@ -498,12 +509,67 @@ public:
         sceneIndex = value;
         Reset();
     }
+    void SetGpuLoad(double percent) {
+        beachGpuLoad = std::isfinite(percent) ? percent : -1;
+        if (beachGpuLoad >= 90) { beachSpraying = false; beachRemainder = 0; }
+    }
+    bool BeachSpraying() const { return beachSpraying; }
+    bool BeachCanSpray() const { return sceneIndex == 3 && particleTest == 2 && world.GetCuda() && beachGpuLoad >= 0 && beachGpuLoad < 90 && !beachGenerationFailed && world.TotalParticleCount() < LiquidGpu::MaxParticles; }
+    bool BeachGenerationFailed() const { return beachGenerationFailed; }
+    double BeachGpuLoad() const { return beachGpuLoad; }
+    void ToggleBeachSpray() { if (beachSpraying) beachSpraying = false; else if (BeachCanSpray()) beachSpraying = true; beachRemainder = 0; }
+    glm::vec3 BeachBoxPosition() const { return beachBoxPosition; }
+    glm::vec3 BeachBoxSize() const { return beachBoxSize; }
+    void SetBeachBox(glm::vec3 center, glm::vec3 size) {
+        for (int i = 0; i < 3; ++i) if (!std::isfinite(center[i]) || !std::isfinite(size[i]) || size[i] < 1.f) return;
+        beachBoxPosition = center; beachBoxSize = size;
+        if (sceneIndex == 3 && particleTest == 2 && sand) sand->SetContainer(center, size);
+    }
+    float BeachEmissionSpeed() const { return beachEmissionSpeed; }
+    float BeachMaxEmissionRadius() const { return std::max(.01f, std::min(5.f, .5f * std::min({ beachBoxSize.x,beachBoxSize.y,beachBoxSize.z }) - activeLinkedWaterRadius)); }
+    float BeachEmissionRadius() const { return std::min(beachEmissionRadius, BeachMaxEmissionRadius()); }
+    void SetBeachEmission(float speed, float radius) {
+        if (std::isfinite(speed)) beachEmissionSpeed = std::clamp(speed, 0.f, 100.f);
+        if (std::isfinite(radius)) beachEmissionRadius = std::clamp(radius, .01f, BeachMaxEmissionRadius());
+        beachRemainder = 0;
+    }
+    void RegenerateBeach() { if (sceneIndex == 3 && particleTest == 2) Reset(); }
+    void EmitBeachWater(float step) {
+        if (!beachSpraying || sceneIndex != 3 || particleTest != 2) return;
+        if (!BeachCanSpray()) { beachSpraying = false; beachRemainder = 0; return; }
+        const float nozzleRadius = BeachEmissionRadius(), speed = beachEmissionSpeed;
+        if (speed <= 0 || !std::isfinite(step) || step <= 0) return;
+        const float diameter = 2.f * activeLinkedWaterRadius;
+        // Constant volume flux; each simulation particle represents diameter cubed.
+        const double rate = 3.141592653589793 * nozzleRadius * nozzleRadius * speed / (diameter * diameter * diameter);
+        beachRemainder += rate * step;
+        const unsigned requested = unsigned(std::min(beachRemainder, double(LiquidGpu::MaxParticles)));
+        beachRemainder -= requested;
+        if (!requested) return;
+        if (!liquid) { liquid = std::make_unique<LiquidGpu>(world, false); liquid->SetDensity(waterDensity); liquid->SetDisplayMode(liquidDisplayMode); }
+        liquid->SetParticleRadius(activeLinkedWaterRadius);
+        const glm::vec3 low = beachBoxPosition - beachBoxSize * .5f;
+        const glm::vec3 high = beachBoxPosition + beachBoxSize * .5f;
+        const float inset = nozzleRadius + activeLinkedWaterRadius;
+        const glm::vec3 origin(low.x + inset, high.y - inset, low.z + inset);
+        const float diagonal = glm::length(glm::vec2(beachBoxSize.x, beachBoxSize.z));
+        liquid->Emit(origin, glm::normalize(glm::vec3(beachBoxSize.x, diagonal * .0523f, beachBoxSize.z)), speed, nozzleRadius, requested, step);
+        liquid->SetParticleRadius(linkedWaterRadius);
+        if (world.TotalParticleCount() >= LiquidGpu::MaxParticles) beachSpraying = false;
+    }
     int GetParticleTest() const { return particleTest; }
     void SetParticleTest(int value) {
-        if (sceneIndex != 3 || value < 0 || value > 1 || value == particleTest) return;
-        particleTest = value; Reset();
+        if (sceneIndex != 3 || value < 0 || value > 2) return;
+        SetLinkedParticleRadius(value == 1, value == 1 ? .04f : .1f);
+        particleTest = value;
+        Reset();
     }
     float GetWaterDensity() const { return waterDensity; }
+    float GetWaterParticleRadius() const { return linkedWaterRadius; }
+    float GetSandParticleRadius() const { return linkedWaterRadius / .6f; }
+    unsigned ParticleGenerationCapacity(const LiquidGpu& selected) const {
+        return activeLinkedWaterRadius != linkedWaterRadius ? LiquidGpu::MaxParticles : selected.GenerationCapacity();
+    }
     void SetLinkedParticleRadius(bool editingSand, float value) {
         if (!std::isfinite(value)) return;
         const float water = std::clamp(editingSand ? value * .6f : value,
@@ -514,9 +580,9 @@ public:
         if (sand) sand->SetParticleRadius(water / .6f);
     }
     void RegenerateParticles(LiquidGpu& selected) {
+        const auto preview = selected.PreviewCount();
+        if (!preview || preview > ParticleGenerationCapacity(selected)) return;
         if (activeLinkedWaterRadius != linkedWaterRadius) {
-            const bool hadWater = liquid && liquid->Count();
-            const bool hadSand = sand && sand->Count();
             if (liquid) liquid->ClearForRadiusChange();
             if (sand) sand->ClearForRadiusChange();
             activeLinkedWaterRadius = linkedWaterRadius;
@@ -524,9 +590,6 @@ public:
             if (liquid) liquid->SetParticleRadius(linkedWaterRadius);
             if (sand) sand->SetParticleRadius(linkedWaterRadius / .6f);
             selected.Reset();
-            // Existing other-phase particles also regenerate from their own generation box.
-            auto* other = &selected == liquid.get() ? sand.get() : liquid.get();
-            if (other && (&selected == liquid.get() ? hadSand : hadWater) && other->RequestedCount()) other->Reset();
         }
         else selected.Reset();
     }
@@ -588,7 +651,7 @@ public:
         selectedType = type;
     }
     bool GetShowGround() const { return showGround; }
-    void SetShowGround(bool value) { showGround = value; }
+    void SetShowGround(bool value) { world.SetGroundEnabled(value); showGround = value; }
     bool GetShowCollisions() const { return showCollisions; }
 
     void SetShowCollisions(bool value)
@@ -1201,9 +1264,7 @@ private:
 
     void SetGroundHalfExtent(float halfExtent)
     {
-        physx::PxActor* actors[1]{};
-        if (world.GetScene().getActors(physx::PxActorTypeFlag::eRIGID_STATIC, actors, 1) != 1) throw std::runtime_error("Cannot find PhysX ground actor.");
-        auto* rigidGround = static_cast<physx::PxRigidStatic*>(actors[0]);
+        auto* rigidGround = world.GetGroundActor();
         physx::PxShape* shapes[1]{};
         if (rigidGround->getShapes(shapes, 1) != 1) throw std::runtime_error("Cannot find PhysX ground shape.");
         shapes[0]->setGeometry(physx::PxBoxGeometry(halfExtent, 0.5f, halfExtent));
@@ -1218,6 +1279,10 @@ private:
     float waterDensity = LiquidGpu::WaterDensity, sandDensity = LiquidGpu::SandDensity;
     std::unique_ptr<LiquidGpu> liquid;
     std::unique_ptr<LiquidGpu> sand;
+    glm::vec3 beachBoxPosition{ 0,4,0 }, beachBoxSize{ 10,8,14 };
+    float beachEmissionSpeed = 5.f, beachEmissionRadius = .35f;
+    bool beachSpraying = false, beachGenerationFailed = false;
+    double beachGpuLoad = -1, beachRemainder = 0;
     int particleTest = 0;
     SoftMeshLibrary softModels{ world.GetPhysics() };
     ModelLibrary models;

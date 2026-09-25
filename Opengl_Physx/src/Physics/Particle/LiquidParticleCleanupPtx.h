@@ -13,253 +13,231 @@ inline constexpr char LiquidParticleCleanupPtx[] = R"LIQUID_PTX(
 .target sm_75
 .address_size 64
 
-	// .globl	compactLiquidParticles
-// _ZZ22compactLiquidParticlesE6prefix has been demoted
-// _ZZ22compactLiquidParticlesE10outputBase has been demoted
+	// .globl	countRemovedParticles
 
-.visible .entry compactLiquidParticles(
-	.param .u64 compactLiquidParticles_param_0,
-	.param .u64 compactLiquidParticles_param_1,
-	.param .u64 compactLiquidParticles_param_2,
-	.param .u64 compactLiquidParticles_param_3,
-	.param .u64 compactLiquidParticles_param_4,
-	.param .u64 compactLiquidParticles_param_5,
-	.param .u64 compactLiquidParticles_param_6,
-	.param .u32 compactLiquidParticles_param_7,
-	.param .f32 compactLiquidParticles_param_8,
-	.param .u64 compactLiquidParticles_param_9,
-	.param .u64 compactLiquidParticles_param_10
+.visible .entry countRemovedParticles(
+	.param .u64 countRemovedParticles_param_0,
+	.param .u64 countRemovedParticles_param_1,
+	.param .u64 countRemovedParticles_param_2,
+	.param .u32 countRemovedParticles_param_3,
+	.param .f32 countRemovedParticles_param_4
 )
 {
-	.reg .pred 	%p<21>;
-	.reg .f32 	%f<106>;
-	.reg .b32 	%r<148>;
-	.reg .b64 	%rd<35>;
-	// demoted variable
-	.shared .align 4 .b8 _ZZ22compactLiquidParticlesE6prefix[1024];
-	// demoted variable
-	.shared .align 4 .u32 _ZZ22compactLiquidParticlesE10outputBase;
+	.reg .pred 	%p<24>;
+	.reg .f32 	%f<26>;
+	.reg .b32 	%r<11>;
+	.reg .b64 	%rd<12>;
 
-	ld.param.u64 	%rd3, [compactLiquidParticles_param_0];
-	ld.param.u64 	%rd4, [compactLiquidParticles_param_1];
-	ld.param.u64 	%rd5, [compactLiquidParticles_param_2];
-	ld.param.u64 	%rd6, [compactLiquidParticles_param_3];
-	ld.param.u64 	%rd7, [compactLiquidParticles_param_4];
-	ld.param.u64 	%rd8, [compactLiquidParticles_param_5];
-	ld.param.u64 	%rd9, [compactLiquidParticles_param_6];
-	ld.param.u32 	%r21, [compactLiquidParticles_param_7];
-	ld.param.f32 	%f74, [compactLiquidParticles_param_8];
-	ld.param.u64 	%rd10, [compactLiquidParticles_param_9];
-	ld.param.u64 	%rd11, [compactLiquidParticles_param_10];
-	mov.u32 	%r22, %tid.x;
-	mov.u32 	%r23, %ntid.x;
-	mov.u32 	%r24, %ctaid.x;
-	mad.lo.s32 	%r1, %r24, %r23, %r22;
-	setp.ge.u32 	%p1, %r1, %r21;
-	mov.u32 	%r140, 0;
-	mov.f32 	%f98, 0f00000000;
-	mov.f32 	%f99, %f98;
-	mov.f32 	%f100, %f98;
-	mov.f32 	%f101, %f98;
-	mov.f32 	%f102, %f98;
-	mov.f32 	%f103, %f98;
-	mov.f32 	%f104, %f98;
-	mov.f32 	%f105, %f98;
-	mov.u32 	%r139, %r140;
-	@%p1 bra 	$L__BB0_9;
 
-	cvta.to.global.u64 	%rd12, %rd3;
-	mul.wide.u32 	%rd13, %r1, 16;
-	add.s64 	%rd14, %rd12, %rd13;
-	ld.global.v4.f32 	{%f101, %f100, %f99, %f98}, [%rd14];
-	cvta.to.global.u64 	%rd15, %rd4;
-	add.s64 	%rd16, %rd15, %rd13;
-	ld.global.v4.f32 	{%f105, %f104, %f103, %f102}, [%rd16];
-	abs.f32 	%f91, %f101;
-	setp.geu.f32 	%p2, %f91, 0f7F800000;
-	@%p2 bra 	$L__BB0_9;
-
-	abs.f32 	%f92, %f100;
-	setp.geu.f32 	%p3, %f92, 0f7F800000;
-	mov.u32 	%r139, %r140;
-	@%p3 bra 	$L__BB0_9;
-
-	abs.f32 	%f93, %f99;
-	setp.geu.f32 	%p4, %f93, 0f7F800000;
-	mov.u32 	%r139, %r140;
+	ld.param.u64 	%rd2, [countRemovedParticles_param_0];
+	ld.param.u64 	%rd3, [countRemovedParticles_param_1];
+	ld.param.u64 	%rd4, [countRemovedParticles_param_2];
+	ld.param.u32 	%r4, [countRemovedParticles_param_3];
+	ld.param.f32 	%f10, [countRemovedParticles_param_4];
+	mov.u32 	%r5, %ntid.x;
+	mov.u32 	%r6, %ctaid.x;
+	mov.u32 	%r1, %tid.x;
+	mad.lo.s32 	%r2, %r6, %r5, %r1;
+	setp.ge.u32 	%p4, %r2, %r4;
+	mov.pred 	%p23, 0;
 	@%p4 bra 	$L__BB0_9;
 
-	abs.f32 	%f94, %f98;
-	setp.geu.f32 	%p5, %f94, 0f7F800000;
-	mov.u32 	%r139, %r140;
-	@%p5 bra 	$L__BB0_9;
-
-	abs.f32 	%f95, %f105;
-	setp.geu.f32 	%p6, %f95, 0f7F800000;
-	mov.u32 	%r139, %r140;
+	cvta.to.global.u64 	%rd5, %rd2;
+	cvt.u64.u32 	%rd1, %r2;
+	mul.wide.u32 	%rd6, %r2, 16;
+	add.s64 	%rd7, %rd5, %rd6;
+	ld.global.v4.f32 	{%f11, %f12, %f13, %f14}, [%rd7];
+	abs.f32 	%f15, %f11;
+	setp.geu.f32 	%p6, %f15, 0f7F800000;
+	mov.pred 	%p23, -1;
 	@%p6 bra 	$L__BB0_9;
 
-	abs.f32 	%f96, %f104;
-	setp.geu.f32 	%p7, %f96, 0f7F800000;
-	mov.u32 	%r139, %r140;
-	@%p7 bra 	$L__BB0_9;
-
-	abs.f32 	%f97, %f103;
-	setp.geu.f32 	%p8, %f97, 0f7F800000;
-	mov.u32 	%r139, %r140;
+	abs.f32 	%f16, %f12;
+	setp.geu.f32 	%p8, %f16, 0f7F800000;
 	@%p8 bra 	$L__BB0_9;
 
-	setp.ge.f32 	%p9, %f100, %f74;
-	selp.u32 	%r139, 1, 0, %p9;
+	abs.f32 	%f17, %f13;
+	setp.geu.f32 	%p10, %f17, 0f7F800000;
+	@%p10 bra 	$L__BB0_9;
+
+	abs.f32 	%f18, %f14;
+	setp.geu.f32 	%p12, %f18, 0f7F800000;
+	@%p12 bra 	$L__BB0_9;
+
+	cvta.to.global.u64 	%rd8, %rd3;
+	shl.b64 	%rd9, %rd1, 4;
+	add.s64 	%rd10, %rd8, %rd9;
+	ld.global.v4.f32 	{%f19, %f20, %f21, %f22}, [%rd10];
+	abs.f32 	%f23, %f19;
+	setp.geu.f32 	%p14, %f23, 0f7F800000;
+	@%p14 bra 	$L__BB0_9;
+
+	abs.f32 	%f24, %f20;
+	setp.geu.f32 	%p16, %f24, 0f7F800000;
+	@%p16 bra 	$L__BB0_9;
+
+	abs.f32 	%f25, %f21;
+	setp.geu.f32 	%p18, %f25, 0f7F800000;
+	@%p18 bra 	$L__BB0_9;
+
+	setp.ltu.f32 	%p23, %f12, %f10;
 
 $L__BB0_9:
-	shl.b32 	%r34, %r22, 2;
-	mov.u32 	%r35, _ZZ22compactLiquidParticlesE6prefix;
-	add.s32 	%r36, %r35, %r34;
-	st.shared.u32 	[%r36], %r139;
-	bar.sync 	0;
-	setp.eq.s32 	%p10, %r22, 0;
-	@%p10 bra 	$L__BB0_11;
+	mov.u32 	%r7, -1;
+	vote.sync.ballot.b32 	%r3, %p23, %r7;
+	and.b32  	%r8, %r1, 31;
+	setp.ne.s32 	%p20, %r8, 0;
+	setp.eq.s32 	%p21, %r3, 0;
+	or.pred  	%p22, %p20, %p21;
+	@%p22 bra 	$L__BB0_11;
 
-	ld.shared.u32 	%r140, [%r36+-4];
+	popc.b32 	%r9, %r3;
+	cvta.to.global.u64 	%rd11, %rd4;
+	atom.global.add.u32 	%r10, [%rd11], %r9;
 
 $L__BB0_11:
-	bar.sync 	0;
-	ld.shared.u32 	%r46, [%r36];
-	mov.u32 	%r142, 0;
-	add.s32 	%r47, %r46, %r140;
-	st.shared.u32 	[%r36], %r47;
-	bar.sync 	0;
-	setp.lt.u32 	%p11, %r22, 2;
-	mov.u32 	%r141, %r142;
-	@%p11 bra 	$L__BB0_13;
+	ret;
 
-	ld.shared.u32 	%r141, [%r36+-8];
+}
+	// .globl	fillParticleHoles
+.visible .entry fillParticleHoles(
+	.param .u64 fillParticleHoles_param_0,
+	.param .u64 fillParticleHoles_param_1,
+	.param .u64 fillParticleHoles_param_2,
+	.param .u64 fillParticleHoles_param_3,
+	.param .u64 fillParticleHoles_param_4,
+	.param .u32 fillParticleHoles_param_5,
+	.param .f32 fillParticleHoles_param_6
+)
+{
+	.reg .pred 	%p<22>;
+	.reg .b16 	%rs<11>;
+	.reg .f32 	%f<50>;
+	.reg .b32 	%r<18>;
+	.reg .b64 	%rd<32>;
 
-$L__BB0_13:
-	bar.sync 	0;
-	ld.shared.u32 	%r57, [%r36];
-	add.s32 	%r58, %r57, %r141;
-	st.shared.u32 	[%r36], %r58;
-	bar.sync 	0;
-	setp.lt.u32 	%p12, %r22, 4;
-	@%p12 bra 	$L__BB0_15;
 
-	ld.shared.u32 	%r142, [%r36+-16];
+	ld.param.u64 	%rd4, [fillParticleHoles_param_0];
+	ld.param.u64 	%rd5, [fillParticleHoles_param_1];
+	ld.param.u64 	%rd6, [fillParticleHoles_param_2];
+	ld.param.u64 	%rd7, [fillParticleHoles_param_3];
+	ld.param.u64 	%rd8, [fillParticleHoles_param_4];
+	ld.param.u32 	%r3, [fillParticleHoles_param_5];
+	ld.param.f32 	%f19, [fillParticleHoles_param_6];
+	cvta.to.global.u64 	%rd1, %rd4;
+	mov.u32 	%r4, %ntid.x;
+	mov.u32 	%r5, %ctaid.x;
+	mov.u32 	%r6, %tid.x;
+	mad.lo.s32 	%r1, %r5, %r4, %r6;
+	setp.ge.u32 	%p1, %r1, %r3;
+	@%p1 bra 	$L__BB1_21;
 
-$L__BB0_15:
-	bar.sync 	0;
-	ld.shared.u32 	%r68, [%r36];
-	mov.u32 	%r144, 0;
-	add.s32 	%r69, %r68, %r142;
-	st.shared.u32 	[%r36], %r69;
-	bar.sync 	0;
-	setp.lt.u32 	%p13, %r22, 8;
-	mov.u32 	%r143, %r144;
-	@%p13 bra 	$L__BB0_17;
+	mul.wide.u32 	%rd9, %r1, 16;
+	add.s64 	%rd10, %rd1, %rd9;
+	ld.global.v4.f32 	{%f20, %f21, %f22, %f23}, [%rd10];
+	cvta.to.global.u64 	%rd11, %rd5;
+	add.s64 	%rd12, %rd11, %rd9;
+	ld.global.v4.f32 	{%f24, %f25, %f26, %f27}, [%rd12];
+	abs.f32 	%f28, %f20;
+	setp.geu.f32 	%p2, %f28, 0f7F800000;
+	@%p2 bra 	$L__BB1_8;
 
-	ld.shared.u32 	%r143, [%r36+-32];
+	abs.f32 	%f29, %f21;
+	setp.geu.f32 	%p3, %f29, 0f7F800000;
+	@%p3 bra 	$L__BB1_8;
 
-$L__BB0_17:
-	bar.sync 	0;
-	ld.shared.u32 	%r79, [%r36];
-	add.s32 	%r80, %r79, %r143;
-	st.shared.u32 	[%r36], %r80;
-	bar.sync 	0;
-	setp.lt.u32 	%p14, %r22, 16;
-	@%p14 bra 	$L__BB0_19;
+	abs.f32 	%f30, %f22;
+	setp.geu.f32 	%p4, %f30, 0f7F800000;
+	@%p4 bra 	$L__BB1_8;
 
-	ld.shared.u32 	%r144, [%r36+-64];
+	abs.f32 	%f31, %f23;
+	setp.geu.f32 	%p5, %f31, 0f7F800000;
+	@%p5 bra 	$L__BB1_8;
 
-$L__BB0_19:
-	bar.sync 	0;
-	ld.shared.u32 	%r90, [%r36];
-	mov.u32 	%r146, 0;
-	add.s32 	%r91, %r90, %r144;
-	st.shared.u32 	[%r36], %r91;
-	bar.sync 	0;
-	setp.lt.u32 	%p15, %r22, 32;
-	mov.u32 	%r145, %r146;
-	@%p15 bra 	$L__BB0_21;
+	abs.f32 	%f32, %f24;
+	setp.geu.f32 	%p6, %f32, 0f7F800000;
+	@%p6 bra 	$L__BB1_8;
 
-	ld.shared.u32 	%r145, [%r36+-128];
+	abs.f32 	%f33, %f25;
+	setp.geu.f32 	%p7, %f33, 0f7F800000;
+	@%p7 bra 	$L__BB1_8;
 
-$L__BB0_21:
-	bar.sync 	0;
-	ld.shared.u32 	%r101, [%r36];
-	add.s32 	%r102, %r101, %r145;
-	st.shared.u32 	[%r36], %r102;
-	bar.sync 	0;
-	setp.lt.u32 	%p16, %r22, 64;
-	@%p16 bra 	$L__BB0_23;
+	abs.f32 	%f34, %f26;
+	setp.lt.f32 	%p8, %f34, 0f7F800000;
+	setp.ge.f32 	%p9, %f21, %f19;
+	and.pred  	%p10, %p8, %p9;
+	@%p10 bra 	$L__BB1_21;
 
-	ld.shared.u32 	%r146, [%r36+-256];
+$L__BB1_8:
+	cvta.to.global.u64 	%rd2, %rd8;
 
-$L__BB0_23:
-	bar.sync 	0;
-	ld.shared.u32 	%r112, [%r36];
-	mov.u32 	%r147, 0;
-	add.s32 	%r113, %r112, %r146;
-	st.shared.u32 	[%r36], %r113;
-	bar.sync 	0;
-	setp.lt.u32 	%p17, %r22, 128;
-	@%p17 bra 	$L__BB0_25;
+$L__BB1_9:
+	atom.global.add.u32 	%r7, [%rd2], -1;
+	add.s32 	%r2, %r7, -1;
+	setp.lt.u32 	%p11, %r2, %r3;
+	@%p11 bra 	$L__BB1_21;
 
-	ld.shared.u32 	%r147, [%r36+-512];
+	cvt.u64.u32 	%rd3, %r2;
+	mul.wide.u32 	%rd13, %r2, 16;
+	add.s64 	%rd14, %rd1, %rd13;
+	ld.global.v4.f32 	{%f35, %f36, %f37, %f38}, [%rd14];
+	add.s64 	%rd16, %rd11, %rd13;
+	ld.global.v4.f32 	{%f39, %f40, %f41, %f42}, [%rd16];
+	abs.f32 	%f43, %f35;
+	setp.geu.f32 	%p12, %f43, 0f7F800000;
+	mov.u16 	%rs10, 0;
+	@%p12 bra 	$L__BB1_18;
 
-$L__BB0_25:
-	setp.ne.s32 	%p18, %r22, 0;
-	bar.sync 	0;
-	ld.shared.u32 	%r122, [%r36];
-	add.s32 	%r123, %r122, %r147;
-	st.shared.u32 	[%r36], %r123;
-	bar.sync 	0;
-	@%p18 bra 	$L__BB0_27;
+	abs.f32 	%f44, %f36;
+	setp.geu.f32 	%p13, %f44, 0f7F800000;
+	@%p13 bra 	$L__BB1_18;
 
-	ld.shared.u32 	%r124, [_ZZ22compactLiquidParticlesE6prefix+1020];
-	cvta.to.global.u64 	%rd17, %rd9;
-	atom.global.add.u32 	%r125, [%rd17], %r124;
-	st.shared.u32 	[_ZZ22compactLiquidParticlesE10outputBase], %r125;
+	abs.f32 	%f45, %f37;
+	setp.geu.f32 	%p14, %f45, 0f7F800000;
+	@%p14 bra 	$L__BB1_18;
 
-$L__BB0_27:
-	bar.sync 	0;
-	setp.eq.s32 	%p19, %r139, 0;
-	@%p19 bra 	$L__BB0_30;
+	abs.f32 	%f46, %f38;
+	setp.geu.f32 	%p15, %f46, 0f7F800000;
+	@%p15 bra 	$L__BB1_18;
 
-	ld.shared.u32 	%r126, [_ZZ22compactLiquidParticlesE10outputBase];
-	ld.shared.u32 	%r131, [%r36];
-	add.s32 	%r132, %r126, %r131;
-	add.s32 	%r133, %r132, -1;
-	cvt.u64.u32 	%rd1, %r133;
-	cvta.to.global.u64 	%rd18, %rd6;
-	mul.wide.u32 	%rd19, %r133, 16;
-	add.s64 	%rd20, %rd18, %rd19;
-	st.global.v4.f32 	[%rd20], {%f101, %f100, %f99, %f98};
-	cvta.to.global.u64 	%rd21, %rd7;
-	add.s64 	%rd22, %rd21, %rd19;
-	st.global.v4.f32 	[%rd22], {%f105, %f104, %f103, %f102};
-	cvt.u64.u32 	%rd2, %r1;
-	cvta.to.global.u64 	%rd23, %rd5;
-	mul.wide.u32 	%rd24, %r1, 4;
-	add.s64 	%rd25, %rd23, %rd24;
-	ld.global.u32 	%r137, [%rd25];
-	cvta.to.global.u64 	%rd26, %rd8;
-	mul.wide.u32 	%rd27, %r133, 4;
-	add.s64 	%rd28, %rd26, %rd27;
-	st.global.u32 	[%rd28], %r137;
-	setp.eq.s64 	%p20, %rd10, 0;
-	@%p20 bra 	$L__BB0_30;
+	abs.f32 	%f47, %f39;
+	setp.geu.f32 	%p16, %f47, 0f7F800000;
+	@%p16 bra 	$L__BB1_18;
 
-	cvta.to.global.u64 	%rd29, %rd10;
-	shl.b64 	%rd30, %rd2, 2;
-	add.s64 	%rd31, %rd29, %rd30;
-	ld.global.u32 	%r138, [%rd31];
-	cvta.to.global.u64 	%rd32, %rd11;
-	shl.b64 	%rd33, %rd1, 2;
-	add.s64 	%rd34, %rd32, %rd33;
-	st.global.u32 	[%rd34], %r138;
+	abs.f32 	%f48, %f40;
+	setp.geu.f32 	%p17, %f48, 0f7F800000;
+	@%p17 bra 	$L__BB1_18;
 
-$L__BB0_30:
+	abs.f32 	%f49, %f41;
+	setp.geu.f32 	%p18, %f49, 0f7F800000;
+	@%p18 bra 	$L__BB1_18;
+
+	setp.ge.f32 	%p19, %f36, %f19;
+	selp.u16 	%rs10, 1, 0, %p19;
+
+$L__BB1_18:
+	setp.eq.s16 	%p20, %rs10, 0;
+	@%p20 bra 	$L__BB1_9;
+
+	st.global.v4.f32 	[%rd10], {%f35, %f36, %f37, %f38};
+	st.global.v4.f32 	[%rd12], {%f39, %f40, %f41, %f42};
+	cvta.to.global.u64 	%rd22, %rd6;
+	shl.b64 	%rd23, %rd3, 2;
+	add.s64 	%rd24, %rd22, %rd23;
+	ld.global.u32 	%r12, [%rd24];
+	mul.wide.u32 	%rd25, %r1, 4;
+	add.s64 	%rd26, %rd22, %rd25;
+	st.global.u32 	[%rd26], %r12;
+	setp.eq.s64 	%p21, %rd7, 0;
+	@%p21 bra 	$L__BB1_21;
+
+	cvta.to.global.u64 	%rd27, %rd7;
+	add.s64 	%rd29, %rd27, %rd23;
+	ld.global.u32 	%r13, [%rd29];
+	add.s64 	%rd31, %rd27, %rd25;
+	st.global.u32 	[%rd31], %r13;
+
+$L__BB1_21:
 	ret;
 
 }

@@ -1,4 +1,5 @@
 #pragma once
+#include "SceneLight.h"
 #include "Shader.h"
 #include <limits>
 #include <array>
@@ -19,7 +20,7 @@ public:
     void Draw(GLuint source, unsigned count, float spacing, unsigned long long revision, const glm::mat4& view, const glm::mat4& projection, GLuint water, GLuint scene, GLuint destination, int width, int height, float gravityScale = 1, GLuint background = 0, glm::vec3 backgroundColor = glm::vec3(.1f, .16f, .24f)) {
         Simulate(source, count, spacing, revision, gravityScale);
         GL::BindFramebuffer(0x8D40, destination); glViewport(0, 0, width, height); glDisable(GL_DEPTH_TEST); glDepthMask(GL_FALSE);
-        shader_.Use(); shader_.SetMatrix4("view", view); shader_.SetMatrix4("projection", projection); shader_.SetMatrix4("inverseProjection", glm::inverse(projection)); shader_.SetVector2("resolution", glm::vec2(width, height)); shader_.SetFloat("spacing", spacing);
+        shader_.Use(); shader_.SetVector3("sunDirection", SceneLight::Direction()); shader_.SetMatrix4("view", view); shader_.SetMatrix4("projection", projection); shader_.SetMatrix4("inverseProjection", glm::inverse(projection)); shader_.SetVector2("resolution", glm::vec2(width, height)); shader_.SetFloat("spacing", spacing);
         GL::ActiveTexture(0x84C2); glBindTexture(GL_TEXTURE_2D, water); shader_.SetInt("waterDepth", 2);
         GL::ActiveTexture(0x84C3); glBindTexture(GL_TEXTURE_2D, scene); shader_.SetInt("sceneDepth", 3);
         GL::ActiveTexture(0x84C4); glBindTexture(GL_TEXTURE_2D, background); shader_.SetInt("sceneColor", 4);

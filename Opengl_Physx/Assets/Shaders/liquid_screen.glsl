@@ -1,3 +1,4 @@
+uniform vec3 sunDirection;
 #if defined(FRAGMENT_SHADER) && defined(PASS_DEPTH)
 #extension GL_ARB_conservative_depth : require
 layout(depth_greater) out float gl_FragDepth;
@@ -236,7 +237,7 @@ void main(){
     transmitted=transmitted*absorption+colorForThickness(data.g)*(1-absorption);
     // A direct light reflection supplies a curved highlight even when the
     // reflected ray leaves the screen and only the flat background is available.
-    vec3 toLight=normalize(vec3(-.4,.8,.3));
+    vec3 toLight=normalize(sunDirection);
     vec3 toEye=-incoming;
     vec3 halfSum=toLight+toEye;
     vec3 halfVector=halfSum*inversesqrt(max(dot(halfSum,halfSum),1e-8));
