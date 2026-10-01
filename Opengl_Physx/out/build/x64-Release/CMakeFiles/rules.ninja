@@ -14,7 +14,7 @@
 #############################################
 # localized /showIncludes string
 
-msvc_deps_prefix = 注意: 包含文件:  
+msvc_deps_prefix = 娉ㄦ剰: 鍖呭惈鏂囦欢:  
 
 
 #############################################
@@ -94,7 +94,7 @@ rule VERIFY_GLOBS
 # Rule for cleaning all built files.
 
 rule CLEAN
-  command = "C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\Ninja\ninja.exe" $FILE_ARG -t clean $TARGETS
+  command = C:\PROGRA~1\MIB055~1\18\COMMUN~1\Common7\IDE\COMMON~1\MICROS~1\CMake\Ninja\ninja.exe $FILE_ARG -t clean $TARGETS
   description = Cleaning all built files...
 
 
@@ -102,6 +102,6 @@ rule CLEAN
 # Rule for printing all primary targets available.
 
 rule HELP
-  command = "C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\Ninja\ninja.exe" -t targets
+  command = C:\PROGRA~1\MIB055~1\18\COMMUN~1\Common7\IDE\COMMON~1\MICROS~1\CMake\Ninja\ninja.exe -t targets
   description = All primary targets available:
 

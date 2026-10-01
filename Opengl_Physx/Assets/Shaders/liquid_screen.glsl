@@ -14,24 +14,31 @@ const float emptyDepth=10000000.0;
 #if defined(PASS_DEPTH) || defined(PASS_THICKNESS)
 #ifdef VERTEX_SHADER
 layout(location=0) in vec4 position;
-layout(location=1) in vec4 velocity;
+layout(location=2) in vec4 axis0;
+layout(location=3) in vec4 axis1;
+layout(location=4) in vec4 axis2;
 flat out vec3 center;
+flat out mat3 worldToUnit;
+flat out float support;
 void main(){
     center=(view*vec4(position.xyz,1)).xyz;
+    support=axis0.w;
+    worldToUnit=inverse(mat3(view)*mat3(axis0.xyz,axis1.xyz,axis2.xyz)*radius);
+    float boundRadius=radius*max(length(axis0.xyz),max(length(axis1.xyz),length(axis2.xyz)));
     vec2 corner=vec2((gl_VertexID&1)==0?-1:1,(gl_VertexID&2)==0?-1:1);
     float z=-center.z;
     float nearPlane=projection[3][2]/(projection[2][2]-1.0);
-    if(z+radius<=nearPlane){gl_Position=vec4(2,2,2,1);return;}
-    float nearZ=max(z-radius,nearPlane),farZ=z+radius;
+    if(z+boundRadius<=nearPlane){gl_Position=vec4(2,2,2,1);return;}
+    float nearZ=max(z-boundRadius,nearPlane),farZ=z+boundRadius;
     vec2 low,high;
-    if(z>radius*1.01){
-        vec2 extent=radius*sqrt(max(center.xy*center.xy+z*z-radius*radius,vec2(0)));
-        float denominator=z*z-radius*radius;
+    if(z>boundRadius*1.01){
+        vec2 extent=boundRadius*sqrt(max(center.xy*center.xy+z*z-boundRadius*boundRadius,vec2(0)));
+        float denominator=z*z-boundRadius*boundRadius;
         low=(center.xy*z-extent)/denominator;
         high=(center.xy*z+extent)/denominator;
     }else{
-        low=min((center.xy-radius)/nearZ,(center.xy-radius)/farZ);
-        high=max((center.xy+radius)/nearZ,(center.xy+radius)/farZ);
+        low=min((center.xy-boundRadius)/nearZ,(center.xy-boundRadius)/farZ);
+        high=max((center.xy+boundRadius)/nearZ,(center.xy+boundRadius)/farZ);
     }
     vec2 scale=vec2(projection[0][0],projection[1][1]);low*=scale;high*=scale;
     if(any(greaterThan(low,vec2(1)))||any(lessThan(high,vec2(-1)))){gl_Position=vec4(2,2,2,1);return;}
@@ -43,15 +50,18 @@ void main(){
 #endif
 #ifdef FRAGMENT_SHADER
 flat in vec3 center;
+flat in mat3 worldToUnit;
+flat in float support;
 layout(location=0) out vec4 result;
 uniform sampler2D sceneDepth;
 void main(){
     vec2 uv=gl_FragCoord.xy/resolution;
     vec4 ray4=inverseProjection*vec4(uv*2-1,1,1);
     vec3 ray=normalize(ray4.xyz/ray4.w);
-    float b=dot(ray,center),c=dot(center,center)-radius*radius;
-    float discriminant=b*b-c;if(discriminant<=0)discard;
-    float root=sqrt(discriminant),front=b-root,back=b+root;
+    vec3 localRay=worldToUnit*ray,localCenter=worldToUnit*center;
+    float a=dot(localRay,localRay),b=dot(localRay,localCenter),c=dot(localCenter,localCenter)-1;
+    float discriminant=b*b-a*c;if(discriminant<=0)discard;
+    float root=sqrt(discriminant),front=(b-root)/a,back=(b+root)/a;
     vec4 near4=inverseProjection*vec4(uv*2-1,-1,1);
     float nearT=length(near4.xyz/near4.w);
     front=max(front,nearT);if(back<=front)discard;
@@ -61,10 +71,10 @@ void main(){
 #ifdef PASS_DEPTH
     vec4 clip=projection*vec4(ray*front,1);
     gl_FragDepth=max(gl_FragCoord.z,clamp(clip.z/clip.w*.5+.5,0,1));
-    result=vec4(front,0,0,1);
+    result=vec4(front,support,0,1);
 #else
     float segment=max(0,min(back,sceneT)-front);
-    float radial=clamp(1-discriminant/(radius*radius),0,1);
+    float radial=clamp(1-discriminant/a,0,1);
     float weight=(exp(-2*radial)-exp(-2.0))/(1-exp(-2.0));
     result=vec4(segment*.46*weight,0,0,1);
 #endif
@@ -78,6 +88,7 @@ void main(){uv=vec2((gl_VertexID<<1)&2,gl_VertexID&2);gl_Position=vec4(uv*2-1,0,
 #ifdef FRAGMENT_SHADER
 in vec2 uv;layout(location=0) out vec4 result;
 uniform sampler2D waterDepth,waterThickness,surfaceNormals,sceneColor,sceneDepth;
+uniform samplerCube environmentMap;
 uniform vec2 axis;
 uniform vec3 boundsLow,boundsHigh;
 vec3 viewRay(vec2 q){vec4 v=inverseProjection*vec4(q*2-1,1,1);return normalize(v.xyz/v.w);}
@@ -93,7 +104,7 @@ bool nearClipped(float rawDepth){
 }
 float sceneDistance(vec2 q){vec4 v=inverseProjection*vec4(q*2-1,texture(sceneDepth,q).r*2-1,1);return length(v.xyz/v.w);}
 #ifdef PASS_PACK
-void main(){float d=texture(waterDepth,uv).r,t=texture(waterThickness,uv).r*thicknessStrength;result=vec4(d,t,t,d);}
+void main(){vec2 d=texture(waterDepth,uv).rg;float t=texture(waterThickness,uv).r*thicknessStrength;result=vec4(d.r,t,d.g,d.r);}
 #elif defined(PASS_SMOOTH)
 void main(){
     // Full-resolution passes sample exact pixel centers. Integer fetches avoid
@@ -116,10 +127,10 @@ void main(){
         float weight=exp(-float(x*x)*inverseVariance-difference*difference*depthRejection);
         sum+=value.rg*weight;weights+=weight;
     }
-    // A single thin droplet needs its spherical depth, not the bulk-water blur.
-    // Raw depth/thickness survive every pass in alpha/blue, avoiding cumulative flattening.
-    float bulk=smoothstep(radius*.75,radius*1.5,original.b);
-    result=vec4(mix(vec2(original.a,original.b),sum/max(weights,1e-20),bulk),original.ba);
+    // Blue is particle-neighborhood support, independent of optical thickness.
+    // Connected thin sheets smooth normally; isolated droplets keep exact depth.
+    // Continue from the preceding pass instead of reinjecting the raw sphere.
+    result=vec4(mix(original.rg,sum/max(weights,1e-20),original.b),original.ba);
 }
 #elif defined(PASS_NORMALS)
 bool neighbor(vec2 q,float d,out vec3 p){
@@ -153,6 +164,7 @@ bool projectPoint(vec3 p,out vec2 q){
     return all(greaterThan(q,.5/resolution))&&all(lessThan(q,1-.5/resolution));
 }
 vec3 reflectedScene(vec3 start,vec3 direction){
+    vec3 environment=texture(environmentMap,mat3(inverseView)*direction).rgb;
     float lengthLimit=clamp(-start.z*2,8,60),previous=0;
     float bias=max(.005,radius*.1);
     for(int i=1;i<=16;++i){
@@ -170,13 +182,13 @@ vec3 reflectedScene(vec3 start,vec3 direction){
             p=start+direction*(hi+bias);
             if(projectPoint(p,q)&&abs(-p.z-sceneZ(q))<max(.025,radius*.5)){
                 float edge=min(min(q.x,q.y),min(1-q.x,1-q.y));
-                return mix(sceneBackgroundColor,texture(sceneColor,q).rgb,smoothstep(0,.04,edge));
+                return mix(environment,texture(sceneColor,q).rgb,smoothstep(0,.04,edge));
             }
-            return sceneBackgroundColor;
+            return environment;
         }
         previous=t;
     }
-    return sceneBackgroundColor;
+    return environment;
 }
 bool clearRefraction(vec2 q,float expectedZ){
     ivec2 size=textureSize(sceneDepth,0),base=ivec2(floor(q*vec2(size)-.5));

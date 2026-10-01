@@ -1,0 +1,59 @@
+#version 430 core
+layout(local_size_x=128) in;
+layout(std430,binding=0) readonly buffer Fluid { vec4 source[]; };
+layout(std430,binding=1) buffer Heads { int head[]; };
+layout(std430,binding=2) buffer Links { int next[]; };
+struct SurfaceParticle { vec4 normal; vec4 position; vec4 axis0; vec4 axis1; vec4 axis2; };
+layout(std430,binding=3) buffer Surface { SurfaceParticle surface[]; };
+uniform uint particleCount,hashSize;
+uniform float spacing;
+const int pass=KERNEL_STAGE;
+uint hash(uint x){x^=x>>16;x*=0x7feb352du;x^=x>>15;x*=0x846ca68bu;return x^(x>>16);}
+uint bucket(ivec3 c){return hash(uint(c.x)*73856093u^uint(c.y)*19349663u^uint(c.z)*83492791u)&(hashSize-1u);}
+void diagonalize(inout mat3 a,inout mat3 basis,int p,int q){
+    if(abs(a[p][q])<1e-8)return;
+    float angle=.5*atan(2*a[p][q],a[q][q]-a[p][p]);
+    float c=cos(angle),s=sin(angle);
+    mat3 rotation=mat3(1);rotation[p][p]=c;rotation[q][q]=c;
+    rotation[p][q]=-s;rotation[q][p]=s;
+    a=transpose(rotation)*a*rotation;basis=basis*rotation;
+}
+void main(){
+    uint id=gl_GlobalInvocationID.x;
+    if(pass==0){if(id<hashSize)head[id]=-1;return;}
+    if(pass==1){
+        if(id>=particleCount)return;
+        vec3 p=source[id].xyz;
+        if(any(isnan(p))||any(isinf(p))||any(greaterThan(abs(p),vec3(1e6)))){next[id]=-1;return;}
+        next[id]=atomicExchange(head[bucket(ivec3(floor(p/(2*spacing))))],int(id));return;
+    }
+    if(pass==2){
+        if(id>=particleCount)return;
+        vec3 p=source[id].xyz,n=vec3(0),mean=vec3(0);mat3 moment=mat3(0);float weights=0;float h=2*spacing;uint count=0u;ivec3 base=ivec3(floor(p/h));
+        for(int z=-1;z<=1;++z)for(int y=-1;y<=1;++y)for(int x=-1;x<=1;++x){
+            ivec3 cell=base+ivec3(x,y,z);int j=head[bucket(cell)];
+            while(j>=0){vec3 q=source[j].xyz,d=p-q;float r=length(d);
+                if(all(equal(ivec3(floor(q/h)),cell)) && r<h){++count;float w=pow(1-r/h,2);vec3 offset=-d;
+                    mean+=offset*w;moment+=outerProduct(offset,offset)*w;weights+=w;
+                    if(r>1e-6)n+=d/r*w;}
+                j=next[j];
+            }
+        }
+        surface[id].normal=vec4(length(n)>.05?normalize(n):vec3(0),float(count));
+        vec3 center=p;mat3 basis=mat3(1);vec3 scales=vec3(1);
+        if(count>=4u && weights>1e-6){
+            mean/=weights;mat3 covariance=moment/weights-outerProduct(mean,mean);
+            for(int sweep=0;sweep<5;++sweep){diagonalize(covariance,basis,0,1);diagonalize(covariance,basis,0,2);diagonalize(covariance,basis,1,2);}
+            vec3 eigen=max(vec3(covariance[0][0],covariance[1][1],covariance[2][2]),vec3(spacing*spacing*.04));
+            scales=sqrt(eigen);float geometric=pow(scales.x*scales.y*scales.z,1.0/3.0);
+            scales=clamp(scales/max(geometric,1e-8),vec3(.55),vec3(1.65));
+            scales/=pow(scales.x*scales.y*scales.z,1.0/3.0);
+            float confidence=smoothstep(3.0,8.0,float(count));scales=mix(vec3(1),scales,confidence);
+            center+=mean*min(.35,.2*spacing/max(length(mean),1e-8))*confidence;
+        }
+        surface[id].position=vec4(center,source[id].w);
+        surface[id].axis0=vec4(basis[0]*scales.x,smoothstep(3.0,8.0,float(count)));
+        surface[id].axis1=vec4(basis[1]*scales.y,0);
+        surface[id].axis2=vec4(basis[2]*scales.z,0);return;
+    }
+}

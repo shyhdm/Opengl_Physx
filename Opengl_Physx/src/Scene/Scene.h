@@ -1,5 +1,6 @@
 #pragma once
 #include "ModelLibrary.h"
+#include "SkyEnvironment.h"
 #include "ModelRenderer.h"
 #include "Transform.h"
 #include "RigidBody.h"
@@ -333,6 +334,7 @@ public:
         glClearColor(0.10f, 0.16f, 0.24f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+        sky_->Draw(camera, width, height);
         renderer.BeginDraw(camera, width, height);
         if (showGround) renderer.DrawMesh(models.Get(ModelType::Plane), ground.GetMatrix(), groundMaterial);
         for (const auto& batch : rigidRenderBatches) renderer.DrawMesh(*batch.mesh, glm::mat4(1.0f), batch.material);
@@ -980,6 +982,7 @@ public:
     }
 
 private:
+    std::shared_ptr<SkyEnvironment> sky_ = SkyEnvironment::Shared();
     float GetLaunchRadius() const
     {
         ModelData model = ModelBuilder::Create(selectedType);

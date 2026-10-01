@@ -10,7 +10,7 @@ layout(std430,binding=5) buffer Free{uint freeSlot[];};
 layout(std430,binding=6) buffer Counters{uint counter[8];};
 uniform uint particleCount,poolCapacity,hashSize,tick;
 const int pass=KERNEL_STAGE;
-uniform float spacing,deltaTime,gravityScale;
+uniform float spacing,deltaTime,gravityScale,emissionScale;
 uint hash(uint x){x^=x>>16;x*=0x7feb352du;x^=x>>15;x*=0x846ca68bu;return x^(x>>16);}
 float random(uint x){return float(hash(x)&0xffffffu)/16777216.0;}
 uint bucket(ivec3 c){return hash(uint(c.x)*73856093u^uint(c.y)*19349663u^uint(c.z)*83492791u)&(hashSize-1u);}
@@ -59,14 +59,15 @@ void main(){
     if(pass==3){
         if(id>=poolCapacity)return;Diffuse d=diffuse[id];
         if(d.position.w>0){
+            d.position.w=max(0,d.position.w-deltaTime);
             vec3 p=d.position.xyz;bool escaped=false;
             for(int a=0;a<3;++a)escaped=escaped||p[a]<decoded(counter[2+a])-max(8.0,spacing*40)||p[a]>decoded(counter[5+a])+max(8.0,spacing*40);
-            if(escaped||any(isnan(p))||any(isinf(p)))d.position.w=0;
+            if(d.position.w<=0||escaped||any(isnan(p))||any(isinf(p)))d.position.w=0;
             else{
                 uint count;vec3 flow;neighborhood(p,count,flow);vec3 gravity=vec3(0,-9.81*gravityScale,0);
                 if(count<6u){d.velocity.xyz+=gravity*deltaTime;d.position.xyz+=d.velocity.xyz*deltaTime;d.velocity.w=0;}
-                else if(count<=20u){d.position.xyz+=flow*deltaTime;d.position.w-=deltaTime;d.velocity.w=1;}
-                else{d.velocity.xyz+=-gravity*.8*deltaTime+.8*(flow-d.velocity.xyz);d.position.xyz+=d.velocity.xyz*deltaTime;d.velocity.w=2;}
+                else if(count<=20u){d.velocity.xyz=flow;d.position.xyz+=flow*deltaTime;d.velocity.w=1;}
+                else{d.velocity.xyz+=-gravity*.8*deltaTime;d.velocity.xyz=mix(d.velocity.xyz,flow,1-exp(-4.0*deltaTime));d.position.xyz+=d.velocity.xyz*deltaTime;d.velocity.w=2;}
                 d.info.y+=deltaTime;
             }
         }
@@ -91,7 +92,8 @@ void main(){
         }
         if(dot(normalize(v),n)<.6)wc=0;
         float ita=phi(ta,5,20),iwc=phi(wc,2,8);
-        float expected=ik*(200*ita+300*iwc)*deltaTime;
+        // Bounded secondary emission; accumulated soft sprites supply coverage.
+        float expected=ik*(60*ita+90*iwc)*deltaTime*emissionScale;
         uint seed=hash(id+tick*747796405u);uint amount=uint(floor(expected));if(random(seed)<fract(expected))++amount;
         if(amount==0u)return;
         vec3 axis=normalize(v),e1=normalize(cross(axis,abs(axis.y)<.9?vec3(0,1,0):vec3(1,0,0))),e2=cross(axis,e1);
@@ -100,7 +102,8 @@ void main(){
             uint slot=freeSlot[index];uint s=hash(seed+i*277803737u);
             float r=.5*spacing*sqrt(random(s+1u)),theta=6.2831853*random(s+2u);
             vec3 offset=r*(cos(theta)*e1+sin(theta)*e2);
-            float lifetime=mix(.7,2.5,clamp(ik*max(ita,iwc),0,1));
+            // FleX exposes a random lifetime in [0, diffuseLifetime].
+            float lifetime=2.0*random(s+5u);
             Diffuse d;d.position=vec4(p+offset+deltaTime*v*random(s+3u),lifetime);
             d.velocity=vec4(v+offset,1);d.info=vec4(lifetime,0,random(s+4u),0);diffuse[slot]=d;
         }return;

@@ -6,19 +6,39 @@ uniform sampler2D lightDepth,lightThickness,sceneDepth,sceneColor,causticMap;
 #if defined(PASS_DEPTH) || defined(PASS_THICKNESS)
 #ifdef VERTEX_SHADER
 layout(location=0) in vec4 position;
-out vec2 local;flat out vec3 center;
-void main(){local=vec2((gl_VertexID&1)==0?-1:1,(gl_VertexID&2)==0?-1:1);center=(lightView*vec4(position.xyz,1)).xyz;gl_Position=lightProjection*vec4(center+vec3(local*radius,radius),1);}
+layout(location=2) in vec4 axis0;
+layout(location=3) in vec4 axis1;
+layout(location=4) in vec4 axis2;
+out vec2 offset;flat out vec3 center;flat out mat3 lightToUnit;
+void main(){
+    vec2 corner=vec2((gl_VertexID&1)==0?-1:1,(gl_VertexID&2)==0?-1:1);
+    center=(lightView*vec4(position.xyz,1)).xyz;
+    mat3 shape=mat3(lightView)*mat3(axis0.xyz,axis1.xyz,axis2.xyz)*radius;
+    lightToUnit=inverse(shape);
+    vec3 ex=vec3(shape[0].x,shape[1].x,shape[2].x);
+    vec3 ey=vec3(shape[0].y,shape[1].y,shape[2].y);
+    offset=corner*vec2(length(ex),length(ey));
+    gl_Position=lightProjection*vec4(center+vec3(offset,0),1);
+}
 #endif
 #ifdef FRAGMENT_SHADER
-in vec2 local;flat in vec3 center;out vec4 result;
-void main(){float r2=dot(local,local);if(r2>=1)discard;float chord=sqrt(1-r2)*radius;
+in vec2 offset;flat in vec3 center;flat in mat3 lightToUnit;out vec4 result;
+void main(){
+    vec3 o=lightToUnit*vec3(offset,0),d=lightToUnit*vec3(0,0,-1);
+    float a=dot(d,d),b=dot(o,d),c=dot(o,o)-1;
+    float discriminant=b*b-a*c;if(discriminant<=0)discard;
+    float root=sqrt(discriminant),front=(-b-root)/a,back=(-b+root)/a;
 #ifdef PASS_DEPTH
-vec4 clip=lightProjection*vec4(center+vec3(0,0,chord),1);gl_FragDepth=clip.z/clip.w*.5+.5;result=vec4(-center.z-chord,0,0,0);
+    vec4 clip=lightProjection*vec4(center+vec3(offset,-front),1);
+    gl_FragDepth=clip.z/clip.w*.5+.5;result=vec4(-center.z+front,0,0,0);
 #else
-float w=(exp(-2*r2)-exp(-2.0))/(1-exp(-2.0));result=vec4(chord*.92*w,0,0,0);
+    float r2=clamp(1-discriminant/a,0,1);
+    float w=(exp(-2*r2)-exp(-2.0))/(1-exp(-2.0));
+    result=vec4((back-front)*.46*w,0,0,0);
 #endif
 }
 #endif
+
 #elif defined(PASS_PHOTONS)
 #ifdef VERTEX_SHADER
 out vec2 local;flat out vec3 energy;

@@ -408,6 +408,16 @@ public:
                 renderChanged |= Number(T("细节保留", "Detail retention"), render.smoothSharpness, .01f, .1f, 2);
                 renderChanged |= Number(T("深度边界保留", "Depth edge retention"), render.depthRejection, .1f, 0, 20);
                 renderChanged |= ImGui::SliderInt(T("平滑轮数", "Smoothing iterations"), &render.smoothIterations, 0, 5);
+                ImGui::Separator();
+                ImGui::TextUnformatted(T("泡沫调试", "Foam tuning"));
+                renderChanged |= Number(T("泡沫生成倍率", "Foam emission scale"), render.foamEmission, .05f, 0, 10);
+                if (ImGui::IsItemHovered()) ImGui::SetTooltip(T("1 为默认生成量；0 停止新生成，已有泡沫正常消退。模拟运行时生效。", "1 is the default rate. 0 stops emission; existing particles expire normally. Requires simulation to advance."));
+                renderChanged |= Number(T("泡沫不透明度", "Foam opacity"), render.foamOpacity, .01f, 0, 1);
+                if (ImGui::IsItemHovered()) ImGui::SetTooltip(T("控制泡沫和水下气泡的基础不透明度，仍保留柔边和寿命淡出；暂停时也可调整。", "Base foam/bubble opacity, with soft edges and lifetime fading. Also updates while paused."));
+                if (ImGui::Button(T("恢复泡沫参数", "Reset foam settings"))) {
+                    const LiquidSurface::RenderParameters defaults;
+                    render.foamEmission = defaults.foamEmission; render.foamOpacity = defaults.foamOpacity; renderChanged = true;
+                }
                 ImGui::PopItemWidth();
                 if (renderChanged)liquid->SetRenderParameters(render);
                 if (ImGui::Button(T("恢复渲染参数", "Reset rendering parameters")))liquid->SetRenderParameters(LiquidSurface::RenderParameters{});

@@ -6,6 +6,8 @@
 #include <array>
 #include "LiquidWhitewater.h"
 #include "LiquidLighting.h"
+#include "SkyEnvironment.h"
+#include "LiquidReconstruction.h"
 #include <algorithm>
 #include <cmath>
 
@@ -22,6 +24,7 @@ public:
         float absorption = 1.61f, reflection = 1.f, refraction = .24f, thickness = .8f;
         float particleScale = .71f, smoothRadius = .65f, smoothSharpness = .43f, depthRejection = 3.7f;
         int smoothIterations = 3;
+        float foamEmission = 1.f, foamOpacity = .6f;
     };
     static RenderParameters ClampRenderParameters(RenderParameters value) {
         const RenderParameters defaults;
@@ -39,6 +42,8 @@ public:
         value.smoothSharpness = limit(value.smoothSharpness, .1f, 2, defaults.smoothSharpness);
         value.depthRejection = limit(value.depthRejection, 0, 20, defaults.depthRejection);
         value.smoothIterations = std::clamp(value.smoothIterations, 0, 5);
+        value.foamEmission = limit(value.foamEmission, 0, 10, defaults.foamEmission);
+        value.foamOpacity = limit(value.foamOpacity, 0, 1, defaults.foamOpacity);
         return value;
     }
     void SetRenderParameters(RenderParameters value) { renderParameters_ = ClampRenderParameters(value); }
@@ -55,11 +60,13 @@ public:
     ~LiquidSurface() { GL::DeleteFramebuffers(3, fbos_); glDeleteTextures(8, textures_); GL::DeleteVertexArrays(1, &particleVao_); GL::DeleteVertexArrays(1, &screenVao_); }
     LiquidSurface(const LiquidSurface&) = delete;
     LiquidSurface& operator=(const LiquidSurface&) = delete;
-    void Invalidate() { whitewater_.Invalidate(); lighting_.Invalidate(); }
+    void Invalidate() { reconstruction_.Invalidate(); whitewater_.Invalidate(); lighting_.Invalidate(); }
     void Draw(GLuint positions, unsigned count, float spacing, const Camera& camera, int width, int height, unsigned long long revision = 0, float gravityScale = 1, glm::vec3 boundsLow = glm::vec3(-10, 0, -10), glm::vec3 boundsHigh = glm::vec3(10, 15, 10))
     {
         if (!count || width <= 0 || height <= 0)return;
         State state(*this);
+        const GLuint environment = sky_->Texture();
+        glEnable(0x884F);
         Resize(width, height); lighting_.Prepare(width, height); glDisable(GL_SCISSOR_TEST);
         passTimers_[Background].Begin();
         GL::BindFramebuffer(0x8CA8, state.readFbo); GL::BindFramebuffer(0x8CA9, fbos_[0]);
@@ -68,9 +75,13 @@ public:
         passTimers_[Background].End(); passTimers_[Depth].Begin();
         glViewport(0, 0, width, height); glDisable(GL_CULL_FACE); glDisable(GL_BLEND); glDisable(GL_SCISSOR_TEST); glDisable(0x8DB9);
         glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE); glDepthMask(GL_TRUE); glEnable(GL_DEPTH_TEST); glDepthFunc(GL_LESS); glClearDepth(1);
-        GL::BindVertexArray(particleVao_); GL::BindBuffer(GL::ArrayBuffer, positions);
-        GL::VertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(float), nullptr); GL::EnableVertexAttribArray(0); divisor_(0, 1);
-        GL::VertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(float), reinterpret_cast<const void*>(size_t(count) * 4 * sizeof(float))); GL::EnableVertexAttribArray(1); divisor_(1, 1);
+        const GLuint surface = reconstruction_.Prepare(positions, count, spacing, revision);
+        GL::BindVertexArray(particleVao_); GL::BindBuffer(GL::ArrayBuffer, surface);
+        GL::VertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 80, reinterpret_cast<const void*>(16)); GL::EnableVertexAttribArray(0); divisor_(0, 1);
+        for(unsigned i=0;i<3;++i) {
+            GL::VertexAttribPointer(2+i, 4, GL_FLOAT, GL_FALSE, 80, reinterpret_cast<const void*>(size_t(32+i*16)));
+            GL::EnableVertexAttribArray(2+i);divisor_(2+i,1);
+        }
         const auto projection = camera.GetProjectionMatrix(float(width) / height);
         const auto view = camera.GetViewMatrix();
         const float radius = spacing * renderParameters_.particleScale;
@@ -111,12 +122,14 @@ public:
         shader_.UsePass("COMPOSITE"); Common(projection, view, radius, width, height);
         shader_.SetVector3("sceneBackgroundColor", glm::vec3(state.clearColor[0], state.clearColor[1], state.clearColor[2]));
         shader_.SetVector3("boundsLow", boundsLow); shader_.SetVector3("boundsHigh", boundsHigh);
+        GL::ActiveTexture(0x84C5);glBindTexture(0x8513,environment);shader_.SetInt("environmentMap",5);
         Bind(0, textures_[2], "waterDepth"); Bind(1, background, "sceneColor"); Bind(2, textures_[1], "sceneDepth"); Bind(3, textures_[7], "surfaceNormals");
         GL::BindVertexArray(screenVao_); glDrawArrays(GL_TRIANGLES, 0, 3);
         passTimers_[Composite].End(); passTimers_[Whitewater].Begin();
         GL::ActiveTexture(0x84C0); glBindTexture(GL_TEXTURE_2D, textures_[0]);
         glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, width, height);
-        whitewater_.Draw(positions, count, spacing, revision, view, projection, textures_[6], textures_[1], state.drawFbo, width, height, gravityScale, textures_[0], glm::vec3(state.clearColor[0], state.clearColor[1], state.clearColor[2]));
+        whitewater_.SetAppearance(renderParameters_.foamEmission, renderParameters_.foamOpacity);
+        whitewater_.Draw(positions, count, spacing, revision, view, projection, textures_[6], textures_[1], state.drawFbo, width, height, gravityScale, textures_[0], glm::vec3(state.clearColor[0], state.clearColor[1], state.clearColor[2]), environment);
         passTimers_[Whitewater].End();
     }
 private:
@@ -129,13 +142,13 @@ private:
     using BlendFunc = void(APIENTRY*)(GLenum, GLenum, GLenum, GLenum);
     struct State {
         LiquidSurface& owner; GLint drawFbo, readFbo, viewport[4], program, vao, buffer, active, tex[7], cube[7], volume[7], textureBuffer, depthFunc, srcRgb, dstRgb, srcAlpha, dstAlpha, eqRgb, eqAlpha;
-        GLboolean depth, cull, blend, scissor, srgb, depthWrite, colorWrite[4]; GLfloat clearColor[4]; GLdouble clearDepth;
+        GLboolean depth, cull, blend, scissor, srgb, seamless, depthWrite, colorWrite[4]; GLfloat clearColor[4]; GLdouble clearDepth;
         explicit State(LiquidSurface& value) :owner(value) {
             glGetIntegerv(0x8CA6, &drawFbo); glGetIntegerv(0x8CAA, &readFbo); glGetIntegerv(GL_VIEWPORT, viewport);
             glGetIntegerv(0x8B8D, &program); glGetIntegerv(0x85B5, &vao); glGetIntegerv(0x8894, &buffer); glGetIntegerv(0x84E0, &active);
             for (unsigned i = 0; i < 7; ++i) { GL::ActiveTexture(0x84C0 + i); glGetIntegerv(GL_TEXTURE_BINDING_2D, &tex[i]); glGetIntegerv(0x8514, &cube[i]); glGetIntegerv(0x806A, &volume[i]); }
             GL::ActiveTexture(0x84C2); glGetIntegerv(0x8C2C, &textureBuffer);
-            depth = glIsEnabled(GL_DEPTH_TEST); cull = glIsEnabled(GL_CULL_FACE); blend = glIsEnabled(GL_BLEND); scissor = glIsEnabled(GL_SCISSOR_TEST); srgb = glIsEnabled(0x8DB9);
+            depth = glIsEnabled(GL_DEPTH_TEST); cull = glIsEnabled(GL_CULL_FACE); blend = glIsEnabled(GL_BLEND); scissor = glIsEnabled(GL_SCISSOR_TEST); srgb = glIsEnabled(0x8DB9); seamless = glIsEnabled(0x884F);
             glGetBooleanv(GL_DEPTH_WRITEMASK, &depthWrite); glGetBooleanv(GL_COLOR_WRITEMASK, colorWrite); glGetIntegerv(GL_DEPTH_FUNC, &depthFunc);
             glGetIntegerv(0x80C9, &srcRgb); glGetIntegerv(0x80C8, &dstRgb); glGetIntegerv(0x80CB, &srcAlpha); glGetIntegerv(0x80CA, &dstAlpha);
             glGetIntegerv(0x8009, &eqRgb); glGetIntegerv(0x883D, &eqAlpha); glGetFloatv(GL_COLOR_CLEAR_VALUE, clearColor); glGetDoublev(GL_DEPTH_CLEAR_VALUE, &clearDepth);
@@ -144,7 +157,7 @@ private:
             GL::BindFramebuffer(0x8CA9, drawFbo); GL::BindFramebuffer(0x8CA8, readFbo); glViewport(viewport[0], viewport[1], viewport[2], viewport[3]);
             GL::UseProgram(program); GL::BindVertexArray(vao); GL::BindBuffer(GL::ArrayBuffer, buffer);
             for (unsigned i = 0; i < 7; ++i) { GL::ActiveTexture(0x84C0 + i); glBindTexture(GL_TEXTURE_2D, tex[i]); glBindTexture(0x8513, cube[i]); glBindTexture(0x806F, volume[i]); }GL::ActiveTexture(0x84C2); glBindTexture(0x8C2A, textureBuffer); GL::ActiveTexture(active);
-            Restore(GL_DEPTH_TEST, depth); Restore(GL_CULL_FACE, cull); Restore(GL_BLEND, blend); Restore(GL_SCISSOR_TEST, scissor); Restore(0x8DB9, srgb);
+            Restore(GL_DEPTH_TEST, depth); Restore(GL_CULL_FACE, cull); Restore(GL_BLEND, blend); Restore(GL_SCISSOR_TEST, scissor); Restore(0x8DB9, srgb); Restore(0x884F, seamless);
             glDepthMask(depthWrite); glColorMask(colorWrite[0], colorWrite[1], colorWrite[2], colorWrite[3]); glDepthFunc(depthFunc);
             owner.blendEquation_(eqRgb, eqAlpha); owner.blendFunc_(srcRgb, dstRgb, srcAlpha, dstAlpha);
             glClearColor(clearColor[0], clearColor[1], clearColor[2], clearColor[3]); glClearDepth(clearDepth);
@@ -169,7 +182,7 @@ private:
         for (int i = 0; i < 8; ++i) {
             glBindTexture(GL_TEXTURE_2D, textures_[i]);
             bool depth = i == 1 || i == 5;
-            const bool scalar = i == 4 || i == 6;
+            const bool scalar = i == 4; // Target 6 also carries neighborhood support in green.
             const GLint format = depth ? 0x81A6 : (i == 0 ? GL_RGBA8 : (scalar ? 0x822E : 0x8814));
             glTexImage2D(GL_TEXTURE_2D, 0, format, i == 4 ? (w + 1) / 2 : w, i == 4 ? (h + 1) / 2 : h, 0, depth ? GL_DEPTH_COMPONENT : (scalar ? 0x1903 : GL_RGBA), GL_FLOAT, nullptr);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, depth ? GL_NEAREST : GL_LINEAR); glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, depth ? GL_NEAREST : GL_LINEAR);
@@ -183,6 +196,8 @@ private:
         }
         width_ = w; height_ = h;
     }
+    LiquidReconstruction reconstruction_;
+    std::shared_ptr<SkyEnvironment> sky_ = SkyEnvironment::Shared();
     LiquidLighting lighting_;
     LiquidWhitewater whitewater_;
     Shader shader_; GLuint fbos_[3]{}, textures_[8]{}, particleVao_ = 0, screenVao_ = 0; int width_ = 0, height_ = 0;
