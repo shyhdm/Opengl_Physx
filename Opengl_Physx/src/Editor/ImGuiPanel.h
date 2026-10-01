@@ -36,6 +36,12 @@ public:
         ImGui::Text("FPS: %.0f", fps);
         ImGui::SameLine();
         if (ImGui::Button(T("复制调试信息", "Copy debug info")) && debugText) ImGui::SetClipboardText(debugText);
+        ImGui::SameLine();
+        if (ImGui::Button(chinese ? "Switch to English###PanelLanguage" : "切换到中文###PanelLanguage"))
+        {
+            ClearEditor();
+            chinese = !chinese;
+        }
         bool isolatedTiming = scene.GetIsolatePhysicsTiming();
         if (ImGui::Checkbox(T("隔离物理计时", "Isolate physics timing"), &isolatedTiming)) scene.SetIsolatePhysicsTiming(isolatedTiming);
         if (ImGui::IsItemHovered()) ImGui::SetTooltip(T("物理步前等待本程序 OpenGL 完成，等待单列；会降低并行度，可能影响 FPS。不是纯 GPU 内核计时。", "Wait for this context's OpenGL before each GPU physics step. Wait is separate; profiling reduces overlap and may lower FPS. Not pure GPU kernel timing."));
@@ -202,6 +208,7 @@ public:
                 };
             ImGui::PushID("ParticleTestButtons");
             testButton(T("水体", "Water"), 0); ImGui::SameLine(); testButton(T("沙子", "Sand"), 1); ImGui::SameLine(); testButton(T("沙滩", "Beach"), 2);
+            testButton(T("封闭空间", "Enclosed"), 3);
             ImGui::PopID();
             if (scene.GetParticleTest() == 2) {
                 ImGui::PushID("BeachTestControls");
@@ -348,7 +355,7 @@ public:
             ImGui::PopID();
         }
 
-        if (scene.GetSceneIndex() == 3 && scene.GetParticleTest() == 0 && ImGui::CollapsingHeader(T("GPU 粒子液体", "GPU particle liquid"), ImGuiTreeNodeFlags_DefaultOpen))
+        if (scene.IsWaterTest() && ImGui::CollapsingHeader(T("GPU 粒子液体", "GPU particle liquid"), ImGuiTreeNodeFlags_DefaultOpen))
         {
             if (auto* liquid = scene.GetLiquid())
             {
@@ -411,7 +418,7 @@ public:
                 ImGui::Separator();
                 ImGui::TextUnformatted(T("泡沫调试", "Foam tuning"));
                 renderChanged |= Number(T("泡沫生成倍率", "Foam emission scale"), render.foamEmission, .05f, 0, 10);
-                if (ImGui::IsItemHovered()) ImGui::SetTooltip(T("1 为默认生成量；0 停止新生成，已有泡沫正常消退。模拟运行时生效。", "1 is the default rate. 0 stops emission; existing particles expire normally. Requires simulation to advance."));
+                if (ImGui::IsItemHovered()) ImGui::SetTooltip(T("1 为基准生成量，默认倍率为 6；0 停止新生成，已有泡沫正常消退。模拟运行时生效。", "1 is the base rate; the default scale is 6. 0 stops emission; existing particles expire normally. Requires simulation to advance."));
                 renderChanged |= Number(T("泡沫不透明度", "Foam opacity"), render.foamOpacity, .01f, 0, 1);
                 if (ImGui::IsItemHovered()) ImGui::SetTooltip(T("控制泡沫和水下气泡的基础不透明度，仍保留柔边和寿命淡出；暂停时也可调整。", "Base foam/bubble opacity, with soft edges and lifetime fading. Also updates while paused."));
                 if (ImGui::Button(T("恢复泡沫参数", "Reset foam settings"))) {

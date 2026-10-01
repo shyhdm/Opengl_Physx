@@ -16,6 +16,12 @@ public:
         const float az = glm::radians(std::remainder(azimuth_, 360.f)), el = glm::radians(std::remainder(elevation_, 360.f));
         return { std::sin(az) * std::cos(el), std::sin(el), std::cos(az) * std::cos(el) };
     }
+    inline static glm::vec3 interiorPosition{0};
+    inline static float interiorPower=0;
+    template<class S> static void ApplyInterior(S& shader) {
+        shader.SetVector3("interiorPosition",interiorPosition);
+        shader.SetFloat("interiorPower",interiorPower);
+    }
 private:
     inline static float azimuth_ = 21.f, elevation_ = 59.f;
 };

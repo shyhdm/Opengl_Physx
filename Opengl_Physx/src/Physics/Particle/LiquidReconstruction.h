@@ -23,6 +23,9 @@ public:
     ~LiquidReconstruction() { Release(); }
     LiquidReconstruction(const LiquidReconstruction&)=delete;
     LiquidReconstruction& operator=(const LiquidReconstruction&)=delete;
+    GLuint Heads() const { return buffers_[0]; }
+    GLuint Links() const { return buffers_[1]; }
+    unsigned HashSize() const { return hashSize_; }
     void Invalidate() { valid_=false; }
     GLuint Prepare(GLuint source,unsigned count,float spacing,unsigned long long revision) {
         if(valid_ && source==source_ && count==count_ && spacing==spacing_ && revision==revision_)return buffers_[2];

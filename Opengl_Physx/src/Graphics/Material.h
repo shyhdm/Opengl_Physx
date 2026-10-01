@@ -8,6 +8,7 @@ struct Material
     glm::vec3 baseColor = glm::vec3(0.65f);
     float specularStrength = 0.25f;
     float shininess = 32.0f;
+    glm::vec3 emission{0};
     std::shared_ptr<Texture> baseTexture;
     glm::vec2 textureTiling = glm::vec2(1.0f);
 };

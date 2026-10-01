@@ -24,7 +24,7 @@ public:
         float absorption = 1.61f, reflection = 1.f, refraction = .24f, thickness = .8f;
         float particleScale = .71f, smoothRadius = .65f, smoothSharpness = .43f, depthRejection = 3.7f;
         int smoothIterations = 3;
-        float foamEmission = 1.f, foamOpacity = .6f;
+        float foamEmission = 6.f, foamOpacity = .6f;
     };
     static RenderParameters ClampRenderParameters(RenderParameters value) {
         const RenderParameters defaults;
@@ -65,7 +65,7 @@ public:
     {
         if (!count || width <= 0 || height <= 0)return;
         State state(*this);
-        const GLuint environment = sky_->Texture();
+        const GLuint environment = sky_->ReflectionTexture();
         glEnable(0x884F);
         Resize(width, height); lighting_.Prepare(width, height); glDisable(GL_SCISSOR_TEST);
         passTimers_[Background].Begin();
@@ -128,6 +128,7 @@ public:
         passTimers_[Composite].End(); passTimers_[Whitewater].Begin();
         GL::ActiveTexture(0x84C0); glBindTexture(GL_TEXTURE_2D, textures_[0]);
         glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, width, height);
+        whitewater_.SetNeighborhood(reconstruction_.Heads(), reconstruction_.Links(), surface, reconstruction_.HashSize());
         whitewater_.SetAppearance(renderParameters_.foamEmission, renderParameters_.foamOpacity);
         whitewater_.Draw(positions, count, spacing, revision, view, projection, textures_[6], textures_[1], state.drawFbo, width, height, gravityScale, textures_[0], glm::vec3(state.clearColor[0], state.clearColor[1], state.clearColor[2]), environment);
         passTimers_[Whitewater].End();
@@ -167,6 +168,7 @@ private:
     void Common(const glm::mat4& projection, const glm::mat4& view, float radius, int w, int h) {
         shader_.SetMatrix4("projection", projection); shader_.SetMatrix4("inverseProjection", glm::inverse(projection)); shader_.SetMatrix4("view", view); shader_.SetMatrix4("inverseView", glm::inverse(view));
         shader_.SetVector3("sunDirection", SceneLight::Direction());
+        SceneLight::ApplyInterior(shader_);
         shader_.SetVector3("waterColor", renderParameters_.color);
         shader_.SetVector3("waterThinColor", renderParameters_.thinColor);
         shader_.SetVector2("colorTransition", renderParameters_.colorRange);

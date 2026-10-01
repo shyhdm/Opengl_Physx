@@ -12,12 +12,17 @@ public:
         if (major < 4 || (major == 4 && minor < 3))throw std::runtime_error("GPU whitewater requires OpenGL 4.3");
         GL::LoadFunction(dispatch_, "glDispatchCompute"); GL::LoadFunction(barrier_, "glMemoryBarrier"); GL::LoadFunction(bindBase_, "glBindBufferBase"); GL::LoadFunction(getIndexed_, "glGetIntegeri_v");
         GL::LoadFunction(uniformUInt_, "glUniform1ui"); GL::LoadFunction(instanced_, "glDrawArraysInstanced"); GL::LoadFunction(divisor_, "glVertexAttribDivisor");
-        try { for (int i = 0; i < 7; ++i) { compute_[i] = BuildCompute(i); const char* names[] = { "particleCount","poolCapacity","hashSize","tick","spacing","deltaTime","gravityScale","emissionScale" }; for (int j = 0; j < 8; ++j)locations_[i][j] = GL::GetUniformLocation(compute_[i], names[j]); }GL::GenBuffers(6, buffers_); GL::GenVertexArrays(1, &vao_); }
+        try { for (int i = 0; i < 7; ++i) { compute_[i] = BuildCompute(i); const char* names[] = { "particleCount","poolCapacity","hashSize","tick","spacing","deltaTime","gravityScale","emissionScale","sharedNeighborhood" }; for (int j = 0; j < 9; ++j)locations_[i][j] = GL::GetUniformLocation(compute_[i], names[j]); }GL::GenBuffers(6, buffers_); GL::GenVertexArrays(1, &vao_); }
         catch (...) { Release(); throw; }
     }
     ~LiquidWhitewater() { Release(); }
     void Invalidate() { clear_ = true; lastRevision_ = std::numeric_limits<unsigned long long>::max(); }
     // Emission changes affect future simulation steps; opacity updates even while paused.
+    // Borrow the current render reconstruction's grid and normals. It uses the
+    // same raw positions, support radius and hash, and lives through this draw.
+    void SetNeighborhood(GLuint heads, GLuint links, GLuint surface, unsigned hashSize) {
+        sharedHeads_ = heads; sharedLinks_ = links; sharedSurface_ = surface; sharedHashSize_ = hashSize;
+    }
     void SetAppearance(float emission, float opacity) { emissionScale_ = emission; opacity_ = opacity; }
     void Draw(GLuint source, unsigned count, float spacing, unsigned long long revision, const glm::mat4& view, const glm::mat4& projection, GLuint water, GLuint scene, GLuint destination, int width, int height, float gravityScale = 1, GLuint background = 0, glm::vec3 backgroundColor = glm::vec3(.1f, .16f, .24f), GLuint environment = 0) {
         Simulate(source, count, spacing, revision, gravityScale);
@@ -26,6 +31,7 @@ public:
         GL::ActiveTexture(0x84C2); glBindTexture(GL_TEXTURE_2D, water); shader_.SetInt("waterDepth", 2);
         GL::ActiveTexture(0x84C3); glBindTexture(GL_TEXTURE_2D, scene); shader_.SetInt("sceneDepth", 3);
         GL::ActiveTexture(0x84C4); glBindTexture(GL_TEXTURE_2D, background); shader_.SetInt("sceneColor", 4);
+        SceneLight::ApplyInterior(shader_);
         shader_.SetFloat("foamOpacity", opacity_);
         shader_.SetVector3("backgroundColor", backgroundColor);
         shader_.SetMatrix4("inverseView", glm::inverse(view));
@@ -38,9 +44,10 @@ public:
         if (!count || (!clear_ && lastRevision_ == revision))return;
         StorageState state(*this); Ensure(count);
         bindBase_(0x90D2, 0, source); for (unsigned i = 0; i < 6; ++i)bindBase_(0x90D2, i + 1, buffers_[i]);
+        if (sharedSurface_) { bindBase_(0x90D2, 1, sharedHeads_); bindBase_(0x90D2, 2, sharedLinks_); bindBase_(0x90D2, 3, sharedSurface_); }
         count_ = count; spacing_ = spacing; gravityScale_ = gravityScale;
         if (clear_) { Run(5, PoolCapacity); clear_ = false; }
-        Run(0, HashSize); Run(1, count); Run(2, count);
+        Run(0, sharedSurface_ ? 1u : HashSize); Run(1, count); if (!sharedSurface_) Run(2, count);
         unsigned steps = lastRevision_ == std::numeric_limits<unsigned long long>::max() ? 1u : unsigned(std::min(revision > lastRevision_ ? revision - lastRevision_ : 1ull, 6ull));
         for (unsigned i = 0; i < steps; ++i) { tick_ = unsigned(revision - steps + i + 1); Run(6, 1); Run(3, PoolCapacity); Run(4, count); }
         barrier_(0x2000 | 0x0001); lastRevision_ = revision;
@@ -50,11 +57,12 @@ private:
     using Dispatch = void(APIENTRY*)(GLuint, GLuint, GLuint); using Barrier = void(APIENTRY*)(GLbitfield); using BindBase = void(APIENTRY*)(GLenum, GLuint, GLuint); using GetIndexed = void(APIENTRY*)(GLenum, GLuint, GLint*);
     using UniformUInt = void(APIENTRY*)(GLint, GLuint); using Instanced = void(APIENTRY*)(GLenum, GLint, GLsizei, GLsizei); using Divisor = void(APIENTRY*)(GLuint, GLuint);
     struct StorageState { LiquidWhitewater& owner; GLint generic, program, bindings[7]; StorageState(LiquidWhitewater& o) :owner(o) { glGetIntegerv(0x8B8D, &program); glGetIntegerv(0x90D3, &generic); for (unsigned i = 0; i < 7; ++i)o.getIndexed_(0x90D3, i, &bindings[i]); }~StorageState() { for (unsigned i = 0; i < 7; ++i)owner.bindBase_(0x90D2, i, bindings[i]); GL::BindBuffer(0x90D2, generic); GL::UseProgram(program); } };
-    void Run(int pass, unsigned count) { GL::UseProgram(compute_[pass]); auto* p = locations_[pass]; uniformUInt_(p[0], count_); uniformUInt_(p[1], PoolCapacity); uniformUInt_(p[2], HashSize); uniformUInt_(p[3], tick_); GL::Uniform1f(p[4], spacing_); GL::Uniform1f(p[5], 1.f / 60.f); GL::Uniform1f(p[6], gravityScale_); GL::Uniform1f(p[7], emissionScale_); dispatch_((count + 127) / 128, 1, 1); barrier_(0x2000); }
+    void Run(int pass, unsigned count) { GL::UseProgram(compute_[pass]); auto* p = locations_[pass]; uniformUInt_(p[0], count_); uniformUInt_(p[1], PoolCapacity); uniformUInt_(p[2], sharedSurface_ ? sharedHashSize_ : HashSize); uniformUInt_(p[3], tick_); GL::Uniform1f(p[4], spacing_); GL::Uniform1f(p[5], 1.f / 60.f); GL::Uniform1f(p[6], gravityScale_); GL::Uniform1f(p[7], emissionScale_); uniformUInt_(p[8], sharedSurface_ ? 1u : 0u); dispatch_((count + 127) / 128, 1, 1); barrier_(0x2000); }
     void Allocate(unsigned index, size_t bytes) { GL::BindBuffer(0x90D2, buffers_[index]); GL::BufferData(0x90D2, bytes, nullptr, 0x88E8); }
     void Ensure(unsigned count) {
-        if (!allocated_) { Allocate(0, size_t(HashSize) * 4); Allocate(3, size_t(PoolCapacity) * 48); Allocate(4, size_t(PoolCapacity) * 4); Allocate(5, 8 * 4); allocated_ = true; }
-        if (count > capacity_) { Allocate(1, size_t(count) * 4); Allocate(2, size_t(count) * 16); capacity_ = count; }
+        if (!allocated_) { Allocate(3, size_t(PoolCapacity) * 48); Allocate(4, size_t(PoolCapacity) * 4); Allocate(5, 8 * 4); allocated_ = true; }
+        if (!sharedSurface_ && !localGrid_) { Allocate(0, size_t(HashSize) * 4); localGrid_ = true; }
+        if (!sharedSurface_ && count > capacity_) { Allocate(1, size_t(count) * 4); Allocate(2, size_t(count) * 80); capacity_ = count; }
     }
     static GLuint BuildCompute(int stage) {
         std::vector<wchar_t> path(32768); DWORD length = GetModuleFileNameW(nullptr, path.data(), DWORD(path.size())); if (!length || length >= path.size())throw std::runtime_error("Cannot locate whitewater shader");
@@ -64,6 +72,6 @@ private:
         catch (...) { GL::DeleteShader(shader); if (program)GL::DeleteProgram(program); throw; }
     }
     void Release() { for (auto p : compute_)if (p)GL::DeleteProgram(p); GL::DeleteBuffers(6, buffers_); GL::DeleteVertexArrays(1, &vao_); }
-    Shader shader_; GLuint compute_[7]{}, buffers_[6]{}, vao_ = 0; unsigned count_ = 0, tick_ = 0; float spacing_ = 0, gravityScale_ = 1; float emissionScale_ = 1.f, opacity_ = .6f; GLint locations_[7][8]{}; unsigned capacity_ = 0; bool allocated_ = false, clear_ = true;
+    Shader shader_; GLuint compute_[7]{}, buffers_[6]{}, vao_ = 0; unsigned count_ = 0, tick_ = 0; float spacing_ = 0, gravityScale_ = 1; float emissionScale_ = 6.f, opacity_ = .6f; GLint locations_[7][9]{}; GLuint sharedHeads_ = 0, sharedLinks_ = 0, sharedSurface_ = 0; unsigned sharedHashSize_ = 0; bool localGrid_ = false; unsigned capacity_ = 0; bool allocated_ = false, clear_ = true;
     unsigned long long lastRevision_ = std::numeric_limits<unsigned long long>::max(); Dispatch dispatch_ = nullptr; Barrier barrier_ = nullptr; BindBase bindBase_ = nullptr; GetIndexed getIndexed_ = nullptr; UniformUInt uniformUInt_ = nullptr; Instanced instanced_ = nullptr; Divisor divisor_ = nullptr;
 };

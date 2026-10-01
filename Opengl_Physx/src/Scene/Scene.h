@@ -44,6 +44,7 @@ public:
 
     void Reset()
     {
+        reflectionKey_.clear();
         ClearSelection();
         beachSpraying = false; beachRemainder = 0;
         particleFiring = false; waterRemainder = sandRemainder = 0;
@@ -84,7 +85,7 @@ public:
                     beachGenerationFailed = !sand->ResetBeach(beachBoxPosition, beachBoxSize);
                     return;
                 }
-                if (particleTest != 0) {
+                if (particleTest == 1) {
                     if (!sand) sand = std::make_unique<LiquidGpu>(world, false, true);
                     sand->SetParticleRadius(linkedWaterRadius / .6f);
                     sand->SetDensity(sandDensity);
@@ -99,6 +100,10 @@ public:
                     liquid->SetDisplayMode(liquidDisplayMode);
                 }
                 else liquid->ResetForScene();
+                if (particleTest == 3 && liquid) {
+                    enclosedWallCenter = liquid->ContainerPosition();
+                    enclosedWallSize = liquid->ContainerSize();
+                }
             }
             return;
         }
@@ -316,6 +321,8 @@ public:
     void Draw(const Camera& camera, int width, int height, const std::function<void(ModelRenderer&, bool)>& externalDraw = {})
     {
         if (width <= 0 || height <= 0) return;
+        SceneLight::interiorPower=(sceneIndex==3 && particleTest==3)?1.4f:0.f;
+        SceneLight::interiorPosition=enclosedWallCenter+glm::vec3(0,enclosedWallSize.y*.5f-.35f,0);
         auto uploadStarted = std::chrono::steady_clock::now();
         SyncSoftBodies();
         UpdateRigidRenderBatches();
@@ -327,8 +334,10 @@ public:
         for (const auto& batch : rigidRenderBatches) renderer.DrawShadow(*batch.mesh, glm::mat4(1.0f));
         for (const auto& batch : softRenderBatches) renderer.DrawShadow(*batch.mesh, glm::mat4(1));
         if (externalDraw) externalDraw(renderer, true);
+        DrawEnclosedWalls(true);
         renderer.EndShadowPass();
         frameShadowMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - shadowStarted).count();
+        PrepareLocalReflection();
         auto mainStarted = std::chrono::steady_clock::now();
         glDepthMask(GL_TRUE);
         glClearColor(0.10f, 0.16f, 0.24f, 1.0f);
@@ -337,6 +346,7 @@ public:
         sky_->Draw(camera, width, height);
         renderer.BeginDraw(camera, width, height);
         if (showGround) renderer.DrawMesh(models.Get(ModelType::Plane), ground.GetMatrix(), groundMaterial);
+        DrawEnclosedWalls(false);
         for (const auto& batch : rigidRenderBatches) renderer.DrawMesh(*batch.mesh, glm::mat4(1.0f), batch.material);
         for (const auto& batch : softRenderBatches) renderer.DrawMesh(*batch.mesh, glm::mat4(1), batch.material);
         if (externalDraw) externalDraw(renderer, false);
@@ -344,7 +354,7 @@ public:
         if (sand && sand->Count()) sand->Draw(camera, width, height);
         if (liquid && liquid->Count()) liquid->Draw(camera, width, height);
         if (sceneIndex == 3) {
-            if (particleTest == 0 && liquid) liquid->DrawDebugBounds(camera, width, height);
+            if (IsWaterTest() && liquid) liquid->DrawDebugBounds(camera, width, height);
             if (particleTest == 1 && sand) sand->DrawDebugBounds(camera, width, height);
             if (particleTest == 2 && sand) sand->DrawDebugBounds(camera, width, height, false);
         }
@@ -560,8 +570,9 @@ public:
         if (world.TotalParticleCount() >= LiquidGpu::MaxParticles) beachSpraying = false;
     }
     int GetParticleTest() const { return particleTest; }
+    bool IsWaterTest() const { return sceneIndex == 3 && (particleTest == 0 || particleTest == 3); }
     void SetParticleTest(int value) {
-        if (sceneIndex != 3 || value < 0 || value > 2) return;
+        if (sceneIndex != 3 || value < 0 || value > 3) return;
         SetLinkedParticleRadius(value == 1, value == 1 ? .04f : .1f);
         particleTest = value;
         Reset();
@@ -982,6 +993,59 @@ public:
     }
 
 private:
+    void PrepareLocalReflection() {
+        const bool enabled=sceneIndex==3 && particleTest==3 && liquid;
+        sky_->EnableLocal(enabled);if(!enabled)return;
+        std::vector<float> key;
+        auto add=[&](glm::vec3 v){key.insert(key.end(),{v.x,v.y,v.z});};
+        add(enclosedWallCenter);add(enclosedWallSize);add(SceneLight::Direction());
+        add(SceneLight::interiorPosition);key.push_back(SceneLight::interiorPower);
+        add(ground.position);add(ground.rotation);add(ground.scale);add(groundMaterial.baseColor);
+        add(renderer.lightColor);
+        key.insert(key.end(),{float(showGround),renderer.ambientStrength,renderer.diffuseStrength,
+            groundMaterial.specularStrength,groundMaterial.shininess,groundMaterial.textureTiling.x,groundMaterial.textureTiling.y});
+        if(key==reflectionKey_)return;
+        const bool shadows=renderer.shadowsEnabled;renderer.shadowsEnabled=false;
+        try {
+            sky_->CaptureLocal(enclosedWallCenter,[&](const Camera& view,int size){
+                renderer.BeginDraw(view,size,size);
+                if(showGround)renderer.DrawMesh(models.Get(ModelType::Plane),ground.GetMatrix(),groundMaterial);
+                DrawEnclosedWalls(false);
+            });
+        } catch(...) {renderer.shadowsEnabled=shadows;throw;}
+        renderer.shadowsEnabled=shadows;reflectionKey_=std::move(key);
+    }
+    std::vector<float> reflectionKey_;
+    void DrawEnclosedWalls(bool shadowPass) {
+        if (sceneIndex != 3 || particleTest != 3 || !liquid) return;
+        const glm::vec3 center = enclosedWallCenter, size = enclosedWallSize;
+        // Visual walls only; the original water collision box is unchanged.
+        constexpr float thickness = .25f;
+        const glm::vec3 wallSizes[] = {
+            {thickness, size.y + 2 * thickness, size.z + 2 * thickness},
+            {thickness, size.y + 2 * thickness, size.z + 2 * thickness},
+            {size.x, size.y + 2 * thickness, thickness},
+            {size.x + 2 * thickness, thickness, size.z + 2 * thickness}
+        };
+        const glm::vec3 offsets[] = {
+            {-(size.x + thickness) * .5f, 0, 0},
+            { (size.x + thickness) * .5f, 0, 0},
+            {0, 0, -(size.z + thickness) * .5f},
+            {0, (size.y + thickness) * .5f, 0}
+        };
+        for (int i = 0; i < 4; ++i) {
+            Transform wall; wall.position = center + offsets[i]; wall.scale = wallSizes[i];
+            if (shadowPass) renderer.DrawShadow(models.Get(ModelType::Box), wall.GetMatrix());
+            else { Material material; material.baseColor = glm::vec3(1.f); material.baseTexture = groundMaterial.baseTexture; material.textureTiling = glm::vec2(4.f); renderer.DrawMesh(models.Get(ModelType::Box), wall.GetMatrix(), material); }
+        }
+        // A small diffuse ceiling fixture, also visible in the cached reflection.
+        if(!shadowPass){
+            Transform lamp;lamp.position=center+glm::vec3(0,size.y*.5f-.06f,0);lamp.scale={1.2f,.12f,1.2f};
+            Material material;material.baseColor=glm::vec3(.25f);material.emission=glm::vec3(.65f);material.specularStrength=0;
+            renderer.DrawMesh(models.Get(ModelType::Box),lamp.GetMatrix(),material);
+        }
+    }
+    glm::vec3 enclosedWallCenter{0,4,0}, enclosedWallSize{10,8,10};
     std::shared_ptr<SkyEnvironment> sky_ = SkyEnvironment::Shared();
     float GetLaunchRadius() const
     {

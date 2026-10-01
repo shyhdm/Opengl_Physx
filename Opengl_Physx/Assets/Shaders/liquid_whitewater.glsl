@@ -1,3 +1,5 @@
+uniform vec3 interiorPosition;
+uniform float interiorPower;
 uniform vec3 sunDirection;
 uniform mat4 view,projection,inverseProjection,inverseView;
 uniform float spacing,foamOpacity;
@@ -68,6 +70,12 @@ void main(){
         float fresnel=.02037+.97963*pow(1-clamp(dot(-incident,n),0,1),5);
         vec3 light=normalize(mat3(view)*normalize(sunDirection));
         float highlight=pow(max(0,dot(n,normalize(light-incident))),100)*.5;
+        if(interiorPower>0){
+            vec3 delta=(view*vec4(interiorPosition,1)).xyz-center;
+            vec3 localL=delta*inversesqrt(max(dot(delta,delta),1e-8));
+            vec3 localH=localL-incident;localH*=inversesqrt(max(dot(localH,localH),1e-8));
+            highlight+=pow(max(dot(n,localH),0.0),64.0)*max(dot(n,localL),0.0)*interiorPower/(1.0+.06*dot(delta,delta));
+        }
         float coverage=clamp(fade*edge*smoothstep(0,radius,solid-depth),0,1);
         coverage*=exp(-submersion/max(spacing*4,.001));
         color=vec4((mix(transmitted,texture(environmentMap,mat3(inverseView)*reflect(incident,n)).rgb,fresnel)+vec3(highlight))*coverage,coverage);return;

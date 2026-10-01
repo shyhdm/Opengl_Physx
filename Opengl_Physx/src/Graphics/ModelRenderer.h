@@ -99,6 +99,7 @@ public:
         shadowMap.Bind();
         shader.SetVector3("cameraPosition", camera.position);
         shader.SetVector3("lightDirection", -SceneLight::Direction());
+        SceneLight::ApplyInterior(shader);
         shader.SetVector3("lightColor", lightColor);
         shader.SetFloat("ambientStrength", ambientStrength);
         shader.SetFloat("diffuseStrength", diffuseStrength);
@@ -111,6 +112,7 @@ public:
         shader.SetMatrix4("mvp", viewProjection * model);
         shader.SetMatrix4("model", model);
         shader.SetVector3("materialColor", material.baseColor);
+        shader.SetVector3("materialEmission", material.emission);
         shader.SetFloat("specularStrength", material.specularStrength);
         shader.SetFloat("shininess", material.shininess);
         shader.SetBool("hasBaseTexture", material.baseTexture != nullptr);
@@ -133,6 +135,7 @@ public:
         shader.SetMatrix4("mvp", viewProjection);
         shader.SetMatrix4("model", glm::mat4(1.0f));
         shader.SetVector3("materialColor", material.baseColor);
+        shader.SetVector3("materialEmission", material.emission);
         shader.SetFloat("specularStrength", material.specularStrength);
         shader.SetFloat("shininess", material.shininess);
         shader.SetBool("hasBaseTexture", material.baseTexture != nullptr);
@@ -151,6 +154,7 @@ public:
         shader.SetMatrix4("mvp", viewProjection);
         shader.SetMatrix4("model", glm::mat4(1.0f));
         shader.SetVector3("materialColor", material.baseColor);
+        shader.SetVector3("materialEmission", material.emission);
         shader.SetFloat("specularStrength", material.specularStrength);
         shader.SetFloat("shininess", material.shininess);
         shader.SetBool("hasBaseTexture", material.baseTexture != nullptr);

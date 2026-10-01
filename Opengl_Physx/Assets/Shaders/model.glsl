@@ -1,3 +1,5 @@
+uniform vec3 interiorPosition;
+uniform float interiorPower;
 // =================== Vertex ===================
 #if defined(VERTEX_SHADER)
 layout(location = 0) in vec3 position;
@@ -138,6 +140,7 @@ uniform float shadowStrength;
 uniform float shadowBias;
 uniform int shadowFilterRadius;
 uniform vec3 materialColor;
+uniform vec3 materialEmission;
 uniform vec3 cameraPosition;
 uniform vec3 lightDirection;
 uniform vec3 lightColor;
@@ -197,7 +200,16 @@ void main()
     vec3 specular = max(specularStrength, 0.0) * highlight * illumination;
 
     float shadow = CalculateShadow(N,L);
-    outputColor = vec4(ambient + (1.0-shadow)*(diffuse+specular), 1.0);
+    vec3 localLighting=vec3(0);
+    if(interiorPower>0){
+        vec3 delta=interiorPosition-i.worldPosition;
+        float d2=dot(delta,delta);vec3 localL=SafeNormalize(delta);
+        float falloff=interiorPower/(1.0+.06*d2);
+        float lambert=max(dot(N,localL),0.0);
+        float gloss=pow(max(dot(N,SafeNormalize(localL+V)),0.0),max(shininess,1.0));
+        localLighting=falloff*(baseColor*lambert+specularStrength*gloss*lambert);
+    }
+    outputColor = vec4(ambient + (1.0-shadow)*(diffuse+specular)+localLighting+materialEmission, 1.0);
 }
 
 #endif

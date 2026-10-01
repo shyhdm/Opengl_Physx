@@ -21,8 +21,13 @@ public:
         return glm::normalize(glm::vec3(std::cos(y) * std::cos(p), std::sin(p), std::sin(y) * std::cos(p)));
     }
 
+    // Exact cubemap views include the poles and their required roll.
+    bool customView = false;
+    glm::mat4 viewOverride{1};
+
     glm::mat4 GetViewMatrix() const
     {
+        if (customView) return viewOverride;
         return glm::lookAt(position, position + GetForward(), glm::vec3(0.0f, 1.0f, 0.0f));
     }
 

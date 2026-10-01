@@ -1,3 +1,5 @@
+uniform vec3 interiorPosition;
+uniform float interiorPower;
 uniform vec3 sunDirection;
 #if defined(FRAGMENT_SHADER) && defined(PASS_DEPTH)
 #extension GL_ARB_conservative_depth : require
@@ -259,6 +261,13 @@ void main(){
     float highlight=pow(nh,exponent)*(exponent/180.0)*max(dot(n,toLight),0.0);
     vec3 color=mix(transmitted,reflected,reflectedWeight);
     color+=vec3(.96,.98,1.0)*highlight*.85*reflectionStrength;
+    if(interiorPower>0){
+        vec3 delta=interiorPosition-world;
+        vec3 localL=delta*inversesqrt(max(dot(delta,delta),1e-8));
+        vec3 localH=localL+toEye;localH*=inversesqrt(max(dot(localH,localH),1e-8));
+        float localHighlight=pow(max(dot(n,localH),0.0),64.0)*max(dot(n,localL),0.0);
+        color+=vec3(localHighlight*interiorPower/(1.0+.06*dot(delta,delta)))*reflectionStrength;
+    }
     result=vec4(color,1);
     vec4 clip=projection*vec4(position,1);gl_FragDepth=clip.z/clip.w*.5+.5;
 }
